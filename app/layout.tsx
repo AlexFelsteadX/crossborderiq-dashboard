@@ -31,13 +31,13 @@ export const metadata: Metadata = {
     url: 'https://www.cbiq.ai',
     title: 'CBIQ | Global Workforce & Mobility Intelligence',
     description: 'Global workforce and mobility intelligence — benchmark your strategy, AI adoption and the future of work against 1,500+ HR, Talent and Mobility leaders.',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'CBIQ' }],
+    images: [{ url: '/og-image.png?v=2', width: 1200, height: 630, alt: 'CBIQ — Global Workforce Deployment benchmarks from 1,500+ mobility & HR leaders' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'CBIQ | Global Workforce & Mobility Intelligence',
     description: 'Global workforce and mobility intelligence — benchmark your strategy, AI adoption and the future of work against 1,500+ HR, Talent and Mobility leaders.',
-    images: ['/og-image.png'],
+    images: ['/og-image.png?v=2'],
   },
 }
 
