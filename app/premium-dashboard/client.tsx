@@ -778,6 +778,30 @@ export function PremiumDashboardClient() {
             })()}
         </div>
 
+        {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS ============================ */}
+        <div className="mb-12">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-slate-200">Year-on-year trends (2025 → 2026)</h2>
+            {loadingYoY && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          </div>
+          <p className="text-xs text-slate-500 mb-6">
+            Trends reflect Industry, Region and Company size filters only.
+          </p>
+
+          {yoy.length === 0 ? (
+            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+              {loadingYoY ? "Loading year-on-year trends…" : "No trend data for this selection."}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {yoy.map((row, idx) => (
+                <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         <div className={`space-y-3 mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           <div className="flex items-center justify-between mb-3">
@@ -800,30 +824,6 @@ export function PremiumDashboardClient() {
           {!loadingMain && sections.every((s) => s.questions.length === 0) && (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
               No breakdown data for this selection.
-            </div>
-          )}
-        </div>
-
-        {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS ============================ */}
-        <div className="mb-12">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-slate-200">Year-on-year trends (2025 → 2026)</h2>
-            {loadingYoY && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          </div>
-          <p className="text-xs text-slate-500 mb-6">
-            Trends reflect Industry, Region and Company size filters only.
-          </p>
-
-          {yoy.length === 0 ? (
-            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-              {loadingYoY ? "Loading year-on-year trends…" : "No trend data for this selection."}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {yoy.map((row, idx) => (
-                <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
-              ))}
             </div>
           )}
         </div>
