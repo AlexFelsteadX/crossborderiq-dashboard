@@ -327,12 +327,12 @@ export function ContributorDashboardClient({
                     <div key={c.label}>
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-slate-400">{c.label}</span>
-                        <span className="text-slate-200 font-medium">{formatPct(c.pct)}</span>
+                        <span className="text-slate-200 font-medium">{Math.round(c.pct)}%</span>
                       </div>
                       <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: `${Math.min(Math.max(c.pct * 100, 0), 100)}%` }}
+                          style={{ width: `${Math.min(Math.max(c.pct, 0), 100)}%` }}
                         />
                       </div>
                     </div>
