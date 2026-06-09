@@ -12,6 +12,67 @@ function formatPct(value: number): string {
   return `${Math.round(value * 100)}%`
 }
 
+// Circular/radial progress ring (SVG donut): muted slate track + teal arc.
+// `value` and `max` define the fill ratio; `label` is rendered large in the
+// centre, with optional `sublabel` beneath it.
+function CircularGauge({
+  value,
+  max = 100,
+  size = 160,
+  stroke = 12,
+  label,
+  sublabel,
+}: {
+  value: number
+  max?: number
+  size?: number
+  stroke?: number
+  label: string
+  sublabel?: string
+}) {
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const ratio = Math.min(Math.max(value / max, 0), 1)
+  const dashOffset = circumference * (1 - ratio)
+
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#1a3344"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--brand-teal)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className="drop-shadow-[0_0_6px_rgb(var(--brand-teal-rgb)_/_0.5)] transition-[stroke-dashoffset] duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+        <span className="font-bold text-primary tracking-tight" style={{ fontSize: size * 0.26 }}>
+          {label}
+        </span>
+        {sublabel && (
+          <span className="text-slate-500 font-semibold mt-1" style={{ fontSize: size * 0.11 }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Locked Feature Card Component - styled to match theme
 function LockedFeatureCard({ title, description }: { title: string; description: string }) {
   return (
@@ -87,6 +148,7 @@ function QuestionCard({
 interface PillarScore {
   pillar: string
   short_name: string
+  metric_label: string | null
   pct: number
 }
 
@@ -197,36 +259,26 @@ export function ContributorDashboardClient({
         </div>
 
         {/* BLOCK 1 — HEADLINE: Mobility Maturity Index */}
-        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-5 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-[0.15em]">Mobility Maturity Index</h2>
+        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-6 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <CircularGauge value={smiScore} max={100} size={150} stroke={12} label={`${smiScore}`} sublabel="/100" />
+            <div className="text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
+                  Mobility Maturity Index
+                </h2>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Composite of strategy, alignment, future-readiness and AI maturity.
+              </p>
+              {contributorCount > 0 && (
+                <p className="text-xs text-slate-400 mt-3">
+                  Based on {contributorCount.toLocaleString()} contributing organisations
+                </p>
+              )}
             </div>
-            <p className="font-bold text-primary tracking-tight drop-shadow-[0_0_16px_rgb(var(--brand-teal-rgb)_/_0.5)] leading-none whitespace-nowrap">
-              <span className="text-4xl md:text-5xl">{smiScore}</span>
-              <span className="text-xl md:text-2xl text-slate-500 font-semibold ml-1">/ 100</span>
-            </p>
           </div>
-          {/* Slim 0–100 progress bar filled to the index value */}
-          <div
-            className="h-2 bg-[#1a3344] rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuenow={smiScore}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Mobility Maturity Index"
-          >
-            <div
-              className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
-              style={{ width: `${Math.min(Math.max(smiScore, 0), 100)}%` }}
-            />
-          </div>
-          {contributorCount > 0 && (
-            <p className="text-xs text-slate-400 mt-3">
-              Based on {contributorCount.toLocaleString()} contributing organisations
-            </p>
-          )}
         </div>
 
         {/* BLOCK 2 — PILLAR SNAPSHOT */}
@@ -236,12 +288,19 @@ export function ContributorDashboardClient({
             {primaryTiles.map((pillar) => (
               <div
                 key={pillar.pillar}
-                className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex flex-col items-center text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
               >
-                <p className="text-3xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">
-                  {formatPct(pillar.pct)}
-                </p>
-                <p className="text-xs text-slate-400 mt-2 leading-tight">{pillar.short_name}</p>
+                <CircularGauge
+                  value={Math.round(pillar.pct * 100)}
+                  max={100}
+                  size={84}
+                  stroke={8}
+                  label={formatPct(pillar.pct)}
+                />
+                <p className="text-xs font-medium text-slate-300 mt-3 leading-tight">{pillar.short_name}</p>
+                {pillar.metric_label && (
+                  <p className="text-[11px] text-slate-500 mt-1 leading-snug">{pillar.metric_label}</p>
+                )}
               </div>
             ))}
           </div>
@@ -250,8 +309,19 @@ export function ContributorDashboardClient({
           {remoteTile && (
             <div className="mt-4 flex">
               <div className="rounded-lg border border-slate-700/50 bg-brand-navy-2/50 px-4 py-3 inline-flex items-center gap-3">
-                <span className="text-xl font-semibold text-slate-300">{formatPct(remoteTile.pct)}</span>
-                <span className="text-xs text-slate-500 leading-tight">{remoteTile.short_name}</span>
+                <CircularGauge
+                  value={Math.round(remoteTile.pct * 100)}
+                  max={100}
+                  size={48}
+                  stroke={6}
+                  label={formatPct(remoteTile.pct)}
+                />
+                <div className="text-left">
+                  <span className="text-xs text-slate-400 leading-tight block">{remoteTile.short_name}</span>
+                  {remoteTile.metric_label && (
+                    <span className="text-[11px] text-slate-500 leading-snug block">{remoteTile.metric_label}</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
