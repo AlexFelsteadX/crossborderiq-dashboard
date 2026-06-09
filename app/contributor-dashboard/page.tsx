@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 interface PillarScore {
   pillar: string
   short_name: string
+  metric_label: string | null
   pct: number
 }
 
@@ -63,7 +64,7 @@ export default async function ContributorDashboardPage() {
   // Fetch pillar scores for headlines
   const { data: pillarScores } = await supabase
     .from('v_pillar_score')
-    .select('pillar, short_name, pct')
+    .select('pillar, short_name, metric_label, pct')
   
   const pillars = (pillarScores || []) as PillarScore[]
   
