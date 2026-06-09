@@ -619,23 +619,25 @@ export function PremiumDashboardClient() {
               onChange={(v) => handleFilterChange("size", v)}
             />
             <FilterSelect
-              label="Assignee population"
+              label="Long-term & permanent"
               value={filters.assignee ?? "All"}
               options={ASSIGNEE_OPTIONS}
               onChange={(v) => handleFilterChange("assignee", v)}
             />
             <FilterSelect
-              label="Traveller volume"
+              label="Short-term & business travel"
               value={filters.traveller ?? "All"}
               options={TRAVELLER_OPTIONS}
               onChange={(v) => handleFilterChange("traveller", v)}
             />
-            <FilterSelect
-              label="Year"
-              value={String(filters.year)}
-              options={YEAR_OPTIONS.map(String)}
-              onChange={(v) => handleFilterChange("year", v)}
-            />
+            {/* Year is fixed to a single wave for now; render a static, non-interactive
+                label in the same slot. p_year is still passed to the RPCs via filters.year. */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Year</label>
+              <div className="w-full rounded-lg border border-primary/30 bg-brand-navy px-3 py-2 text-sm text-slate-200">
+                {String(filters.year)}
+              </div>
+            </div>
           </div>
         </div>
 
