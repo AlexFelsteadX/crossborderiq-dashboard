@@ -37,25 +37,25 @@ interface PillarScore {
   pct: number
 }
 
-interface StrategicMobilityIndex {
-  index_score: number
-}
-
 export default async function HomePage() {
   const supabase = await createClient()
   
-  // Fetch Strategic Mobility Index score (already a whole number percentage)
-  const { data: smiData } = await supabase
-    .from('v_strategic_mobility_index')
-    .select('index_score')
-    .single()
-  
+  // Live overall Mobility Maturity Index (2026) via RPC. The single rounded
+  // value drives the gauge number, the ring fill and the comparison sentence
+  // so they can never disagree. Falls back to 48 if the call fails.
+  const { data: mmiData } = await supabase.rpc('get_premium_mmi')
+  const mmiRow = Array.isArray(mmiData) ? mmiData[0] : mmiData
+  const rawMmi = (mmiRow as { index_score?: number } | null)?.index_score
+  const smiScore =
+    rawMmi === null || rawMmi === undefined || Number.isNaN(Number(rawMmi))
+      ? 48
+      : Math.round(Number(rawMmi))
+
   // Fetch pillar scores for the component breakdown and hero stats
   const { data: pillarData } = await supabase
     .from('v_pillar_score')
     .select('pillar, short_name, metric_label, pct')
   
-  const smiScore = (smiData as StrategicMobilityIndex | null)?.index_score ?? 0
   const pillars = (pillarData as PillarScore[] | null) ?? []
   
   // Helper to get pillar by name
@@ -142,7 +142,7 @@ export default async function HomePage() {
                   {/* SMI Badge */}
                   <div className="flex items-center justify-center gap-2 mb-6">
                     <BarChart3 className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-semibold text-primary uppercase tracking-wider">Strategic Mobility Index</span>
+                    <span className="text-xs font-semibold text-primary uppercase tracking-wider">Mobility Maturity Index</span>
                     <span className="text-[10px] text-primary">™</span>
                   </div>
                   
