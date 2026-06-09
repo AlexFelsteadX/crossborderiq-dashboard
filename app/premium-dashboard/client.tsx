@@ -113,7 +113,6 @@ const REGION_OPTIONS = ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC
 const SIZE_OPTIONS = ["5,000+", "1,000–4,999"]
 const ASSIGNEE_OPTIONS = ["101–500", "51–100", "1–50"]
 const TRAVELLER_OPTIONS = ["501–1,000", "101–500", "1–100"]
-const YEAR_OPTIONS = [2026]
 
 const DEFAULT_FILTERS: Filters = {
   industry: null,
@@ -474,9 +473,14 @@ export function PremiumDashboardClient() {
   }, [supabase, filters.industry, filters.region, filters.size])
 
   // Group breakdown rows -> questions -> themed sections.
+  // On the 2025 tab, only event-wave questions (q_code starting with "E") exist.
   const sections = useMemo(() => {
+    const is2025 = filters.year === 2025
+    const rows = is2025
+      ? breakdown.filter((row) => (row.q_code ?? "").toUpperCase().startsWith("E"))
+      : breakdown
     const byQ = new Map<string, GroupedQuestion>()
-    for (const row of breakdown) {
+    for (const row of rows) {
       if (!byQ.has(row.q_code)) {
         byQ.set(row.q_code, {
           qCode: row.q_code,
@@ -501,7 +505,7 @@ export function PremiumDashboardClient() {
       themed.get(themeForPillar(q.hrPillar))!.push(q)
     }
     return THEME_ORDER.map((theme) => ({ sectionName: theme, questions: themed.get(theme)! }))
-  }, [breakdown])
+  }, [breakdown, filters.year])
 
   const handleFilterChange = useCallback((key: keyof Filters, raw: string) => {
     setFilters((prev) => ({
@@ -510,15 +514,20 @@ export function PremiumDashboardClient() {
     }))
   }, [])
 
-  const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), [])
+  // Year is driven by the tab control — preserve the active year on reset.
+  const resetFilters = useCallback(
+    () => setFilters((prev) => ({ ...DEFAULT_FILTERS, year: prev.year })),
+    [],
+  )
+
+  const setYear = useCallback((y: number) => setFilters((prev) => ({ ...prev, year: y })), [])
 
   const isFiltered =
     filters.industry !== null ||
     filters.region !== null ||
     filters.size !== null ||
     filters.assignee !== null ||
-    filters.traveller !== null ||
-    filters.year !== 2026
+    filters.traveller !== null
 
   // BLOCK 1/2 derived values
   const mmiResolved = mmi ? resolve(mmi.confidence, mmi.index_score, mmi.overall_index) : null
@@ -535,6 +544,9 @@ export function PremiumDashboardClient() {
   const remoteRegex = /international remote|remote work/i
   const primaryPillars = pillars.filter((p) => !remoteRegex.test(`${p.pillar} ${p.short_name}`))
   const remotePillar = pillars.find((p) => remoteRegex.test(`${p.pillar} ${p.short_name}`))
+
+  // 2025 is a lighter event-wave view: no MMI, no remote tile, no YoY.
+  const is2025 = filters.year === 2025
 
   return (
     <div className="min-h-screen bg-brand-navy relative">
@@ -560,6 +572,34 @@ export function PremiumDashboardClient() {
           <p className="text-slate-400">
             Everything unlocked — slice the benchmark by peer segment and track year-on-year change.
           </p>
+        </div>
+
+        {/* ============================ YEAR TABS ============================ */}
+        <div className="mb-6">
+          <div
+            role="tablist"
+            aria-label="Survey year"
+            className="inline-flex rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
+          >
+            {[2026, 2025].map((y) => {
+              const active = filters.year === y
+              return (
+                <button
+                  key={y}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setYear(y)}
+                  className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    active
+                      ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                      : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                  }`}
+                >
+                  {y}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {error && (
@@ -599,7 +639,7 @@ export function PremiumDashboardClient() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <FilterSelect
               label="Industry"
               value={filters.industry ?? "All"}
@@ -630,18 +670,21 @@ export function PremiumDashboardClient() {
               options={TRAVELLER_OPTIONS}
               onChange={(v) => handleFilterChange("traveller", v)}
             />
-            {/* Year is fixed to a single wave for now; render a static, non-interactive
-                label in the same slot. p_year is still passed to the RPCs via filters.year. */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Year</label>
-              <div className="w-full rounded-lg border border-primary/30 bg-brand-navy px-3 py-2 text-sm text-slate-200">
-                {String(filters.year)}
-              </div>
-            </div>
           </div>
         </div>
 
+        {/* 2025 event-wave explainer banner */}
+        {is2025 && (
+          <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 px-5 py-4 mb-10">
+            <p className="text-sm text-slate-400 leading-relaxed">
+              2025 shows the new-focus areas captured at GME events — strategy and remote-work detail
+              arrived in the 2026 wave. Use the 2026 tab for the full benchmark and year-on-year trends.
+            </p>
+          </div>
+        )}
+
         {/* ============================ BLOCK 1 — MMI ============================ */}
+        {!is2025 && (
         <div
           className={`rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-6 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10 transition-opacity ${
             loadingMain ? "opacity-60" : "opacity-100"
@@ -711,6 +754,7 @@ export function PremiumDashboardClient() {
             </div>
           )}
         </div>
+        )}
 
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
@@ -750,8 +794,8 @@ export function PremiumDashboardClient() {
             </div>
           )}
 
-          {/* Secondary, de-emphasised tile: International Remote Work */}
-          {remotePillar &&
+          {/* Secondary, de-emphasised tile: International Remote Work (hidden on 2025) */}
+          {!is2025 && remotePillar &&
             (() => {
               const r = resolve(remotePillar.confidence, remotePillar.seg_pct, remotePillar.overall_pct)
               return (
@@ -780,7 +824,8 @@ export function PremiumDashboardClient() {
             })()}
         </div>
 
-        {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS ============================ */}
+        {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS (2026 only) ============================ */}
+        {!is2025 && (
         <div className="mb-12">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="h-5 w-5 text-primary" />
@@ -803,6 +848,7 @@ export function PremiumDashboardClient() {
             </div>
           )}
         </div>
+        )}
 
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         <div className={`space-y-3 mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
