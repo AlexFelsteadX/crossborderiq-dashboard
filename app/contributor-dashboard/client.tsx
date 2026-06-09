@@ -158,11 +158,27 @@ interface GroupedQuestion {
   answers: { answer_option: string; pct: number }[]
 }
 
+interface IndexComponents {
+  definedStrategyPct: number | null
+  alignedPct: number | null
+  futurePct: number | null
+  aiMaturityPct: number | null
+}
+
 interface ContributorDashboardClientProps {
   smiScore: number
+  indexComponents: IndexComponents
   pillars: PillarScore[]
   sections: { sectionName: string; questions: GroupedQuestion[] }[]
   contributorCount: number
+}
+
+// Maturity band derived from the 0–100 index value.
+function maturityBand(score: number): string {
+  if (score >= 80) return "Leading"
+  if (score >= 60) return "Established"
+  if (score >= 40) return "Developing"
+  return "Emerging"
 }
 
 // Pillar tile labels (lower-cased) that should NOT appear as a primary tile.
@@ -219,6 +235,7 @@ function BreakdownSection({
 
 export function ContributorDashboardClient({
   smiScore,
+  indexComponents,
   pillars,
   sections,
   contributorCount,
@@ -231,6 +248,16 @@ export function ContributorDashboardClient({
 
   // Collapsible breakdowns: first section expanded by default, others collapsed.
   const [openSection, setOpenSection] = useState<string | null>(sections[0]?.sectionName ?? null)
+
+  const band = maturityBand(smiScore)
+
+  // The four index components rendered on the right of the headline card.
+  const scoreComponents = [
+    { label: "Defined strategy", pct: indexComponents.definedStrategyPct },
+    { label: "Aligned to business", pct: indexComponents.alignedPct },
+    { label: "Future readiness", pct: indexComponents.futurePct },
+    { label: "AI maturity", pct: indexComponents.aiMaturityPct },
+  ].filter((c) => c.pct != null) as { label: string; pct: number }[]
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -260,16 +287,26 @@ export function ContributorDashboardClient({
 
         {/* BLOCK 1 — HEADLINE: Mobility Maturity Index */}
         <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-6 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <CircularGauge value={smiScore} max={100} size={150} stroke={12} label={`${smiScore}`} sublabel="/100" />
-            <div className="text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                <BarChart3 className="h-4 w-4 text-primary" />
-                <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
-                  Mobility Maturity Index
-                </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_minmax(0,1.1fr)] items-center gap-6 lg:gap-8">
+            {/* Left: circular gauge */}
+            <div className="flex justify-center">
+              <CircularGauge value={smiScore} max={100} size={150} stroke={12} label={`${smiScore}`} sublabel="/100" />
+            </div>
+
+            {/* Middle: title, band, descriptor, base */}
+            <div className="text-center lg:text-left">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
+                    Mobility Maturity Index
+                  </h2>
+                </div>
+                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {band}
+                </span>
               </div>
-              <p className="text-xs text-slate-400 max-w-sm">
+              <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                 Composite of strategy, alignment, future-readiness and AI maturity.
               </p>
               {contributorCount > 0 && (
@@ -278,6 +315,31 @@ export function ContributorDashboardClient({
                 </p>
               )}
             </div>
+
+            {/* Right: index components list */}
+            {scoreComponents.length > 0 && (
+              <div className="lg:border-l lg:border-primary/15 lg:pl-8">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3">
+                  What makes up this score
+                </p>
+                <div className="space-y-2.5">
+                  {scoreComponents.map((c) => (
+                    <div key={c.label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-400">{c.label}</span>
+                        <span className="text-slate-200 font-medium">{formatPct(c.pct)}</span>
+                      </div>
+                      <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${Math.min(Math.max(c.pct * 100, 0), 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
