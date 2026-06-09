@@ -1,9 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
-import { Lock, FileText, ArrowRight, BarChart3 } from "lucide-react"
+import { Lock, FileText, ArrowRight, BarChart3, ChevronDown } from "lucide-react"
 import Link from "next/link"
 
 // Format decimal pct values (e.g., 0.35) as whole percentages (e.g., 35%)
@@ -113,6 +114,47 @@ function isRemoteWorkTile(p: PillarScore): boolean {
   return /international remote|remote work/.test(s)
 }
 
+// Collapsible themed-breakdown row. Receives already-fetched data via props —
+// no fetching or server Supabase client here.
+function BreakdownSection({
+  sectionName,
+  questions,
+  isOpen,
+  onToggle,
+}: {
+  sectionName: string
+  questions: GroupedQuestion[]
+  isOpen: boolean
+  onToggle: () => void
+}) {
+  return (
+    <section className="rounded-xl border border-primary/15 bg-brand-navy-2/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-primary/5 transition-colors"
+      >
+        <h3 className="text-base font-semibold text-slate-200">{sectionName}</h3>
+        <ChevronDown
+          className={`h-4 w-4 text-primary shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+      {isOpen && (
+        <div className="px-5 pb-5 pt-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {questions.map((q, idx) => (
+              <QuestionCard key={`${sectionName}-${idx}`} questionLabel={q.questionLabel} answers={q.answers} />
+            ))}
+            {/* Show a single locked teaser only where the section is thin */}
+            {questions.length < 2 && <UpgradeTeaserCard />}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function ContributorDashboardClient({
   smiScore,
   pillars,
@@ -124,6 +166,9 @@ export function ContributorDashboardClient({
   // - "International Remote Work" becomes a de-emphasised secondary tile.
   const primaryTiles = pillars.filter((p) => !isStrategicMobilityTile(p) && !isRemoteWorkTile(p))
   const remoteTile = pillars.find((p) => isRemoteWorkTile(p))
+
+  // Collapsible breakdowns: first section expanded by default, others collapsed.
+  const [openSection, setOpenSection] = useState<string | null>(sections[0]?.sectionName ?? null)
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -152,17 +197,33 @@ export function ContributorDashboardClient({
         </div>
 
         {/* BLOCK 1 — HEADLINE: Mobility Maturity Index */}
-        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 md:p-10 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10 text-center">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">Mobility Maturity Index</h2>
+        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-5 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-[0.15em]">Mobility Maturity Index</h2>
+            </div>
+            <p className="font-bold text-primary tracking-tight drop-shadow-[0_0_16px_rgb(var(--brand-teal-rgb)_/_0.5)] leading-none whitespace-nowrap">
+              <span className="text-4xl md:text-5xl">{smiScore}</span>
+              <span className="text-xl md:text-2xl text-slate-500 font-semibold ml-1">/ 100</span>
+            </p>
           </div>
-          <p className="text-7xl md:text-8xl font-bold text-primary tracking-tight drop-shadow-[0_0_24px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-            {smiScore}
-            <span className="text-3xl md:text-4xl text-slate-500 font-semibold ml-1">/100</span>
-          </p>
+          {/* Slim 0–100 progress bar filled to the index value */}
+          <div
+            className="h-2 bg-[#1a3344] rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={smiScore}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Mobility Maturity Index"
+          >
+            <div
+              className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+              style={{ width: `${Math.min(Math.max(smiScore, 0), 100)}%` }}
+            />
+          </div>
           {contributorCount > 0 && (
-            <p className="text-sm text-slate-400 mt-5">
+            <p className="text-xs text-slate-400 mt-3">
               Based on {contributorCount.toLocaleString()} contributing organisations
             </p>
           )}
@@ -197,25 +258,16 @@ export function ContributorDashboardClient({
         </div>
 
         {/* BLOCK 3 — THEMED BREAKDOWNS */}
-        <div className="space-y-10 mb-12">
-          <h2 className="text-lg font-semibold text-slate-200">Detailed breakdowns</h2>
+        <div className="space-y-3 mb-12">
+          <h2 className="text-lg font-semibold text-slate-200 mb-3">Detailed breakdowns</h2>
           {sections.map(({ sectionName, questions: sectionQs }) => (
-            <section key={sectionName}>
-              <h3 className="text-base font-semibold text-slate-200 mb-4 pb-2 border-b border-primary/15">
-                {sectionName}
-              </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {sectionQs.map((q, idx) => (
-                  <QuestionCard
-                    key={`${sectionName}-${idx}`}
-                    questionLabel={q.questionLabel}
-                    answers={q.answers}
-                  />
-                ))}
-                {/* Show a single locked teaser only where the section is thin */}
-                {sectionQs.length < 2 && <UpgradeTeaserCard />}
-              </div>
-            </section>
+            <BreakdownSection
+              key={sectionName}
+              sectionName={sectionName}
+              questions={sectionQs}
+              isOpen={openSection === sectionName}
+              onToggle={() => setOpenSection((prev) => (prev === sectionName ? null : sectionName))}
+            />
           ))}
         </div>
 
