@@ -1,0 +1,1056 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import { 
+  TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
+  Database, FileText, MessageSquare, Download, ExternalLink, Filter, ChevronDown
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { GlobalNav } from "@/components/global-nav"
+import { GlobalFooter } from "@/components/global-footer"
+import { createClient } from "@/lib/supabase/client"
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+interface MarketOpportunity {
+  market_opportunity_score: number
+  transformation_pct: number
+  operational_pressure_pct: number
+  ai_activity_pct: number
+  tech_intent_pct: number
+}
+
+interface YoYRow {
+  concept: string
+  hr_pillar: string
+  metric_label: string
+  pct_2025: number
+  pct_2026: number
+  delta_pts: number
+  base_2025: number
+  base_2026: number
+  is_reportable: boolean
+  sort_order: number
+}
+
+interface QuestionRow {
+  vendor_pillar: string
+  report_name: string
+  source_year: number
+  q_code: string
+  question_label: string
+  answer_option: string
+  pct: number
+  base_n: number
+  is_reportable: boolean
+}
+
+interface GroupedQuestion {
+  qCode: string
+  questionLabel: string
+  sourceYear: number
+  reportName: string
+  answers: { answer_option: string; pct: number }[]
+}
+
+interface ServiceDemandRow {
+  service: string
+  pct: number
+  base_n: number
+  is_reportable: boolean
+}
+
+interface ServiceInterestRow {
+  service: string
+  pct: number
+  base_n: number
+  is_reportable: boolean
+}
+
+interface DemandPipelineRow {
+  signal: string
+  sort_order: number
+  pct: number
+  base_n: number
+  is_reportable: boolean
+}
+
+// =============================================================================
+// QUESTION CARD COMPONENT (styled to match homepage theme)
+// =============================================================================
+
+function QuestionCard({ 
+  questionLabel,
+  sourceYear,
+  reportName,
+  answers
+}: { 
+  questionLabel: string
+  sourceYear: number
+  reportName: string
+  answers: { answer_option: string; pct: number }[]
+}) {
+  const sortedAnswers = [...answers].sort((a, b) => b.pct - a.pct)
+  
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+      <div className="mb-3">
+        <p className="text-sm text-slate-200">{questionLabel}</p>
+      </div>
+      <p className="text-[10px] text-slate-500 mb-3">{reportName} | % of respondents</p>
+      <div className="space-y-2">
+        {sortedAnswers.map((answer, idx) => {
+          // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
+          const pctDisplay = Math.round(answer.pct)
+          return (
+            <div key={idx}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400 truncate pr-2">{answer.answer_option}</span>
+                <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
+              </div>
+              <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// YOY TREND CARD COMPONENT - PRESERVES GREEN/RED SEMANTIC COLORS
+// =============================================================================
+
+function YoYTrendCard({ row }: { row: YoYRow }) {
+  const isPositive = row.delta_pts > 0
+  const isNegative = row.delta_pts < 0
+  
+  // PRESERVE semantic green/red colors for trends
+  const borderColor = isPositive 
+    ? 'border-l-green-500/70' 
+    : isNegative 
+      ? 'border-l-red-500/70' 
+      : 'border-l-slate-600/30'
+  
+  const bgTint = isPositive 
+    ? 'bg-green-500/[0.03]' 
+    : isNegative 
+      ? 'bg-red-500/[0.03]' 
+      : 'bg-brand-navy-2/50'
+  
+  const deltaColor = isPositive 
+    ? 'text-green-500' 
+    : isNegative 
+      ? 'text-red-500' 
+      : 'text-slate-500'
+  
+  const DeltaIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus
+  
+  const maxVal = Math.max(row.pct_2025, row.pct_2026, 1)
+  const bar2025Height = (row.pct_2025 / maxVal) * 40
+  const bar2026Height = (row.pct_2026 / maxVal) * 40
+  
+  return (
+    <div className={`rounded-2xl border border-primary/20 border-l-4 ${borderColor} ${bgTint} bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] transition-all duration-200 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 pr-3">
+          <p className="text-sm font-medium text-slate-200 leading-tight">{row.concept}</p>
+          <p className="text-xs text-slate-500 mt-0.5">{row.metric_label}</p>
+        </div>
+        
+        <div className={`flex items-center gap-1.5 ${deltaColor}`}>
+          <DeltaIcon className="h-5 w-5" />
+          <span className="text-lg font-bold">
+            {row.delta_pts > 0 ? '+' : ''}{row.delta_pts}
+          </span>
+          <span className="text-xs font-medium">pts</span>
+        </div>
+      </div>
+      
+      <div className="flex items-end justify-between">
+        <div className="flex items-baseline gap-3">
+          <div>
+            <span className="text-xl font-bold text-slate-400">{row.pct_2025}%</span>
+            <span className="text-[10px] text-slate-500 ml-1">2025</span>
+          </div>
+          <ArrowRight className="h-3.5 w-3.5 text-slate-600 mb-1" />
+          <div>
+            <span className="text-xl font-bold text-primary">{row.pct_2026}%</span>
+            <span className="text-[10px] text-slate-500 ml-1">2026</span>
+          </div>
+        </div>
+        
+        <div className="flex items-end gap-1 h-10">
+          <div 
+            className="w-3 bg-slate-600/50 rounded-t transition-all duration-300"
+            style={{ height: `${bar2025Height}px` }}
+            title="2025"
+          />
+          <div 
+            className="w-3 bg-primary rounded-t transition-all duration-300"
+            style={{ height: `${bar2026Height}px` }}
+            title="2026"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// PRESERVES GREEN/RED semantic colors for movers
+function BiggestMoverChip({ row }: { row: YoYRow }) {
+  const isPositive = row.delta_pts > 0
+  const bgColor = isPositive ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+  const textColor = isPositive ? 'text-green-500' : 'text-red-500'
+  const DeltaIcon = isPositive ? TrendingUp : TrendingDown
+  
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${bgColor}`}>
+      <DeltaIcon className={`h-3.5 w-3.5 ${textColor}`} />
+      <span className="text-xs font-medium text-slate-200 truncate max-w-[140px]">{row.concept}</span>
+      <span className={`text-xs font-bold ${textColor}`}>
+        {row.delta_pts > 0 ? '+' : ''}{row.delta_pts} pts
+      </span>
+    </div>
+  )
+}
+
+// =============================================================================
+// MAIN CLIENT COMPONENT
+// =============================================================================
+
+export function VendorPremiumDashboardClient() {
+  const supabase = createClient()
+  
+  // State
+  const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
+  const [yoyData, setYoyData] = useState<YoYRow[]>([])
+  const [questionData, setQuestionData] = useState<QuestionRow[]>([])
+  const [serviceDemand, setServiceDemand] = useState<ServiceDemandRow[]>([])
+  const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
+  const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Accordion state for commercial breakdowns
+  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set())
+  
+  const togglePillar = (pillarName: string) => {
+    setExpandedPillars(prev => {
+      const next = new Set(prev)
+      if (next.has(pillarName)) {
+        next.delete(pillarName)
+      } else {
+        next.add(pillarName)
+      }
+      return next
+    })
+  }
+  
+  // Region filter state
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null)
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  
+  const regionOptions = [
+    { value: null, label: "All" },
+    { value: "Europe", label: "Europe" },
+    { value: "Americas", label: "Americas" },
+    { value: "Asia-Pacific (APAC)", label: "Asia-Pacific (APAC)" },
+    { value: "Middle East", label: "Middle East" },
+  ]
+  
+  const industryOptions = [
+    { value: null, label: "All" },
+    { value: "Technology & IT", label: "Technology & IT" },
+    { value: "Financial Services", label: "Financial Services" },
+    { value: "Healthcare & Life Sciences", label: "Healthcare & Life Sciences" },
+    { value: "Manufacturing & Industrial", label: "Manufacturing & Industrial" },
+    { value: "Professional Services", label: "Professional Services" },
+    { value: "Retail & Consumer", label: "Retail & Consumer" },
+    { value: "Energy & Utilities", label: "Energy & Utilities" },
+    { value: "Media & Entertainment", label: "Media & Entertainment" },
+    { value: "Other", label: "Other" },
+  ]
+  
+  const sizeOptions = [
+    { value: null, label: "All" },
+    { value: "Under 1,000", label: "Under 1,000" },
+    { value: "1,000–4,999", label: "1,000–4,999" },
+    { value: "5,000+", label: "5,000+" },
+  ]
+
+  // ---------------------------------------------------------------------------
+  // FETCH STATIC DATA ON MOUNT (Market Opportunity, YoY Trends)
+  // ---------------------------------------------------------------------------
+  
+  useEffect(() => {
+    async function fetchStaticData() {
+      try {
+        // Fetch Market Opportunity Score
+        const { data: mosData, error: mosError } = await supabase
+          .from('v_market_opportunity')
+          .select('*')
+          .single()
+        
+        if (mosError) {
+          console.log("[v0] Market opportunity error:", mosError)
+        } else {
+          setMarketOpportunity(mosData)
+        }
+        
+        // Fetch Year-on-Year trends (same view as Premium Dashboard)
+        const { data: yoyRows, error: yoyError } = await supabase
+          .from('v_premium_yoy')
+          .select('*')
+          .order('sort_order', { ascending: true })
+        
+        if (yoyError) {
+          console.log("[v0] YoY error:", yoyError)
+        } else {
+          setYoyData(yoyRows || [])
+        }
+      } catch (err) {
+        console.log("[v0] Static fetch error:", err)
+      }
+    }
+    
+    fetchStaticData()
+  }, [supabase])
+  
+  // ---------------------------------------------------------------------------
+  // FETCH FILTERED DATA (Service Demand, Demand Pipeline, Commercial Questions)
+  // ---------------------------------------------------------------------------
+  
+  useEffect(() => {
+    async function fetchFilteredData() {
+      setLoading(true)
+      setError(null)
+      
+      try {
+        // Call f_service_demand RPC with all three filters
+        const { data: serviceRows, error: serviceError } = await supabase
+          .rpc('f_service_demand', { 
+            p_region_group: selectedRegion,
+            p_industry_group: selectedIndustry,
+            p_size_band: selectedSize
+          })
+        
+        if (serviceError) {
+          console.log("[v0] Service demand RPC error:", serviceError)
+        } else {
+          // Sort by pct descending
+          const sorted = (serviceRows || []).sort((a: ServiceDemandRow, b: ServiceDemandRow) => b.pct - a.pct)
+          setServiceDemand(sorted)
+        }
+        
+        // Call f_service_interest RPC with only region filter
+        const { data: interestRows, error: interestError } = await supabase
+          .rpc('f_service_interest', { 
+            p_region_group: selectedRegion
+          })
+        
+        if (interestError) {
+          console.log("[v0] Service interest RPC error:", interestError)
+        } else {
+          // Sort by pct descending
+          const sorted = (interestRows || []).sort((a: ServiceInterestRow, b: ServiceInterestRow) => b.pct - a.pct)
+          setServiceInterest(sorted)
+        }
+        
+        // Call f_demand_pipeline RPC with all three filters
+        const { data: pipelineRows, error: pipelineError } = await supabase
+          .rpc('f_demand_pipeline', { 
+            p_region_group: selectedRegion,
+            p_industry_group: selectedIndustry,
+            p_size_band: selectedSize
+          })
+        
+        if (pipelineError) {
+          console.log("[v0] Demand pipeline RPC error:", pipelineError)
+        } else {
+          // Sort by sort_order
+          const sorted = (pipelineRows || []).sort((a: DemandPipelineRow, b: DemandPipelineRow) => a.sort_order - b.sort_order)
+          setDemandPipeline(sorted)
+        }
+        
+        // Call f_commercial_breakdown RPC with all three filters
+        const { data: qRows, error: qError } = await supabase
+          .rpc('f_commercial_breakdown', {
+            p_region_group: selectedRegion,
+            p_industry_group: selectedIndustry,
+            p_size_band: selectedSize
+          })
+        
+        if (qError) {
+          console.log("[v0] Commercial breakdown RPC error:", qError)
+        } else {
+          // Filter to reportable rows only
+          const reportableRows = (qRows || []).filter((r: QuestionRow) => r.is_reportable)
+          setQuestionData(reportableRows)
+        }
+        
+      } catch (err) {
+        console.log("[v0] Filtered fetch error:", err)
+        setError("Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchFilteredData()
+  }, [supabase, selectedRegion, selectedIndustry, selectedSize])
+
+  // ---------------------------------------------------------------------------
+  // GROUP QUESTIONS BY VENDOR_PILLAR DYNAMICALLY (with year/report badges)
+  // ---------------------------------------------------------------------------
+  
+  const groupedByPillar = useMemo(() => {
+    if (!questionData.length) return []
+    
+    // Group questions by q_code + source_year (to preserve year badges)
+    const questionMap = new Map<string, GroupedQuestion>()
+    
+    for (const row of questionData) {
+      const key = `${row.q_code}-${row.source_year}`
+      
+      if (!questionMap.has(key)) {
+        questionMap.set(key, {
+          qCode: row.q_code,
+          questionLabel: row.question_label,
+          sourceYear: row.source_year,
+          reportName: row.report_name,
+          answers: []
+        })
+      }
+      
+      questionMap.get(key)!.answers.push({
+        answer_option: row.answer_option,
+        pct: row.pct
+      })
+    }
+    
+    // Now group by vendor_pillar
+    const pillarMap = new Map<string, GroupedQuestion[]>()
+    
+    for (const row of questionData) {
+      const key = `${row.q_code}-${row.source_year}`
+      const pillar = row.vendor_pillar || "Other"
+      
+      if (!pillarMap.has(pillar)) {
+        pillarMap.set(pillar, [])
+      }
+      
+      const question = questionMap.get(key)
+      if (question && !pillarMap.get(pillar)!.some(q => q.qCode === question.qCode && q.sourceYear === question.sourceYear)) {
+        pillarMap.get(pillar)!.push(question)
+      }
+    }
+    
+    // Sort questions within each pillar: newest year first
+    for (const [, questions] of pillarMap) {
+      questions.sort((a, b) => b.sourceYear - a.sourceYear)
+    }
+    
+    // Sort pillars by question count descending, but pin "Sustainable Service Demand" last
+    return [...pillarMap.entries()]
+      .sort((a, b) => {
+        // Pin "Sustainable Service Demand" to the bottom
+        if (a[0] === "Sustainable Service Demand") return 1
+        if (b[0] === "Sustainable Service Demand") return -1
+        // Otherwise sort by question count descending
+        return b[1].length - a[1].length
+      })
+    
+  }, [questionData])
+  
+  // Expand first pillar by default when data loads (only runs once when groupedByPillar first populates)
+  const [hasInitializedAccordion, setHasInitializedAccordion] = useState(false)
+  
+  useEffect(() => {
+    if (groupedByPillar.length > 0 && !hasInitializedAccordion) {
+      setExpandedPillars(new Set([groupedByPillar[0][0]]))
+      setHasInitializedAccordion(true)
+    }
+  }, [groupedByPillar, hasInitializedAccordion])
+
+  // ---------------------------------------------------------------------------
+  // RENDER
+  // ---------------------------------------------------------------------------
+  
+  return (
+    <div className="min-h-screen bg-brand-navy flex flex-col relative">
+      {/* Premium Dark Gradient Mesh Background - Same as homepage */}
+      <div className="fixed inset-0 bg-brand-navy -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30 -z-10" />
+      
+      <GlobalNav />
+      
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+            <Sparkles className="h-3.5 w-3.5" />
+            Vendor Member Access
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-slate-100">
+            Vendor Intelligence™ Premium Dashboard
+          </h1>
+          <p className="text-slate-300 max-w-3xl mx-auto">
+            Market demand, investment priorities and transformation intelligence for providers serving global workforce, mobility, immigration and compliance teams.
+          </p>
+          <p className="text-xs text-slate-500 max-w-2xl mx-auto">
+            Aggregated market intelligence only. No company names, participant names or organisation-level responses are disclosed.
+          </p>
+        </div>
+
+        {/* Premium Access Banner */}
+        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-200">
+                  Your Vendor membership also includes full access to the Global Workforce Intelligence™ Premium dashboard
+                </p>
+                <p className="text-xs text-slate-400">
+                  Explore workforce benchmarks, pillar breakdowns, and regional comparisons
+                </p>
+              </div>
+            </div>
+            <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
+              <Link href="/premium-dashboard">
+                Open Premium Dashboard
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+            <Database className="h-8 w-8 text-slate-500 mx-auto mb-2 animate-pulse" />
+            <p className="text-slate-400">Loading vendor intelligence...</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* =================================================================== */}
+            {/* SECTION 1: MARKET OPPORTUNITY SCORE (FLAGSHIP) */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+              <div className="flex items-center gap-2 mb-6">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Score Gauge - Matching homepage ring style */}
+                <div className="flex flex-col items-center justify-center">
+                  <div className="relative w-44 h-44">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                      {/* Background track - muted dark */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="#1a3344" 
+                        strokeWidth="14" 
+                      />
+                      {/* Progress arc - bright teal */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="url(#mosGradient)" 
+                        strokeWidth="14" 
+                        strokeDasharray={534}
+                        strokeDashoffset={534 * (1 - (marketOpportunity?.market_opportunity_score || 0) / 100)}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                        filter="url(#mosGlow)"
+                      />
+                      {/* Gradient and glow definitions */}
+                      <defs>
+                        <linearGradient id="mosGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="var(--brand-teal)" />
+                          <stop offset="100%" stopColor="#2dd4bf" />
+                        </linearGradient>
+                        <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+                        {marketOpportunity?.market_opportunity_score || 0}%
+                      </span>
+                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supporting Metrics */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                  {[
+                    { label: "Transformation Activity", value: marketOpportunity?.transformation_pct },
+                    { label: "Operational Pressure", value: marketOpportunity?.operational_pressure_pct },
+                    { label: "AI Activity", value: marketOpportunity?.ai_activity_pct },
+                    { label: "Technology Intent", value: marketOpportunity?.tech_intent_pct },
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                      <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
+                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
+                      <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
+                        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
+                The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
+              </p>
+            </div>
+
+            {/* =================================================================== */}
+            {/* FILTERS FOR SERVICE DEMAND, DEMAND PIPELINE & COMMERCIAL BREAKDOWN */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Filter className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
+              </div>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Region</label>
+                  <select
+                    value={selectedRegion || ""}
+                    onChange={(e) => setSelectedRegion(e.target.value || null)}
+                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[160px] focus:border-primary/50 focus:outline-none"
+                  >
+                    {regionOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Industry</label>
+                  <select
+                    value={selectedIndustry || ""}
+                    onChange={(e) => setSelectedIndustry(e.target.value || null)}
+                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[200px] focus:border-primary/50 focus:outline-none"
+                  >
+                    {industryOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Company size</label>
+                  <select
+                    value={selectedSize || ""}
+                    onChange={(e) => setSelectedSize(e.target.value || null)}
+                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[140px] focus:border-primary/50 focus:outline-none"
+                  >
+                    {sizeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">
+                Filters apply to Service Demand, Demand Pipeline and Commercial Intelligence Breakdown.
+              </p>
+            </div>
+
+            {/* =================================================================== */}
+            {/* HERO PANEL: ESTABLISHED vs EMERGING DEMAND */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Service Demand Intelligence</h2>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Comparing current outsourcing patterns with emerging interest signals.
+              </p>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* LEFT COLUMN: Established Demand */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-100 mb-1">Established demand</h3>
+                    <p className="text-xs text-slate-400">What they outsource today</p>
+                  </div>
+                  <p className="text-[10px] text-slate-500">Currently outsourced — survey data</p>
+                  
+                  {serviceDemand.length === 0 ? (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400">Insufficient sample in this segment</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {serviceDemand.map((row, idx) => (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm text-slate-200">{row.service}</span>
+                            {row.is_reportable ? (
+                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic">Insufficient sample</span>
+                            )}
+                          </div>
+                          {row.is_reportable && (
+                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary/60 rounded-full transition-all duration-300"
+                                style={{ width: `${row.pct}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* RIGHT COLUMN: Emerging Demand - uses lighter teal shade */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-100 mb-1">Emerging demand</h3>
+                    <p className="text-xs text-slate-400">What they&apos;re exploring</p>
+                  </div>
+                  <p className="text-[10px] text-slate-500">Stated interest — event registrations</p>
+                  
+                  {/* Show note when industry or size filter is active */}
+                  {(selectedIndustry || selectedSize) && (
+                    <p className="text-[10px] text-slate-500 italic">
+                      Emerging interest is not broken down by industry or size.
+                    </p>
+                  )}
+                  
+                  {serviceInterest.length === 0 ? (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400">Insufficient sample in this segment</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {serviceInterest.map((row, idx) => (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm text-slate-200">{row.service}</span>
+                            {row.is_reportable ? (
+                              <span className="text-sm font-semibold text-[#2dd4bf]">{row.pct}%</span>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic">Insufficient sample</span>
+                            )}
+                          </div>
+                          {row.is_reportable && (
+                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
+                                style={{ width: `${row.pct}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-xs text-slate-500 mt-6 italic">
+                Service option sets varied slightly between waves; Tax, Immigration and RMC support are the most directly comparable.
+              </p>
+            </div>
+
+            {/* =================================================================== */}
+            {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Near-term buying activity and vendor review intentions. Based on all responses across the 2022–2026 waves.
+              </p>
+              
+              {demandPipeline.length === 0 ? (
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No demand pipeline data available.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {demandPipeline.map((row, idx) => (
+                    <div key={idx} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5">
+                      <p className="text-sm font-medium text-slate-200 mb-3">{row.signal}</p>
+                      {row.is_reportable ? (
+                        <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
+                      ) : (
+                        <p className="text-sm text-slate-400 italic">Insufficient sample in this segment to report</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 2: YEAR-ON-YEAR TRENDS - PRESERVES GREEN/RED */}
+            {/* =================================================================== */}
+            
+            <div className="mb-12 pb-10 border-b border-slate-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Year-on-Year Trends</h2>
+              </div>
+              
+              <p className="text-sm text-slate-400 mb-6">
+                Directional — based on the 2025 and 2026 Global Workforce Deployment waves.
+              </p>
+              
+              {yoyData.length === 0 ? (
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No year-on-year data available.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Biggest Movers Strip - PRESERVES GREEN/RED */}
+                  {(() => {
+                    const sortedByAbsDelta = [...yoyData]
+                      .filter(r => r.delta_pts !== 0)
+                      .sort((a, b) => Math.abs(b.delta_pts) - Math.abs(a.delta_pts))
+                      .slice(0, 3)
+                    
+                    return sortedByAbsDelta.length > 0 ? (
+                      <div className="mb-6">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Biggest Movers</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {sortedByAbsDelta.map((row, idx) => (
+                            <BiggestMoverChip key={idx} row={row} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {yoyData.map((row, idx) => (
+                      <YoYTrendCard key={idx} row={row} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
+            {/* =================================================================== */}
+            
+            <div className="space-y-4">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
+                <p className="text-sm text-slate-400">
+                  Questions grouped by vendor pillar. Based on all responses across the 2022–2026 waves.
+                </p>
+              </div>
+              
+              {groupedByPillar.length === 0 ? (
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">Insufficient sample in this segment to report.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {groupedByPillar
+                    .map(([pillarName, questions]) => {
+                      // Filter questions for display
+                      const visibleQuestions = questions.filter(q => {
+                        // Always hide "Do you have a central budget in the GM function?"
+                        if (q.questionLabel === "Do you have a central budget in the GM function?") return false
+                        // Hide "Are you switching from business class to economy class travel on planes?" in default (unfiltered) view
+                        const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
+                        if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
+                        return true
+                      })
+                      
+                      // Skip pillar if no visible questions remain
+                      if (visibleQuestions.length === 0) return null
+                      
+                      const isExpanded = expandedPillars.has(pillarName)
+                      
+                      return (
+                        <div key={pillarName} className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                          {/* Accordion Header */}
+                          <button
+                            onClick={() => togglePillar(pillarName)}
+                            className="w-full px-6 py-5 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-base font-semibold text-slate-100">{pillarName}</h3>
+                              <span className="text-xs text-slate-500">({visibleQuestions.length} questions)</span>
+                            </div>
+                            <ChevronDown 
+                              className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          
+                          {/* Accordion Content */}
+                          <div 
+                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                              isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                            }`}
+                          >
+                            <div className="px-6 pb-6">
+                              {pillarName === "Sustainable Service Demand" && (
+                                <p className="text-xs text-slate-500 mb-4">
+                                  Historical ESG benchmark (2023 survey) — shown for context.
+                                </p>
+                              )}
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {visibleQuestions.map((q, idx) => (
+                                  <QuestionCard
+                                    key={`${pillarName}-${idx}`}
+                                    questionLabel={q.questionLabel}
+                                    sourceYear={q.sourceYear}
+                                    reportName={q.reportName}
+                                    answers={q.answers}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                    .filter(Boolean)}
+                </div>
+              )}
+            </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 4: REPORTS & BRIEFINGS */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <h2 className="text-lg font-semibold text-slate-100 mb-4">Vendor Reports & Briefings</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                  <FileText className="h-8 w-8 text-primary mb-3" />
+                  <h3 className="text-sm font-medium text-slate-200 mb-1">Global Workforce Deployment Report 2026</h3>
+                  <p className="text-xs text-slate-400 mb-3">Full benchmark findings with vendor implications</p>
+                  <Button variant="outline" size="sm" className="w-full gap-2 border-primary/30 text-slate-200 hover:bg-primary/10" asChild>
+                    <Link href="/reports">
+                      <Download className="h-4 w-4" />
+                      Access Report
+                    </Link>
+                  </Button>
+                </div>
+                
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                  <MessageSquare className="h-8 w-8 text-primary mb-3" />
+                  <h3 className="text-sm font-medium text-slate-200 mb-1">Quarterly Vendor Briefing</h3>
+                  <p className="text-xs text-slate-400 mb-3">Live market intelligence sessions for vendors</p>
+                  <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-400" disabled>
+                    Coming Q3 2026
+                  </Button>
+                </div>
+                
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                  <TrendingUp className="h-8 w-8 text-primary mb-3" />
+                  <h3 className="text-sm font-medium text-slate-200 mb-1">Market Demand Snapshot</h3>
+                  <p className="text-xs text-slate-400 mb-3">Quarterly PDF summary of key trends</p>
+                  <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-400" disabled>
+                    Coming Q3 2026
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 5: PARTNERSHIP UPSELL */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)]">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide">Strategic Intelligence Partner</span>
+              </div>
+              <h2 className="text-2xl font-bold text-slate-100 mb-2">
+                Upgrade to Strategic Partner Access
+              </h2>
+              <p className="text-slate-300 mb-6 max-w-2xl">
+                Get exclusive executive access, custom briefings, bespoke events and direct engagement with senior HR, Mobility and Workforce leaders shaping the industry.
+              </p>
+              <ul className="space-y-2 text-sm text-slate-300 mb-6">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  1 Bespoke Executive Event
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  2 Virtual Executive Roundtables
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  Quarterly Executive Intelligence Reviews
+                </li>
+              </ul>
+              <Button asChild className="bg-primary hover:bg-primary/90 text-white font-medium gap-2">
+                <Link href="/pricing#strategic-intelligence-partner">
+                  Learn About Strategic Partnership
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </>
+        )}
+      </main>
+      
+      <GlobalFooter />
+    </div>
+  )
+}
