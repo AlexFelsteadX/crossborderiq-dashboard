@@ -1,0 +1,181 @@
+"use client"
+
+import { GlobalNav } from "@/components/global-nav"
+import { GlobalFooter } from "@/components/global-footer"
+import { ChevronDown } from "lucide-react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+
+const faqs = [
+  {
+    question: "What is CBIQ?",
+    answer: "CBIQ (Cross-Border Workforce Intelligence) is the workforce intelligence platform from Global Mobility Executive (GME), providing benchmarking, market intelligence and strategic insights across Global Mobility, Immigration, Compliance, Risk and Workforce Strategy.\n\nOur intelligence products help organisations benchmark performance, understand market trends and make more informed workforce decisions.",
+  },
+  {
+    question: "Who is behind CBIQ?",
+    answer: "CBIQ is powered by Global Mobility Executive (GME). It draws on GME's global community of HR, Mobility and Talent leaders, its industry events and its research programmes to turn collective insight into the peer benchmarks the industry has long lacked.",
+  },
+  {
+    question: "Where does the data come from?",
+    answer: "CBIQ intelligence is built from three primary sources:\n\n• 1,500+ HR, Mobility, Talent and Workforce leaders participating in Global Mobility Executive (GME) industry events annually\n• The annual Global Workforce Deployment Survey™\n• Ongoing intelligence surveys completed by CBIQ members throughout the year\n\nAll reporting is anonymised and presented in aggregate form.",
+  },
+  {
+    question: "How many organisations participate?",
+    answer: "CBIQ intelligence is informed by participants across 35+ countries and 4 global regions, representing organisations ranging from fewer than 250 employees to global enterprises employing more than 50,000 employees.",
+  },
+  {
+    question: "How often is intelligence updated?",
+    answer: "CBIQ continuously refreshes benchmark data throughout the year through event participation, member surveying and annual flagship research programmes.\n\nNew intelligence findings and reports are released regularly.",
+  },
+  {
+    question: "What is Intelligence Contributor Access™?",
+    answer: "Intelligence Contributor Access™ is available to organisations that contribute benchmark data to CBIQ.\n\nContributors help shape workforce intelligence benchmarks and receive complimentary access to selected intelligence reports, industry findings and quarterly updates.",
+  },
+  {
+    question: "What do contributors receive?",
+    answer: "• Intelligence dashboard access (pillar deep-dives)\n• Strategic Mobility Index™ findings\n• AI Adoption Index™ findings\n• Future of Mobility Index™\n• Executive benchmark reports\n• Quarterly intelligence updates\n• Industry trend analysis",
+  },
+  {
+    question: "What is NOT included with Contributor Access™?",
+    answer: "• Year-on-Year Trends\n• Regional filtering\n• Industry filtering\n• Workforce size filtering\n• Peer / advanced benchmarking\n• Branded / exportable benchmark reports",
+  },
+  {
+    question: "What is Global Workforce Intelligence™?",
+    answer: "Global Workforce Intelligence™ is CBIQ's premium benchmarking and intelligence membership designed for HR, Mobility, Talent and Workforce leaders.",
+  },
+  {
+    question: "What does Global Workforce Intelligence™ include?",
+    answer: "• Full dashboard access\n• Regional benchmarking\n• Industry benchmarking\n• Workforce size benchmarking\n• Strategic Mobility Index™ analysis\n• AI Adoption benchmarking\n• Executive intelligence reports\n• Quarterly intelligence releases\n• Peer comparison capabilities",
+  },
+  {
+    question: "Can I benchmark my organisation?",
+    answer: "Yes.\n\nGlobal Workforce Intelligence™ members can benchmark against peer organisations using:\n\n• Region\n• Industry\n• Workforce Size\n\nBenchmarking is based on aggregated CBIQ intelligence data.",
+  },
+  {
+    question: "Why is Global Workforce Intelligence™ a paid membership?",
+    answer: "The membership provides access to continuously updated intelligence, advanced benchmarking tools, peer comparison capabilities and premium research content not available through Contributor Access™.",
+  },
+  {
+    question: "What is Vendor Intelligence™?",
+    answer: "Vendor Intelligence™ is designed for service providers operating within workforce mobility, immigration, compliance, tax, relocation and workforce technology markets.",
+  },
+  {
+    question: "What insights are included in Vendor Intelligence™?",
+    answer: "Vendor Intelligence™ provides aggregated market intelligence including:\n\n• Transformation activity\n• Operational pressures\n• Investment priorities\n• AI adoption trends\n• Workforce strategy priorities\n• Market demand indicators\n• Future industry direction",
+  },
+  {
+    question: "Can vendors see participant names or company data?",
+    answer: "No.\n\nCBIQ does not disclose individual participant names, company names or organisation-level responses.\n\nVendor Intelligence™ is designed to provide aggregated market intelligence rather than lead lists.\n\nThe value comes from understanding where demand is emerging, what organisations are investing in, which challenges are increasing and how buying priorities are evolving across regions, industries and workforce segments.\n\nVendor Intelligence™ helps providers identify:\n\n• Regions experiencing the highest transformation activity\n• Areas attracting the greatest investment focus\n• Emerging compliance, immigration and workforce challenges\n• AI adoption priorities\n• Operational pressures influencing buying behaviour\n• Future workforce and mobility trends\n\nThis enables providers to focus sales, marketing, product development and go-to-market strategy where market opportunity is strongest, while protecting participant confidentiality and maintaining the integrity of the benchmark data.",
+  },
+  {
+    question: "Can anyone see my organisation's data?",
+    answer: "No.\n\nCBIQ only reports anonymised and aggregated benchmark findings.\n\nIndividual organisations and respondents are never identified in reports, dashboards or intelligence products.",
+  },
+  {
+    question: "How is participant confidentiality protected?",
+    answer: "All responses are anonymised before analysis.\n\nCBIQ does not sell, share or disclose individual participant data.\n\nOnly aggregated benchmark results are published.",
+  },
+  {
+    question: "How do I request access?",
+    answer: "Click the Request Access button located throughout the platform.\n\nOur team will review your requirements and recommend the most appropriate membership option.",
+  },
+  {
+    question: "Which membership option is right for me?",
+    answer: "For HR, Mobility, Talent and Workforce leaders:\n• Intelligence Contributor Access™\n• Global Workforce Intelligence™\n\nFor service providers:\n• Vendor Intelligence™\n• Strategic Intelligence Partner",
+  },
+]
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-primary/5 transition-colors"
+      >
+        <span className="text-sm font-medium text-slate-100 pr-4">{question}</span>
+        <ChevronDown 
+          className={`h-5 w-5 text-primary shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`} 
+        />
+      </button>
+      <div 
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-6 pb-5">
+          <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{answer}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function FAQsPage() {
+  return (
+    <div className="min-h-screen bg-brand-navy flex flex-col relative">
+      {/* Premium Dark Gradient Mesh Background - Same as homepage */}
+      <div className="fixed inset-0 bg-brand-navy -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30 -z-10" />
+      
+      <GlobalNav />
+      
+      <main className="flex-1 px-6 py-12 max-w-[1200px] mx-auto w-full">
+        {/* Page Header */}
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl lg:text-4xl font-bold text-slate-100 mb-4">
+            Frequently Asked Questions
+          </h1>
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+            Everything you need to know about CBIQ intelligence.
+          </p>
+        </div>
+
+        {/* FAQ Accordion */}
+        <div className="space-y-3 mb-12">
+          {faqs.map((faq, index) => (
+            <FAQItem key={index} question={faq.question} answer={faq.answer} />
+          ))}
+        </div>
+
+        {/* CTA Section */}
+        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+          <h2 className="text-xl font-semibold text-slate-100 mb-3">Ready to Unlock Workforce Intelligence?</h2>
+          <p className="text-sm text-slate-400 mb-6 max-w-xl mx-auto">
+            Join the organisations helping shape the future of workforce intelligence.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button className="bg-primary hover:bg-primary/90" asChild>
+              <Link href="/pricing">View Membership Options</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/contribute">Become an Intelligence Contributor</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">Request Access</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Contact CTA */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-slate-400">
+            {"Still have questions? "}
+            <a href="mailto:crossborderiq@gemevents.co" className="text-primary hover:underline">
+              Contact our team
+            </a>
+          </p>
+        </div>
+      </main>
+
+      <GlobalFooter />
+    </div>
+  )
+}

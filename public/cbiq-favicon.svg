@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="CBIQ">
+  <rect x="0" y="0" width="240" height="240" rx="44" fill="#0a1628"/>
+  <rect x="60" y="109" width="120" height="22" rx="4" fill="#16b8a6" transform="rotate(45 120 120)"/>
+  <rect x="60" y="109" width="120" height="22" rx="4" fill="#16b8a6" transform="rotate(-45 120 120)"/>
+  <rect x="102" y="102" width="36" height="36" fill="#0a1628" transform="rotate(45 120 120)"/>
+</svg>

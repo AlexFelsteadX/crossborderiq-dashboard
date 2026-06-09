@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Brand tokens — single source of truth */
+  --brand-navy: #0a1628;        /* page background */
+  --brand-navy-2: #0d1f2d;      /* card gradient top */
+  --brand-navy-3: #091520;      /* card gradient bottom */
+  --brand-teal: #14b8a6;        /* bright accent */
+  --brand-teal-deep: #146e79;   /* deep teal for gradient-mesh glows */
+  /* RGB triplets for use inside rgba()/gradients */
+  --brand-teal-rgb: 20 184 166;
+  --brand-teal-deep-rgb: 20 110 121;
+
+  --background: #0F1115;
+  --foreground: #F5F7FA;
+  --card: #161A1F;
+  --card-foreground: #F5F7FA;
+  --popover: #1A1E24;
+  --popover-foreground: #F5F7FA;
+  --primary: var(--brand-teal-deep);
+  --primary-foreground: #ffffff;
+  --secondary: #1E2328;
+  --secondary-foreground: #A7B0B8;
+  --muted: #1A1E24;
+  --muted-foreground: #A7B0B8;
+  --accent: #146E79;
+  --accent-foreground: #F5F7FA;
+  --destructive: #DC2626;
+  --destructive-foreground: #F5F7FA;
+  --border: #2A2F36;
+  --input: #1E2328;
+  --ring: #146E79;
+  --chart-1: #146E79;
+  --chart-2: #1D9AAA;
+  --chart-3: #24B8B8;
+  --chart-4: #2DD4BF;
+  --chart-5: #5EEAD4;
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* Brand tokens — mirrored */
+  --brand-navy: #0a1628;
+  --brand-navy-2: #0d1f2d;
+  --brand-navy-3: #091520;
+  --brand-teal: #14b8a6;
+  --brand-teal-deep: #146e79;
+  --brand-teal-rgb: 20 184 166;
+  --brand-teal-deep-rgb: 20 110 121;
+
+  --background: #0F1115;
+  --foreground: #F5F7FA;
+  --card: #161A1F;
+  --card-foreground: #F5F7FA;
+  --popover: #1A1E24;
+  --popover-foreground: #F5F7FA;
+  --primary: var(--brand-teal-deep);
+  --primary-foreground: #ffffff;
+  --secondary: #1E2328;
+  --secondary-foreground: #A7B0B8;
+  --muted: #1A1E24;
+  --muted-foreground: #A7B0B8;
+  --accent: #146E79;
+  --accent-foreground: #F5F7FA;
+  --destructive: #DC2626;
+  --destructive-foreground: #F5F7FA;
+  --border: #2A2F36;
+  --input: #1E2328;
+  --ring: #146E79;
+  --chart-1: #146E79;
+  --chart-2: #1D9AAA;
+  --chart-3: #24B8B8;
+  --chart-4: #2DD4BF;
+  --chart-5: #5EEAD4;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-2: var(--brand-navy-2);
+  --color-brand-navy-3: var(--brand-navy-3);
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-teal-deep: var(--brand-teal-deep);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2F36;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-teal-deep);
+}
+
+.recharts-cartesian-grid line {
+  stroke: #2A2F36 !important;
+}
+
+.recharts-text {
+  fill: #A7B0B8 !important;
+  font-size: 11px;
+}

@@ -1,0 +1,596 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { GlobalNav } from "@/components/global-nav"
+import { GlobalFooter } from "@/components/global-footer"
+import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { globalWorkforceIntelligencePlan } from "@/lib/plans"
+import { useAuth } from "@/hooks/use-auth"
+
+type PathView = "corporate" | "vendor"
+type PlanTier = "premium" | "vendor"
+
+// Tier ladder used to decide the CTA state. Mirrors lib/tier-access.
+const TIER_ORDER = ["free", "contributor", "premium", "vendor"] as const
+
+const VENDOR_HASHES = ["vendor-access", "strategic-intelligence-partner"]
+
+export default function PricingPage() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [view, setView] = useState<PathView>("corporate")
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const { user, tier, loading: authLoading } = useAuth()
+
+  // Auto-select the correct path based on the URL hash (deep-link support)
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "")
+    if (VENDOR_HASHES.includes(hash)) {
+      setView("vendor")
+    } else {
+      setView("corporate")
+    }
+  }, [])
+
+  const scrollToComparison = () => {
+    document.getElementById("comparison-table")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  // Decide what the primary CTA for a paid plan should do, based on the
+  // logged-in user's tier. Returns the label and the action to perform.
+  type CtaAction = "signup" | "checkout" | "current" | "portal"
+  const getCtaState = (planTier: PlanTier): { label: string; action: CtaAction } => {
+    if (!user) return { label: "Get Started", action: "signup" }
+    const userTier = tier ?? "free"
+    if (userTier === planTier) return { label: "Current plan", action: "current" }
+    const userIdx = TIER_ORDER.indexOf(userTier as (typeof TIER_ORDER)[number])
+    const planIdx = TIER_ORDER.indexOf(planTier)
+    // Lower tier than the plan on offer → upgrade via Checkout.
+    if (userIdx < planIdx) return { label: "Upgrade", action: "checkout" }
+    // Already on a different (higher) paid tier → manage via Customer Portal.
+    return { label: "Manage subscription", action: "portal" }
+  }
+
+  const handlePortal = async (plan: PlanTier) => {
+    setActionError(null)
+    setLoadingPlan(plan)
+    try {
+      const res = await fetch("/api/portal", { method: "POST" })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
+      throw new Error(data.error || "Unable to open the billing portal")
+    } catch (error) {
+      console.error("Portal error:", error)
+      setActionError("Something went wrong opening the billing portal. Please try again.")
+      setLoadingPlan(null)
+    }
+  }
+
+  // Route the CTA to the correct behaviour for the given plan.
+  const handlePrimaryCta = (plan: PlanTier) => {
+    const { action } = getCtaState(plan)
+    if (action === "signup") {
+      window.location.href = "/login?mode=signup&next=/pricing"
+      return
+    }
+    if (action === "checkout") {
+      handleCheckout(plan)
+      return
+    }
+    if (action === "portal") {
+      handlePortal(plan)
+    }
+  }
+
+  const handleCheckout = async (plan: PlanTier) => {
+    setActionError(null)
+    setLoadingPlan(plan)
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+        return
+      }
+      throw new Error(data.error || "Unable to start checkout")
+    } catch (error) {
+      console.error("Checkout error:", error)
+      setActionError("Something went wrong starting checkout. Please try again.")
+      setLoadingPlan(null)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-brand-navy flex flex-col relative">
+      {/* Premium Dark Gradient Mesh Background - Same as homepage hero */}
+      <div className="fixed inset-0 bg-brand-navy -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)] -z-10" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
+
+      <GlobalNav />
+
+      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-12 w-full">
+        {/* Hero Section - Choose Your Path (functional toggle) */}
+        <div className="mb-16 text-center">
+          <h1 className="text-4xl font-bold text-slate-100 mb-4">Choose Your Path</h1>
+          <p className="text-lg text-slate-300 mb-10">Access intelligence tailored to your role.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {/* Corporate Toggle */}
+            <button
+              type="button"
+              aria-pressed={view === "corporate"}
+              onClick={() => setView("corporate")}
+              className={`group relative rounded-2xl border p-8 text-left transition-all duration-200 ${
+                view === "corporate"
+                  ? "border-primary bg-gradient-to-b from-[#10384a] to-[#0c2230] shadow-[0_0_60px_-8px_rgb(var(--brand-teal-rgb)_/_0.5)] -translate-y-1"
+                  : "border-primary/15 bg-gradient-to-b from-brand-navy-2/60 to-brand-navy-3/60 opacity-70 hover:opacity-100 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.35)]"
+              }`}
+            >
+              {view === "corporate" && (
+                <span className="absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/15 px-2.5 py-1 rounded-full border border-primary/30">
+                  <Check className="h-3 w-3" />
+                  Selected
+                </span>
+              )}
+              <div
+                className={`h-14 w-14 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+                  view === "corporate"
+                    ? "bg-primary/20 border border-primary/40 shadow-[0_0_30px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                    : "bg-primary/10 border border-primary/20"
+                }`}
+              >
+                <Users className="h-7 w-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-100 mb-2">I am a Corporate HR, Talent or Mobility Leader</h2>
+              <p className="text-sm text-slate-400">Benchmarking, workforce trends and strategic intelligence.</p>
+            </button>
+
+            {/* Vendor Toggle */}
+            <button
+              type="button"
+              aria-pressed={view === "vendor"}
+              onClick={() => setView("vendor")}
+              className={`group relative rounded-2xl border p-8 text-left transition-all duration-200 ${
+                view === "vendor"
+                  ? "border-primary bg-gradient-to-b from-[#10384a] to-[#0c2230] shadow-[0_0_60px_-8px_rgb(var(--brand-teal-rgb)_/_0.5)] -translate-y-1"
+                  : "border-primary/15 bg-gradient-to-b from-brand-navy-2/60 to-brand-navy-3/60 opacity-70 hover:opacity-100 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.35)]"
+              }`}
+            >
+              {view === "vendor" && (
+                <span className="absolute top-4 right-4 inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/15 px-2.5 py-1 rounded-full border border-primary/30">
+                  <Check className="h-3 w-3" />
+                  Selected
+                </span>
+              )}
+              <div
+                className={`h-14 w-14 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+                  view === "vendor"
+                    ? "bg-primary/20 border border-primary/40 shadow-[0_0_30px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                    : "bg-primary/10 border border-primary/20"
+                }`}
+              >
+                <Building2 className="h-7 w-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-100 mb-2">I am a Service Provider / Vendor</h2>
+              <p className="text-sm text-slate-400">Market demand, transformation activity and opportunity intelligence.</p>
+            </button>
+          </div>
+        </div>
+
+        {/* Corporate Access Section */}
+        {view === "corporate" && (
+          <div id="corporate-access" className="mb-20 scroll-mt-24">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-semibold text-slate-100 mb-3">Corporate Access</h2>
+              <p className="text-slate-300">Choose the level of intelligence access that best suits your organisation.</p>
+            </div>
+
+            {/* Value Anchor - prominent at top of corporate plans */}
+            <div className="max-w-3xl mx-auto mb-12">
+              <div className="rounded-2xl border border-primary/40 bg-gradient-to-b from-[#10384a] to-[#0c2230] p-8 text-center shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.45)]">
+                <p className="text-2xl sm:text-3xl font-bold text-slate-100 mb-4">Strategic intelligence, made accessible</p>
+                <p className="text-sm text-slate-300">CBIQ Founding Membership puts executive-grade strategic workforce intelligence within reach of every mobility team — not just the largest enterprises.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mb-12">
+              {/* Card 1: Free Dashboard */}
+              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">Free Dashboard</h3>
+                  <p className="text-xs text-slate-400 mb-4">Executive snapshot of the global workforce industry.</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-slate-100">FREE</span>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Strategic Mobility Index™",
+                    "Industry Snapshot",
+                    "AI Adoption Snapshot",
+                    "Future of Mobility Snapshot",
+                    "Limited Benchmark Insights",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={scrollToComparison}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </button>
+                <div className="mt-auto">
+                  <Button variant="outline" className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
+                    <Link href="/">Access Dashboard</Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 2: Intelligence Contributor Access */}
+              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
+                    Requires Survey Contribution
+                  </span>
+                </div>
+                <div className="mb-6 pt-3">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">Intelligence Contributor Access™</h3>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Free access, in exchange for contributing to the research.
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-slate-100">FREE</span>
+                  </div>
+                  <p className="text-xs text-primary font-medium mt-1">in exchange for completing the survey</p>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Full Contributor Dashboard access",
+                    "Complete breakdown across all 7 intelligence pillars",
+                    "Question-by-question response data, continuously updated",
+                    "Aggregated, anonymised benchmarks",
+                    "3 months' access per contribution — renew any time",
+                    "Full report library — including members-only reports",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={scrollToComparison}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </button>
+                <div className="mt-auto">
+                  <Button className="w-full bg-primary hover:bg-primary/90" asChild>
+                    <Link href="/contribute">Get Contributor Access</Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 3: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
+              <div
+                id="global-workforce-intelligence"
+                className="flex flex-col rounded-2xl border-2 border-primary bg-gradient-to-b from-[#13455a] to-[#0c2433] p-6 pt-8 relative shadow-[0_0_80px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] scroll-mt-24 overflow-hidden lg:scale-[1.04] lg:-my-2 z-10"
+              >
+                {/* Teal ribbon across the top */}
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+
+                {/* Founding Member Badge */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-lg">
+                    <Sparkles className="h-3.5 w-3.5 fill-current" />
+                    FOUNDING MEMBER
+                  </span>
+                </div>
+
+                {/* Most Popular Badge */}
+                <div className="absolute top-4 right-4">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-100 text-brand-navy px-2.5 py-1 rounded-full">
+                    <Star className="h-3 w-3 fill-current" />
+                    Most Popular
+                  </span>
+                </div>
+
+                <div className="mb-6 pt-10">
+                  <h3 className="text-xl font-semibold text-slate-100 mb-1">{globalWorkforceIntelligencePlan.name}</h3>
+                  <p className="text-xs text-slate-300 mb-5">
+                    {globalWorkforceIntelligencePlan.description}
+                  </p>
+
+                  {/* Pricing - Annual Only */}
+                  <div className="bg-brand-navy/50 rounded-lg p-4 border border-primary/30">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <span className="text-4xl font-bold text-slate-100">£995</span>
+                      <span className="text-lg text-slate-400">/</span>
+                      <span className="text-4xl font-bold text-slate-100">$1,295</span>
+                      <span className="text-sm text-slate-400">per year</span>
+                    </div>
+                    <div className="mt-3 inline-flex items-center text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                      Founding Member Pricing
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3 pb-3 border-b border-primary/20">
+                    {globalWorkforceIntelligencePlan.featuresIntro}
+                  </p>
+                  <ul className="space-y-3">
+                    {globalWorkforceIntelligencePlan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
+                        <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={scrollToComparison}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </button>
+
+                <div className="mt-auto">
+                  {(() => {
+                    const cta = getCtaState("premium")
+                    return (
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-base shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+                        onClick={() => handlePrimaryCta("premium")}
+                        disabled={authLoading || loadingPlan === "premium" || cta.action === "current"}
+                      >
+                        {loadingPlan === "premium" ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          cta.label
+                        )}
+                      </Button>
+                    )
+                  })()}
+
+                  {actionError && loadingPlan !== "premium" && (
+                    <p className="flex items-center justify-center gap-1.5 text-xs text-red-400 mt-3">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {actionError}
+                    </p>
+                  )}
+
+                  {/* Scarcity Statement */}
+                  <p className="text-xs text-center text-slate-400 mt-4 italic leading-relaxed">
+                    Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* What's The Difference? Comparison Table */}
+            <div id="comparison-table" className="max-w-3xl mx-auto scroll-mt-24">
+              <h3 className="text-xl font-semibold text-slate-100 mb-6 text-center">What&apos;s The Difference?</h3>
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-primary/20">
+                      <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
+                      <th className="text-center p-4 text-sm font-medium text-slate-100">Intelligence Contributor Access</th>
+                      <th className="text-center p-4 text-sm font-medium text-primary">Global Workforce Intelligence</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-primary/10">
+                    {[
+                      { feature: "Full Contributor Dashboard", contributor: true, membership: true },
+                      { feature: "All 7 Intelligence Pillars", contributor: true, membership: true },
+                      { feature: "Continuously updated survey data", contributor: true, membership: true },
+                      { feature: "Year-on-Year Trends", contributor: false, membership: true },
+                      { feature: "Region Filtering", contributor: false, membership: true },
+                      { feature: "Industry Filtering", contributor: false, membership: true },
+                      { feature: "Company Size Filtering", contributor: false, membership: true },
+                      { feature: "Branded PDF Export", contributor: false, membership: true },
+                      { feature: "Premium Dashboard", contributor: false, membership: true },
+                    ].map((row, i) => (
+                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
+                        <td className="p-4 text-sm text-slate-300">{row.feature}</td>
+                        <td className="p-4 text-center">
+                          {row.contributor ? (
+                            <Check className="h-5 w-5 text-primary mx-auto" />
+                          ) : (
+                            <X className="h-5 w-5 text-slate-600 mx-auto" />
+                          )}
+                        </td>
+                        <td className="p-4 text-center">
+                          {row.membership ? (
+                            <Check className="h-5 w-5 text-primary mx-auto" />
+                          ) : (
+                            <X className="h-5 w-5 text-slate-600 mx-auto" />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Access duration row with text instead of checkmarks */}
+                    <tr className="hover:bg-brand-navy/40 transition-colors">
+                      <td className="p-4 text-sm text-slate-300">Access duration</td>
+                      <td className="p-4 text-center text-xs text-slate-400">3 months per contribution (renewable)</td>
+                      <td className="p-4 text-center text-xs text-primary font-medium">Continuous while subscribed</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vendor Access Section */}
+        {view === "vendor" && (
+          <div id="vendor-access" className="mb-12 scroll-mt-24">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-semibold text-slate-100 mb-3">Vendor Access</h2>
+              <p className="text-slate-300">Market intelligence for immigration, relocation and mobility providers.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto items-stretch">
+              {/* Vendor Intelligence Card */}
+              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">Vendor Intelligence</h3>
+                  <p className="text-xs text-slate-400 mb-4">Market intelligence for service providers</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-slate-100">£9,950</span>
+                    <span className="text-sm text-slate-400">per year</span>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-1">$12,950 per year</p>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Market Opportunity Score™ — composite demand signal across operational pressure, transformation, AI and technology intent",
+                    "Established vs Emerging Service Demand — what organisations outsource today and what they're actively exploring",
+                    "Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity",
+                    "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
+                    "Segment all intelligence by Region, Industry and Company size",
+                    "Full Global Workforce Intelligence dashboard included",
+                    "Quarterly Vendor Briefings",
+                    "Full report library — including members-only reports",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-auto">
+                  {(() => {
+                    const cta = getCtaState("vendor")
+                    return (
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90"
+                        onClick={() => handlePrimaryCta("vendor")}
+                        disabled={authLoading || loadingPlan === "vendor" || cta.action === "current"}
+                      >
+                        {loadingPlan === "vendor" ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          cta.label
+                        )}
+                      </Button>
+                    )
+                  })()}
+
+                  {actionError && loadingPlan !== "vendor" && (
+                    <p className="flex items-center justify-center gap-1.5 text-xs text-red-400 mt-3">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {actionError}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Strategic Intelligence Partner Card */}
+              <div
+                id="strategic-intelligence-partner"
+                className="flex flex-col rounded-2xl border-2 border-primary/50 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] scroll-mt-24"
+              >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary text-primary-foreground px-3 py-1 rounded-full">
+                    <Star className="h-3 w-3 fill-current" />
+                    Recommended
+                  </span>
+                </div>
+                <div className="mb-6 pt-2">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">Strategic Intelligence Partner</h3>
+                  <p className="text-xs text-slate-400 mb-4">Premium partnership for market leaders</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-slate-100">£25,000</span>
+                    <span className="text-sm text-slate-400">per year</span>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-1">$32,500 per year</p>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Market Opportunity Score™ — composite demand signal across operational pressure, transformation, AI and technology intent",
+                    "Established vs Emerging Service Demand — what organisations outsource today and what they're actively exploring",
+                    "Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity",
+                    "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
+                    "Segment all intelligence by Region, Industry and Company size",
+                    "Full Global Workforce Intelligence dashboard included",
+                    "Quarterly Vendor Briefings",
+                    "Full report library — including members-only reports",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">
+                    Plus, exclusively for partners:
+                  </p>
+                  <ul className="space-y-3">
+                    {[
+                      "2 Bespoke Virtual Executive Events",
+                      "Strategic Partner Recognition",
+                    ].map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                        <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-auto">
+                  <Button className="w-full bg-primary hover:bg-primary/90" asChild>
+                    <a href="mailto:crossborderiq@gemevents.co">Contact Team</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Contact Section */}
+        <div className="mt-16 text-center">
+          <p className="text-sm text-slate-400">
+            Need a custom solution?{" "}
+            <a href="mailto:crossborderiq@gemevents.co" className="text-primary hover:underline">
+              Contact us
+            </a>{" "}
+            for enterprise pricing and bespoke intelligence packages.
+          </p>
+        </div>
+      </main>
+
+      <GlobalFooter />
+    </div>
+  )
+}
