@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { TierLockedScreen } from "@/components/tier-locked-screen"
 import { ContributorDashboardClient } from "./client"
 import { createClient } from "@/lib/supabase/server"
+import { THEME_ORDER, themeForPillar } from "@/lib/workforce-themes"
 
 interface PillarScore {
   pillar: string
@@ -93,32 +94,8 @@ export default async function ContributorDashboardPage() {
     0,
   )
   
-  // The nine themed breakdown sections, in the exact required display order.
-  const THEME_ORDER = [
-    "Strategy & maturity",
-    "AI & technology",
-    "Future of mobility",
-    "Employee experience",
-    "Leadership expectations",
-    "Operational pressure",
-    "Investment & vendors",
-    "International remote work",
-    "Who took part",
-  ] as const
-
-  // Map a raw hr_pillar label from the view to one of the themed sections.
-  function themeForPillar(rawPillar: string): (typeof THEME_ORDER)[number] {
-    const p = (rawPillar || "").toLowerCase()
-    if (/strateg|maturity/.test(p)) return "Strategy & maturity"
-    if (/\bai\b|technolog|tech|digital|automation/.test(p)) return "AI & technology"
-    if (/future/.test(p)) return "Future of mobility"
-    if (/employee|experience|wellbeing|talent/.test(p)) return "Employee experience"
-    if (/leadership|executive|board|c-suite/.test(p)) return "Leadership expectations"
-    if (/operational|pressure|workload|capacity|compliance/.test(p)) return "Operational pressure"
-    if (/investment|vendor|budget|spend|supplier|provider/.test(p)) return "Investment & vendors"
-    if (/international remote|remote work|remote|cross-border work/.test(p)) return "International remote work"
-    return "Who took part"
-  }
+  // The nine themed breakdown sections come from the shared workforce-themes
+  // module (also used by the Premium dashboard) so grouping stays identical.
 
   // Group reportable questions into themed sections.
   const themeMap = new Map<string, Map<string, GroupedQuestion>>()
