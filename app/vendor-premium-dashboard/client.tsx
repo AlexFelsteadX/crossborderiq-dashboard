@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, ExternalLink, Filter, ChevronDown
+  Database, FileText, MessageSquare, Download, ExternalLink, Filter, ChevronDown, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -76,6 +76,19 @@ interface DemandPipelineRow {
   pct: number
   base_n: number
   is_reportable: boolean
+}
+
+// Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
+type Confidence = "full" | "limited" | "suppressed"
+
+interface VendorBreakdownRow {
+  q_code: string
+  answer_option: string
+  question_label: string
+  seg_base_n: number
+  seg_pct: number // fraction 0–1
+  overall_pct: number // fraction 0–1
+  confidence: Confidence
 }
 
 // =============================================================================
@@ -224,6 +237,107 @@ function BiggestMoverChip({ row }: { row: YoYRow }) {
 }
 
 // =============================================================================
+// SERVICE DEMAND COLUMN (segment-aware, with confidence handling)
+// =============================================================================
+
+interface DemandItem {
+  label: string
+  segPct: number // fraction 0–1
+  overallPct: number // fraction 0–1
+}
+
+function DemandColumn({
+  title,
+  subtitle,
+  items,
+  confidence,
+  segBaseN,
+  barColor,
+  loading,
+}: {
+  title: string
+  subtitle: string
+  items: DemandItem[]
+  confidence: Confidence
+  segBaseN: number
+  barColor: string
+  loading: boolean
+}) {
+  const suppressed = confidence === "suppressed"
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-100 mb-1">{title}</h3>
+        <p className="text-xs text-slate-400">{subtitle}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] text-slate-500">
+          {suppressed ? "Market-wide figures" : `Segment base n=${segBaseN}`}
+        </span>
+        {confidence === "limited" && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+            Limited sample (n={segBaseN})
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
+          <p className="text-sm text-slate-400">Loading…</p>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+          <p className="text-sm text-slate-400">No demand data for this segment</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((row, idx) => {
+            const segDisplay = Math.round(row.segPct * 100)
+            const overallDisplay = Math.round(row.overallPct * 100)
+            const shown = suppressed ? overallDisplay : segDisplay
+            return (
+              <div key={idx}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm text-slate-200 truncate pr-2">{row.label}</span>
+                  <span className="text-sm font-semibold shrink-0" style={{ color: barColor }}>
+                    {shown}%
+                    {!suppressed && (
+                      <span className="text-slate-500 font-normal ml-1.5 text-xs">(market {overallDisplay}%)</span>
+                    )}
+                  </span>
+                </div>
+                <div className="relative h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(shown, 100)}%`, backgroundColor: barColor }}
+                  />
+                  {!suppressed && (
+                    <span
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
+                      style={{ left: `${Math.min(overallDisplay, 100)}%` }}
+                      title={`Market ${overallDisplay}%`}
+                    />
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {suppressed && (
+        <p className="text-[11px] text-slate-500 italic">
+          Not enough organisations in this segment — showing market-wide
+        </p>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
 // MAIN CLIENT COMPONENT
 // =============================================================================
 
@@ -255,37 +369,83 @@ export function VendorPremiumDashboardClient() {
     })
   }
   
-  // Region filter state
+  // Filter state — seven controls. null = "All" (param null).
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null)
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
-  
+  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null)
+  const [selectedTraveller, setSelectedTraveller] = useState<string | null>(null)
+  const [selectedTech, setSelectedTech] = useState<string | null>(null)
+  const [selectedAi, setSelectedAi] = useState<string | null>(null)
+
+  // Live segment size + filter-aware service-demand breakdown.
+  const [segmentSize, setSegmentSize] = useState<number | null>(null)
+  const [vendorBreakdown, setVendorBreakdown] = useState<VendorBreakdownRow[]>([])
+  const [demandLoading, setDemandLoading] = useState(true)
+
+  const resetFilters = () => {
+    setSelectedRegion(null)
+    setSelectedIndustry(null)
+    setSelectedSize(null)
+    setSelectedAssignee(null)
+    setSelectedTraveller(null)
+    setSelectedTech(null)
+    setSelectedAi(null)
+  }
+
   const regionOptions = [
     { value: null, label: "All" },
-    { value: "Europe", label: "Europe" },
     { value: "Americas", label: "Americas" },
-    { value: "Asia-Pacific (APAC)", label: "Asia-Pacific (APAC)" },
+    { value: "Europe", label: "Europe" },
     { value: "Middle East", label: "Middle East" },
+    { value: "Asia-Pacific (APAC)", label: "Asia-Pacific (APAC)" },
   ]
-  
+
   const industryOptions = [
     { value: null, label: "All" },
+    { value: "Professional Services", label: "Professional Services" },
     { value: "Technology & IT", label: "Technology & IT" },
     { value: "Financial Services", label: "Financial Services" },
-    { value: "Healthcare & Life Sciences", label: "Healthcare & Life Sciences" },
     { value: "Manufacturing & Industrial", label: "Manufacturing & Industrial" },
-    { value: "Professional Services", label: "Professional Services" },
     { value: "Retail & Consumer", label: "Retail & Consumer" },
+    { value: "Healthcare & Life Sciences", label: "Healthcare & Life Sciences" },
     { value: "Energy & Utilities", label: "Energy & Utilities" },
-    { value: "Media & Entertainment", label: "Media & Entertainment" },
-    { value: "Other", label: "Other" },
   ]
-  
+
   const sizeOptions = [
     { value: null, label: "All" },
-    { value: "Under 1,000", label: "Under 1,000" },
-    { value: "1,000–4,999", label: "1,000–4,999" },
     { value: "5,000+", label: "5,000+" },
+    { value: "1,000–4,999", label: "1,000–4,999" },
+  ]
+
+  const assigneeOptions = [
+    { value: null, label: "All" },
+    { value: "101–500", label: "101–500" },
+    { value: "51–100", label: "51–100" },
+    { value: "1–50", label: "1–50" },
+  ]
+
+  const travellerOptions = [
+    { value: null, label: "All" },
+    { value: "501–1,000", label: "501–1,000" },
+    { value: "101–500", label: "101–500" },
+    { value: "1–100", label: "1–100" },
+  ]
+
+  const techOptions = [
+    { value: null, label: "All" },
+    { value: "Partial technology", label: "Partial technology" },
+    { value: "Spreadsheets / office tools", label: "Spreadsheets / office tools" },
+    { value: "Dedicated platform", label: "Dedicated platform" },
+    { value: "Evaluating / implementing", label: "Evaluating / implementing" },
+  ]
+
+  const aiOptions = [
+    { value: null, label: "All" },
+    { value: "Planning AI", label: "Planning AI" },
+    { value: "AI in production", label: "AI in production" },
+    { value: "Not using AI", label: "Not using AI" },
+    { value: "Piloting AI", label: "Piloting AI" },
   ]
 
   // ---------------------------------------------------------------------------
@@ -408,6 +568,92 @@ export function VendorPremiumDashboardClient() {
     
     fetchFilteredData()
   }, [supabase, selectedRegion, selectedIndustry, selectedSize])
+
+  // ---------------------------------------------------------------------------
+  // FETCH SEGMENT SIZE + FILTER-AWARE SERVICE DEMAND (all seven filters)
+  // RPC param order: (p_year, p_industry, p_region, p_size, p_assignee,
+  //                   p_traveller, p_tech, p_ai). Year fixed at 2026.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchSegmentDemand() {
+      setDemandLoading(true)
+      const params = {
+        p_year: 2026,
+        p_industry: selectedIndustry,
+        p_region: selectedRegion,
+        p_size: selectedSize,
+        p_assignee: selectedAssignee,
+        p_traveller: selectedTraveller,
+        p_tech: selectedTech,
+        p_ai: selectedAi,
+      }
+      const [sizeRes, breakdownRes] = await Promise.all([
+        supabase.rpc("get_vendor_segment_size", params),
+        supabase.rpc("get_vendor_breakdown", params),
+      ])
+      if (cancelled) return
+
+      if (sizeRes.error) {
+        console.log("[v0] Vendor segment size RPC error:", sizeRes.error)
+        setSegmentSize(null)
+      } else {
+        setSegmentSize(
+          typeof sizeRes.data === "number" ? sizeRes.data : (sizeRes.data ?? 0),
+        )
+      }
+
+      if (breakdownRes.error) {
+        console.log("[v0] Vendor breakdown RPC error:", breakdownRes.error)
+        setVendorBreakdown([])
+      } else {
+        setVendorBreakdown((breakdownRes.data as VendorBreakdownRow[]) ?? [])
+      }
+      setDemandLoading(false)
+    }
+    fetchSegmentDemand()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    supabase,
+    selectedRegion,
+    selectedIndustry,
+    selectedSize,
+    selectedAssignee,
+    selectedTraveller,
+    selectedTech,
+    selectedAi,
+  ])
+
+  // ---------------------------------------------------------------------------
+  // DERIVE ESTABLISHED (Q49) & EMERGING (E13) DEMAND COLUMNS
+  // ---------------------------------------------------------------------------
+
+  const establishedDemand = useMemo(() => {
+    const rows = vendorBreakdown.filter((r) => r.q_code === "Q49")
+    const items: DemandItem[] = rows
+      .map((r) => ({ label: r.answer_option, segPct: r.seg_pct, overallPct: r.overall_pct }))
+      .sort((a, b) => b.segPct - a.segPct)
+    return {
+      items,
+      confidence: (rows[0]?.confidence ?? "suppressed") as Confidence,
+      segBaseN: rows[0]?.seg_base_n ?? 0,
+    }
+  }, [vendorBreakdown])
+
+  const emergingDemand = useMemo(() => {
+    const rows = vendorBreakdown.filter((r) => r.q_code === "E13")
+    const items: DemandItem[] = rows
+      .map((r) => ({ label: r.answer_option, segPct: r.seg_pct, overallPct: r.overall_pct }))
+      .sort((a, b) => b.segPct - a.segPct)
+    return {
+      items,
+      confidence: (rows[0]?.confidence ?? "suppressed") as Confidence,
+      segBaseN: rows[0]?.seg_base_n ?? 0,
+    }
+  }, [vendorBreakdown])
 
   // ---------------------------------------------------------------------------
   // GROUP QUESTIONS BY VENDOR_PILLAR DYNAMICALLY (with year/report badges)
@@ -565,6 +811,9 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-6">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -644,17 +893,26 @@ export function VendorPremiumDashboardClient() {
             {/* =================================================================== */}
             
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
+                </div>
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset filters
+                </button>
               </div>
-              <div className="flex flex-wrap items-end gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Region</label>
                   <select
                     value={selectedRegion || ""}
                     onChange={(e) => setSelectedRegion(e.target.value || null)}
-                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[160px] focus:border-primary/50 focus:outline-none"
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
                   >
                     {regionOptions.map((opt) => (
                       <option key={opt.label} value={opt.value || ""}>
@@ -668,7 +926,7 @@ export function VendorPremiumDashboardClient() {
                   <select
                     value={selectedIndustry || ""}
                     onChange={(e) => setSelectedIndustry(e.target.value || null)}
-                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[200px] focus:border-primary/50 focus:outline-none"
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
                   >
                     {industryOptions.map((opt) => (
                       <option key={opt.label} value={opt.value || ""}>
@@ -682,7 +940,7 @@ export function VendorPremiumDashboardClient() {
                   <select
                     value={selectedSize || ""}
                     onChange={(e) => setSelectedSize(e.target.value || null)}
-                    className="bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 min-w-[140px] focus:border-primary/50 focus:outline-none"
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
                   >
                     {sizeOptions.map((opt) => (
                       <option key={opt.label} value={opt.value || ""}>
@@ -691,10 +949,78 @@ export function VendorPremiumDashboardClient() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Long-term &amp; permanent</label>
+                  <select
+                    value={selectedAssignee || ""}
+                    onChange={(e) => setSelectedAssignee(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {assigneeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Short-term &amp; business travel</label>
+                  <select
+                    value={selectedTraveller || ""}
+                    onChange={(e) => setSelectedTraveller(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {travellerOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Technology status</label>
+                  <select
+                    value={selectedTech || ""}
+                    onChange={(e) => setSelectedTech(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {techOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">AI maturity</label>
+                  <select
+                    value={selectedAi || ""}
+                    onChange={(e) => setSelectedAi(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {aiOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mt-3">
-                Filters apply to Service Demand, Demand Pipeline and Commercial Intelligence Breakdown.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+                <p className="text-xs text-slate-500">
+                  Filters apply to Service Demand, Demand Pipeline and Commercial Intelligence Breakdown.
+                </p>
+                <p className="text-sm font-medium text-slate-300">
+                  {demandLoading ? (
+                    <span className="text-slate-500">Counting organisations…</span>
+                  ) : (
+                    <>
+                      Showing{" "}
+                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organisations
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
 
             {/* =================================================================== */}
@@ -707,99 +1033,80 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">Service Demand Intelligence</h2>
               </div>
               <p className="text-sm text-slate-400 mb-6">
-                Comparing current outsourcing patterns with emerging interest signals.
+                Comparing current outsourcing patterns with emerging interest signals for your selected segment.
               </p>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* LEFT COLUMN: Established Demand */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-100 mb-1">Established demand</h3>
-                    <p className="text-xs text-slate-400">What they outsource today</p>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Currently outsourced — survey data</p>
-                  
-                  {serviceDemand.length === 0 ? (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-                      <p className="text-sm text-slate-400">Insufficient sample in this segment</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {serviceDemand.map((row, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm text-slate-200">{row.service}</span>
-                            {row.is_reportable ? (
-                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic">Insufficient sample</span>
-                            )}
-                          </div>
-                          {row.is_reportable && (
-                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-primary/60 rounded-full transition-all duration-300"
-                                style={{ width: `${row.pct}%` }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* RIGHT COLUMN: Emerging Demand - uses lighter teal shade */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-100 mb-1">Emerging demand</h3>
-                    <p className="text-xs text-slate-400">What they&apos;re exploring</p>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Stated interest — event registrations</p>
-                  
-                  {/* Show note when industry or size filter is active */}
-                  {(selectedIndustry || selectedSize) && (
-                    <p className="text-[10px] text-slate-500 italic">
-                      Emerging interest is not broken down by industry or size.
-                    </p>
-                  )}
-                  
-                  {serviceInterest.length === 0 ? (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-                      <p className="text-sm text-slate-400">Insufficient sample in this segment</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {serviceInterest.map((row, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm text-slate-200">{row.service}</span>
-                            {row.is_reportable ? (
-                              <span className="text-sm font-semibold text-[#2dd4bf]">{row.pct}%</span>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic">Insufficient sample</span>
-                            )}
-                          </div>
-                          {row.is_reportable && (
-                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
-                                style={{ width: `${row.pct}%` }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <DemandColumn
+                  title="Established demand"
+                  subtitle="What they outsource today"
+                  items={establishedDemand.items}
+                  confidence={establishedDemand.confidence}
+                  segBaseN={establishedDemand.segBaseN}
+                  barColor="var(--brand-teal)"
+                  loading={demandLoading}
+                />
+                <DemandColumn
+                  title="Emerging demand"
+                  subtitle="Investment focus, next 12–18 months"
+                  items={emergingDemand.items}
+                  confidence={emergingDemand.confidence}
+                  segBaseN={emergingDemand.segBaseN}
+                  barColor="#2dd4bf"
+                  loading={demandLoading}
+                />
               </div>
               
               <p className="text-xs text-slate-500 mt-6 italic">
-                Service option sets varied slightly between waves; Tax, Immigration and RMC support are the most directly comparable.
+                Teal bars = your selected segment · marker = market-wide benchmark.
               </p>
+            </div>
+
+            {/* =================================================================== */}
+            {/* PANEL: STATED SERVICE INTEREST (MARKET-WIDE — unaffected by filters) */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Stated service interest</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Services GME event audiences are actively seeking.
+              </p>
+
+              {serviceInterest.length === 0 ? (
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+                  <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+                  <p className="text-sm text-slate-400">No stated interest data available.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {serviceInterest.map((row, idx) => (
+                    <div key={idx}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
+                        {row.is_reportable ? (
+                          <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
+                        ) : (
+                          <span className="text-xs text-slate-500 italic shrink-0">Insufficient sample</span>
+                        )}
+                      </div>
+                      {row.is_reportable && (
+                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
+                            style={{ width: `${row.pct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* =================================================================== */}
@@ -810,6 +1117,9 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
               </div>
               <p className="text-sm text-slate-400 mb-6">
                 Near-term buying activity and vendor review intentions. Based on all responses across the 2022–2026 waves.
