@@ -67,67 +67,91 @@ export default async function ContributorDashboardPage() {
   
   const pillars = (pillarScores || []) as PillarScore[]
   
-  // Fetch ALL question-level data for workforce bucket from BOTH 2025 and 2026
+  // Fetch question-level data for workforce bucket — 2026 wave only
   const { data: questionData } = await supabase
     .from('v_question_pct_overall')
     .select('hr_pillar, q_code, question_label, answer_option, pct, base_n, source_year, is_reportable')
     .eq('report_name', 'Global Workforce Deployment')
-    .in('source_year', [2025, 2026])
+    .eq('source_year', 2026)
     .eq('bucket', 'workforce')
   
   const questions = (questionData || []) as QuestionData[]
   
-  // Group questions by pillar dynamically
-  const questionMap = new Map<string, Map<string, GroupedQuestion>>()
+  // Total contributor base (largest reportable base_n across questions).
+  // Used only as plain supporting text — never shown per-question.
+  const contributorCount = questions.reduce(
+    (max, r) => (r.is_reportable && r.base_n > max ? r.base_n : max),
+    0,
+  )
   
+  // The nine themed breakdown sections, in the exact required display order.
+  const THEME_ORDER = [
+    "Strategy & maturity",
+    "AI & technology",
+    "Future of mobility",
+    "Employee experience",
+    "Leadership expectations",
+    "Operational pressure",
+    "Investment & vendors",
+    "International remote work",
+    "Who responded (firmographics)",
+  ] as const
+
+  // Map a raw hr_pillar label from the view to one of the themed sections.
+  function themeForPillar(rawPillar: string): (typeof THEME_ORDER)[number] {
+    const p = (rawPillar || "").toLowerCase()
+    if (/strateg|maturity/.test(p)) return "Strategy & maturity"
+    if (/\bai\b|technolog|tech|digital|automation/.test(p)) return "AI & technology"
+    if (/future/.test(p)) return "Future of mobility"
+    if (/employee|experience|wellbeing|talent/.test(p)) return "Employee experience"
+    if (/leadership|executive|board|c-suite/.test(p)) return "Leadership expectations"
+    if (/operational|pressure|workload|capacity|compliance/.test(p)) return "Operational pressure"
+    if (/investment|vendor|budget|spend|supplier|provider/.test(p)) return "Investment & vendors"
+    if (/international remote|remote work|remote|cross-border work/.test(p)) return "International remote work"
+    return "Who responded (firmographics)"
+  }
+
+  // Group reportable questions into themed sections.
+  const themeMap = new Map<string, Map<string, GroupedQuestion>>()
+  for (const theme of THEME_ORDER) themeMap.set(theme, new Map())
+
   for (const row of questions) {
     if (!row.is_reportable) continue
-    
-    if (!questionMap.has(row.hr_pillar)) {
-      questionMap.set(row.hr_pillar, new Map())
-    }
-    
-    const pillarMap = questionMap.get(row.hr_pillar)!
+
+    const theme = themeForPillar(row.hr_pillar)
+    const sectionMap = themeMap.get(theme)!
     const key = `${row.q_code}_${row.source_year}`
-    
-    if (!pillarMap.has(key)) {
-      pillarMap.set(key, {
+
+    if (!sectionMap.has(key)) {
+      sectionMap.set(key, {
         questionLabel: row.question_label,
         sourceYear: row.source_year,
-        answers: []
+        answers: [],
       })
     }
-    
-    const question = pillarMap.get(key)!
-    question.answers.push({
+
+    sectionMap.get(key)!.answers.push({
       answer_option: row.answer_option,
-      pct: row.pct
+      pct: row.pct,
     })
   }
-  
-  // Convert to serializable format for client
-  const pillarQuestions: { pillarName: string; questions: GroupedQuestion[] }[] = []
-  
-  for (const [pillarKey, pillarMap] of questionMap.entries()) {
-    const questionsArray: GroupedQuestion[] = []
-    
-    for (const question of pillarMap.values()) {
-      question.answers.sort((a, b) => b.pct - a.pct)
-      questionsArray.push(question)
-    }
-    
-    questionsArray.sort((a, b) => b.sourceYear - a.sourceYear)
-    pillarQuestions.push({ pillarName: pillarKey, questions: questionsArray })
-  }
-  
-  // Sort pillars by question count descending
-  pillarQuestions.sort((a, b) => b.questions.length - a.questions.length)
-  
+
+  // Serialize sections in the fixed theme order (keep empty sections so the
+  // client can render a single "upgrade to unlock" teaser where one is thin).
+  const sections: { sectionName: string; questions: GroupedQuestion[] }[] = THEME_ORDER.map(
+    (theme) => {
+      const questionsArray = Array.from(themeMap.get(theme)!.values())
+      for (const q of questionsArray) q.answers.sort((a, b) => b.pct - a.pct)
+      return { sectionName: theme, questions: questionsArray }
+    },
+  )
+
   return (
-    <ContributorDashboardClient 
+    <ContributorDashboardClient
       smiScore={smiScore}
       pillars={pillars}
-      pillarQuestions={pillarQuestions}
+      sections={sections}
+      contributorCount={contributorCount}
     />
   )
 }

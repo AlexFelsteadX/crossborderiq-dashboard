@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
-import { Lock, FileText, ArrowRight, BarChart3, ChevronDown } from "lucide-react"
+import { Lock, FileText, ArrowRight, BarChart3 } from "lucide-react"
 import Link from "next/link"
 
 // Format decimal pct values (e.g., 0.35) as whole percentages (e.g., 35%)
@@ -25,28 +24,44 @@ function LockedFeatureCard({ title, description }: { title: string; description:
   )
 }
 
-// Question Card Component - styled to match theme
-function QuestionCard({ 
-  questionLabel, 
-  sourceYear,
-  answers
-}: { 
+// A single locked "Upgrade to unlock" teaser shown only where a themed section
+// would otherwise look thin. Uses the existing upgrade CTA/target.
+function UpgradeTeaserCard() {
+  return (
+    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5 relative overflow-hidden">
+      <div className="flex items-center gap-2 mb-2">
+        <Lock className="h-4 w-4 text-slate-500" />
+        <h4 className="text-sm font-semibold text-slate-200">Premium benchmark</h4>
+      </div>
+      <p className="text-xs text-slate-400 mb-4">
+        Additional questions in this theme are available with Global Workforce Intelligence™.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="border-primary/30 text-slate-300 hover:bg-primary/10 hover:text-primary"
+        asChild
+      >
+        <Link href="/pricing#global-workforce-intelligence">
+          Upgrade to unlock
+          <ArrowRight className="h-3.5 w-3.5 ml-2" />
+        </Link>
+      </Button>
+    </div>
+  )
+}
+
+// Question Card Component - styled to match theme. No year badge, no sample sizes.
+function QuestionCard({
+  questionLabel,
+  answers,
+}: {
   questionLabel: string
-  sourceYear: number
   answers: { answer_option: string; pct: number }[]
 }) {
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <h4 className="text-sm font-medium text-slate-200 leading-tight">{questionLabel}</h4>
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 ${
-          sourceYear === 2026 
-            ? 'bg-primary/20 text-primary border border-primary/30' 
-            : 'bg-slate-800 text-slate-400 border border-slate-700'
-        }`}>
-          {sourceYear}
-        </span>
-      </div>
+      <h4 className="text-sm font-medium text-slate-200 leading-tight mb-4">{questionLabel}</h4>
       <div className="space-y-2">
         {answers.map((answer, idx) => (
           <div key={idx}>
@@ -55,7 +70,7 @@ function QuestionCard({
               <span className="text-slate-200 font-medium shrink-0">{formatPct(answer.pct)}</span>
             </div>
             <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
                 style={{ width: `${Math.min(answer.pct * 100, 100)}%` }}
               />
@@ -83,37 +98,32 @@ interface GroupedQuestion {
 interface ContributorDashboardClientProps {
   smiScore: number
   pillars: PillarScore[]
-  pillarQuestions: { pillarName: string; questions: GroupedQuestion[] }[]
+  sections: { sectionName: string; questions: GroupedQuestion[] }[]
+  contributorCount: number
 }
 
-export function ContributorDashboardClient({ 
-  smiScore, 
-  pillars, 
-  pillarQuestions 
-}: ContributorDashboardClientProps) {
-  
-  // Track which pillar accordions are expanded - first one expanded by default
-  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(() => {
-    const firstPillar = pillarQuestions.find(pq => pq.questions.length > 0)?.pillarName
-    return firstPillar ? new Set([firstPillar]) : new Set()
-  })
+// Pillar tile labels (lower-cased) that should NOT appear as a primary tile.
+function isStrategicMobilityTile(p: PillarScore): boolean {
+  const s = `${p.pillar} ${p.short_name}`.toLowerCase()
+  return /strategic mobility|mobility maturity|composite|index score/.test(s) && !/remote/.test(s)
+}
 
-  const togglePillar = (pillarName: string) => {
-    setExpandedPillars(prev => {
-      const next = new Set(prev)
-      if (next.has(pillarName)) {
-        next.delete(pillarName)
-      } else {
-        next.add(pillarName)
-      }
-      return next
-    })
-  }
-  
-  const getPillarByName = (name: string) => pillars.find(p => 
-    p.pillar.toLowerCase().includes(name.toLowerCase()) ||
-    p.short_name.toLowerCase().includes(name.toLowerCase())
-  )
+function isRemoteWorkTile(p: PillarScore): boolean {
+  const s = `${p.pillar} ${p.short_name}`.toLowerCase()
+  return /international remote|remote work/.test(s)
+}
+
+export function ContributorDashboardClient({
+  smiScore,
+  pillars,
+  sections,
+  contributorCount,
+}: ContributorDashboardClientProps) {
+  // BLOCK 2 tile partitioning:
+  // - Drop any "Strategic Mobility" tile (represented by the headline index).
+  // - "International Remote Work" becomes a de-emphasised secondary tile.
+  const primaryTiles = pillars.filter((p) => !isStrategicMobilityTile(p) && !isRemoteWorkTile(p))
+  const remoteTile = pillars.find((p) => isRemoteWorkTile(p))
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -128,7 +138,7 @@ export function ContributorDashboardClient({
       
       <main className="flex-1 max-w-[1400px] mx-auto px-6 py-12">
         {/* Header */}
-        <div className="mb-12">
+        <div className="mb-10">
           <div className="flex items-center gap-3 mb-4">
             <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Intelligence Contributor Dashboard</h1>
             <span className="text-[10px] font-medium text-primary">™</span>
@@ -136,179 +146,77 @@ export function ContributorDashboardClient({
               Contributor Access
             </span>
           </div>
-          <p className="text-slate-300 mb-2 max-w-4xl">
-            Full access to CBIQ workforce intelligence research and benchmark findings from both 2025 and 2026 waves.
-          </p>
-          <p className="text-sm text-slate-400 max-w-4xl">
-            Thank you for contributing to CBIQ Intelligence Indices. This dashboard provides full access to industry research findings across both survey waves.
+          <p className="text-slate-300 max-w-4xl">
+            Full access to CBIQ workforce intelligence research and 2026 benchmark findings.
           </p>
         </div>
 
-        {/* SECTION 1: Executive Summary KPIs */}
+        {/* BLOCK 1 — HEADLINE: Mobility Maturity Index */}
+        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 md:p-10 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10 text-center">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">Mobility Maturity Index</h2>
+          </div>
+          <p className="text-7xl md:text-8xl font-bold text-primary tracking-tight drop-shadow-[0_0_24px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+            {smiScore}
+            <span className="text-3xl md:text-4xl text-slate-500 font-semibold ml-1">/100</span>
+          </p>
+          {contributorCount > 0 && (
+            <p className="text-sm text-slate-400 mt-5">
+              Based on {contributorCount.toLocaleString()} contributing organisations
+            </p>
+          )}
+        </div>
+
+        {/* BLOCK 2 — PILLAR SNAPSHOT */}
         <div className="mb-12">
-          <h2 className="text-lg font-semibold text-slate-200 mb-6">Executive Summary</h2>
+          <h2 className="text-lg font-semibold text-slate-200 mb-6">Pillar snapshot</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div className="rounded-xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-              <p className="text-xs text-slate-400 mb-2">Strategic Mobility Index™</p>
-              <p className="text-3xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{smiScore}%</p>
-            </div>
-            {pillars.slice(0, 4).map((pillar) => (
-              <div key={pillar.pillar} className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                <p className="text-xs text-slate-400 mb-2">{pillar.short_name}</p>
-                <p className="text-3xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{formatPct(pillar.pct)}</p>
+            {primaryTiles.map((pillar) => (
+              <div
+                key={pillar.pillar}
+                className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+              >
+                <p className="text-3xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">
+                  {formatPct(pillar.pct)}
+                </p>
+                <p className="text-xs text-slate-400 mt-2 leading-tight">{pillar.short_name}</p>
               </div>
             ))}
           </div>
+
+          {/* Secondary, de-emphasised tile: International Remote Work */}
+          {remoteTile && (
+            <div className="mt-4 flex">
+              <div className="rounded-lg border border-slate-700/50 bg-brand-navy-2/50 px-4 py-3 inline-flex items-center gap-3">
+                <span className="text-xl font-semibold text-slate-300">{formatPct(remoteTile.pct)}</span>
+                <span className="text-xs text-slate-500 leading-tight">{remoteTile.short_name}</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* SECTION 2: Strategic Mobility Index - Homepage Ring Style */}
-        <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-12">
-          <div className="flex items-center gap-2 mb-8">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-slate-200">Strategic Mobility Index</h2>
-            <span className="text-[10px] font-medium text-primary">™</span>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* Left: Current Score - Homepage-style ring */}
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative w-56 h-56 mb-6">
-                {/* Outer glow ring */}
-                <div className="absolute inset-0 rounded-full bg-primary/10" />
-                
-                {/* SVG Gauge - Matching homepage exactly */}
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                  {/* Background track - muted dark */}
-                  <circle 
-                    cx="100" cy="100" r="85" 
-                    fill="none" 
-                    stroke="#1a3344" 
-                    strokeWidth="14" 
+        {/* BLOCK 3 — THEMED BREAKDOWNS */}
+        <div className="space-y-10 mb-12">
+          <h2 className="text-lg font-semibold text-slate-200">Detailed breakdowns</h2>
+          {sections.map(({ sectionName, questions: sectionQs }) => (
+            <section key={sectionName}>
+              <h3 className="text-base font-semibold text-slate-200 mb-4 pb-2 border-b border-primary/15">
+                {sectionName}
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {sectionQs.map((q, idx) => (
+                  <QuestionCard
+                    key={`${sectionName}-${idx}`}
+                    questionLabel={q.questionLabel}
+                    answers={q.answers}
                   />
-                  {/* Progress arc - bright teal */}
-                  <circle 
-                    cx="100" cy="100" r="85" 
-                    fill="none" 
-                    stroke="url(#smiGradientContributor)" 
-                    strokeWidth="14" 
-                    strokeDasharray={534}
-                    strokeDashoffset={534 * (1 - smiScore / 100)}
-                    strokeLinecap="round"
-                    filter="url(#glowContributor)"
-                  />
-                  {/* Gradient and glow definitions */}
-                  <defs>
-                    <linearGradient id="smiGradientContributor" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="var(--brand-teal)" />
-                      <stop offset="100%" stopColor="#2dd4bf" />
-                    </linearGradient>
-                    <filter id="glowContributor" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                      <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
-                  </defs>
-                </svg>
-                
-                {/* Center content - bright and prominent */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">{smiScore}%</span>
-                  <span className="text-xs text-slate-400 mt-1">2026</span>
-                </div>
+                ))}
+                {/* Show a single locked teaser only where the section is thin */}
+                {sectionQs.length < 2 && <UpgradeTeaserCard />}
               </div>
-              <p className="text-sm text-slate-400">Developing Strategic Function</p>
-            </div>
-
-            {/* Right: Index Pillars from Supabase */}
-            <div className="space-y-4">
-              <p className="text-xs text-slate-500 uppercase tracking-wider mb-4">Index Pillars</p>
-              {pillars.map((pillar) => (
-                <div key={pillar.pillar}>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-slate-400">{pillar.short_name}</span>
-                    <span className="text-slate-200 font-medium">{formatPct(pillar.pct)}</span>
-                  </div>
-                  <div className="h-2.5 bg-[#1a3344] rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
-                      style={{ width: `${pillar.pct * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* PILLAR SECTIONS - Collapsible Accordions */}
-        <div className="space-y-4 mb-12">
-          {pillarQuestions.map(({ pillarName, questions: pillarQs }) => {
-            if (pillarQs.length === 0) return null
-            
-            // Try to find matching pillar score
-            const pillarScore = getPillarByName(pillarName)
-            const count2026 = pillarQs.filter(q => q.sourceYear === 2026).length
-            const count2025 = pillarQs.filter(q => q.sourceYear === 2025).length
-            const totalQuestions = pillarQs.length
-            const isExpanded = expandedPillars.has(pillarName)
-            
-            return (
-              <div key={pillarName} className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                {/* Accordion Header - Clickable */}
-                <button
-                  onClick={() => togglePillar(pillarName)}
-                  className="w-full px-6 py-5 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-200 text-left">{pillarName}</h2>
-                      <p className="text-sm text-slate-400 text-left">
-                        {totalQuestions} question{totalQuestions !== 1 ? 's' : ''} 
-                        {count2026 > 0 && count2025 > 0 
-                          ? ` (${count2026} from 2026, ${count2025} from 2025)`
-                          : count2026 > 0 
-                            ? ' from 2026'
-                            : ' from 2025'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {pillarScore && (
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{formatPct(pillarScore.pct)}</p>
-                      </div>
-                    )}
-                    <ChevronDown 
-                      className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                    />
-                  </div>
-                </button>
-                
-                {/* Accordion Content - Collapsible */}
-                <div 
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="px-6 pb-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {pillarQs.map((q, idx) => (
-                        <QuestionCard
-                          key={`${pillarName}-${idx}`}
-                          questionLabel={q.questionLabel}
-                          sourceYear={q.sourceYear}
-                          answers={q.answers}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+            </section>
+          ))}
         </div>
 
         {/* Available Reports */}
