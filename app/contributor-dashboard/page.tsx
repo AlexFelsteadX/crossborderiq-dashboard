@@ -53,13 +53,21 @@ export default async function ContributorDashboardPage() {
   // User has contributor tier or higher - fetch all data server-side
   const supabase = await createClient()
   
-  // Fetch Strategic Mobility Index score
+  // Fetch Strategic Mobility Index score + its four components
   const { data: smiData } = await supabase
     .from('v_strategic_mobility_index')
-    .select('index_score')
+    .select('index_score, defined_strategy_pct, aligned_pct, future_pct, ai_maturity_pct')
     .single()
   
   const smiScore = smiData?.index_score ?? 0
+
+  // Index components (decimals, e.g. 0.62) used for the "What makes up this score" list.
+  const indexComponents = {
+    definedStrategyPct: smiData?.defined_strategy_pct ?? null,
+    alignedPct: smiData?.aligned_pct ?? null,
+    futurePct: smiData?.future_pct ?? null,
+    aiMaturityPct: smiData?.ai_maturity_pct ?? null,
+  }
   
   // Fetch pillar scores for headlines
   const { data: pillarScores } = await supabase
@@ -150,6 +158,7 @@ export default async function ContributorDashboardPage() {
   return (
     <ContributorDashboardClient
       smiScore={smiScore}
+      indexComponents={indexComponents}
       pillars={pillars}
       sections={sections}
       contributorCount={contributorCount}
