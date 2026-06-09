@@ -103,7 +103,7 @@ export default async function ContributorDashboardPage() {
     "Operational pressure",
     "Investment & vendors",
     "International remote work",
-    "Who responded (firmographics)",
+    "Who took part",
   ] as const
 
   // Map a raw hr_pillar label from the view to one of the themed sections.
@@ -117,7 +117,7 @@ export default async function ContributorDashboardPage() {
     if (/operational|pressure|workload|capacity|compliance/.test(p)) return "Operational pressure"
     if (/investment|vendor|budget|spend|supplier|provider/.test(p)) return "Investment & vendors"
     if (/international remote|remote work|remote|cross-border work/.test(p)) return "International remote work"
-    return "Who responded (firmographics)"
+    return "Who took part"
   }
 
   // Group reportable questions into themed sections.

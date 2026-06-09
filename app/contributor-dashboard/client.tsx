@@ -206,17 +206,30 @@ function BreakdownSection({
   onToggle: () => void
 }) {
   return (
-    <section className="rounded-xl border border-primary/15 bg-brand-navy-2/40 overflow-hidden">
+    <section
+      className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
+        isOpen
+          ? "border-l-4 border-l-primary border-y border-r border-primary/30 bg-brand-navy-2/70 shadow-[0_0_24px_-8px_rgb(var(--brand-teal-rgb)_/_0.35)]"
+          : "border border-primary/15 bg-brand-navy-2/40 hover:border-primary/40 hover:shadow-[0_0_18px_-8px_rgb(var(--brand-teal-rgb)_/_0.3)]"
+      }`}
+    >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-primary/5 transition-colors"
+        className={`w-full flex items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer transition-colors ${
+          isOpen ? "bg-primary/10" : "hover:bg-primary/5"
+        }`}
       >
         <h3 className="text-base font-semibold text-slate-200">{sectionName}</h3>
-        <ChevronDown
-          className={`h-4 w-4 text-primary shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="rounded-full border border-primary/20 bg-brand-navy-3/60 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+            {questions.length}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-primary transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+          />
+        </div>
       </button>
       {isOpen && (
         <div className="px-5 pb-5 pt-1">
