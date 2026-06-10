@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { stripe } from "@/lib/stripe"
 import { PRICE_ID_TO_TIER } from "@/lib/stripe/plans"
+import { sendEmail } from "@/lib/email"
 
 export const runtime = "nodejs"
 
@@ -26,6 +27,64 @@ function createAdminClient() {
 // Convert Unix timestamp (seconds) to ISO string
 function unixToISO(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString()
+}
+
+// Build the tier-specific welcome email. Returns null for any tier that should
+// not receive a welcome email. Kept separate so the webhook handler stays clean.
+function buildWelcomeEmail(tier: string | undefined): { subject: string; html: string } | null {
+  if (tier === "premium") {
+    return {
+      subject: "Welcome to Global Workforce Intelligence Premium",
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;"><div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;"><span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span></div><div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;"><h1 style="font-size:22px;margin:0 0 16px;">Welcome to Premium</h1><p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for upgrading to Global Workforce Intelligence Premium. Your access is now active.</p><p style="font-size:15px;line-height:1.6;margin:0 0 24px;">You now have the full benchmark picture — complete pillar breakdowns, year-on-year trends, and peer-segment comparisons so you can see exactly how your organisation compares.</p><a href="https://www.cbiq.ai/premium-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your Premium dashboard</a><p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ — Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p></div></div>`,
+    }
+  }
+
+  if (tier === "vendor") {
+    return {
+      subject: "Welcome to Vendor Intelligence Premium",
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;"><div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;"><span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span></div><div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;"><h1 style="font-size:22px;margin:0 0 16px;">Welcome to Vendor Intelligence</h1><p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for partnering with CBIQ. Your Vendor Intelligence Premium access is now active.</p><p style="font-size:15px;line-height:1.6;margin:0 0 24px;">You now have access to market demand intelligence, technology and AI maturity signals, and the white-space finder — the full view of where opportunity sits across the global mobility market.</p><a href="https://www.cbiq.ai/vendor-premium-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your Vendor dashboard</a><p style="font-size:14px;line-height:1.6;margin:24px 0 0;">Your partnership also includes <strong>5 sponsored Client Intelligence Passes</strong> to extend Premium access to your clients. Just reply to this email and we will help you set them up.</p><p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ — Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p></div></div>`,
+    }
+  }
+
+  return null
+}
+
+// Send the tier-specific welcome email for a completed checkout. Fully isolated
+// in try/catch so an email failure can never affect the webhook response or the
+// tier-granting logic. Only premium/vendor tiers receive an email.
+async function sendCheckoutWelcomeEmail(
+  supabase: ReturnType<typeof createAdminClient>,
+  session: Stripe.Checkout.Session
+) {
+  try {
+    const tier = session.metadata?.tier as string | undefined
+    const template = buildWelcomeEmail(tier)
+    if (!template) return
+
+    // Resolve recipient: checkout email first, then fall back to the membership record.
+    let recipient = session.customer_details?.email ?? session.customer_email ?? undefined
+    if (!recipient) {
+      const fallbackUserId = session.client_reference_id || (session.metadata?.user_id as string | undefined)
+      if (fallbackUserId) {
+        const { data: membership } = await supabase
+          .from("memberships")
+          .select("email")
+          .eq("user_id", fallbackUserId)
+          .maybeSingle()
+        recipient = (membership?.email as string | undefined) ?? undefined
+      }
+    }
+
+    if (!recipient) {
+      console.log("[StripeWebhook] No email found for welcome email, skipping send")
+      return
+    }
+
+    await sendEmail({ to: recipient, subject: template.subject, html: template.html })
+  } catch (emailError) {
+    const message = emailError instanceof Error ? emailError.message : "Unknown error"
+    console.log("[StripeWebhook] Welcome email send error (ignored):", message)
+  }
 }
 
 // Sync subscription data to memberships table
@@ -155,6 +214,10 @@ export async function POST(request: NextRequest) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId)
           await syncSubscription(supabase, customerId, subscription, fallbackUserId)
         }
+
+        // After the paid tier is written, send the matching welcome email.
+        // Isolated so it can never affect the webhook response or tier writes.
+        await sendCheckoutWelcomeEmail(supabase, session)
         break
       }
 
