@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
+import { sendEmail } from "@/lib/email"
 
 // Create admin client with service role key (server-side only)
 function createAdminClient() {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Try to find and update the membership row
     // First try by uid, then fall back to email
-    let query = supabase.from("memberships").select("user_id, tier")
+    let query = supabase.from("memberships").select("user_id, tier, email")
 
     if (uid) {
       query = query.eq("user_id", uid)
@@ -85,6 +86,38 @@ export async function POST(request: NextRequest) {
       "tier change:",
       membership.tier === "free" ? "free -> contributor" : "unchanged"
     )
+
+    // Send the contributor welcome email ONLY when an actual free -> contributor
+    // upgrade just occurred. Never sent for already-contributor/premium/vendor members.
+    // Email failures can never break the webhook response (helper returns instead of throwing).
+    if (membership.tier === "free") {
+      const recipientEmail = email ?? (membership.email as string | undefined)
+      if (recipientEmail) {
+        try {
+          await sendEmail({
+            to: recipientEmail,
+            subject: "Your CBIQ Contributor access is live",
+            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;">
+    <div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;">
+      <span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span>
+    </div>
+    <div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
+      <h1 style="font-size:22px;margin:0 0 16px;">Your Contributor access is live</h1>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for completing the Global Workforce Deployment survey. Your responses help power the benchmarks that make CBIQ valuable to the whole community.</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Your Intelligence Contributor access is now active. You can explore your dashboard and see how your organisation compares.</p>
+      <a href="https://www.cbiq.ai/dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your dashboard</a>
+      <p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ — Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p>
+    </div>
+  </div>`,
+          })
+        } catch (emailError) {
+          // Extra safety net — the helper already swallows errors, but never let email break the webhook.
+          console.log("[Typeform Webhook] Contributor email send error:", emailError)
+        }
+      } else {
+        console.log("[Typeform Webhook] No email available for contributor welcome, skipping send")
+      }
+    }
 
     return NextResponse.json({ ok: true, message: "Membership updated" }, { status: 200 })
   } catch (error) {
