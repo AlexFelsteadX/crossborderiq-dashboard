@@ -36,23 +36,33 @@ interface YoYRow {
   sort_order: number
 }
 
-interface QuestionRow {
+// Market-wide commercial breakdown rows (current 2026 wave). pct is 0–100.
+interface CommercialCurrentRow {
   vendor_pillar: string
-  report_name: string
-  source_year: number
   q_code: string
   question_label: string
   answer_option: string
   pct: number
   base_n: number
-  is_reportable: boolean
+}
+
+// Market-wide commercial breakdown rows from earlier one-off GME studies.
+interface CommercialEarlierRow {
+  study: string
+  source_year: number
+  vendor_pillar: string
+  q_code: string
+  question_label: string
+  answer_option: string
+  pct: number
+  base_n: number
 }
 
 interface GroupedQuestion {
   qCode: string
   questionLabel: string
-  sourceYear: number
-  reportName: string
+  vendorPillar: string
+  baseN: number
   answers: { answer_option: string; pct: number }[]
 }
 
@@ -112,24 +122,35 @@ interface WhitespaceRow {
 
 function QuestionCard({ 
   questionLabel,
-  sourceYear,
-  reportName,
-  answers
+  caption,
+  baseN,
+  answers,
+  subtag,
 }: { 
   questionLabel: string
-  sourceYear: number
-  reportName: string
+  caption: string
+  baseN: number
   answers: { answer_option: string; pct: number }[]
+  subtag?: string
 }) {
   const sortedAnswers = [...answers].sort((a, b) => b.pct - a.pct)
+  const smallSample = baseN > 0 && baseN < 30
   
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-      <div className="mb-3">
+      <div className="mb-3 flex items-start justify-between gap-2">
         <p className="text-sm text-slate-200">{questionLabel}</p>
+        {subtag && (
+          <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+            {subtag}
+          </span>
+        )}
       </div>
-      <p className="text-[10px] text-slate-500 mb-3">{reportName} | % of respondents</p>
-      <div className="space-y-2">
+      <p className="text-[10px] text-slate-500 mb-1">{caption} · n={baseN}</p>
+      {smallSample && (
+        <p className="text-[10px] text-amber-400/80 mb-2">small sample (n={baseN})</p>
+      )}
+      <div className="space-y-2 mt-2">
         {sortedAnswers.map((answer, idx) => {
           // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
           const pctDisplay = Math.round(answer.pct)
@@ -505,7 +526,8 @@ export function VendorPremiumDashboardClient() {
   // State
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
   const [yoyData, setYoyData] = useState<YoYRow[]>([])
-  const [questionData, setQuestionData] = useState<QuestionRow[]>([])
+  const [currentCommercial, setCurrentCommercial] = useState<CommercialCurrentRow[]>([])
+  const [earlierCommercial, setEarlierCommercial] = useState<CommercialEarlierRow[]>([])
   const [serviceDemand, setServiceDemand] = useState<ServiceDemandRow[]>([])
   const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
   const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
@@ -514,6 +536,8 @@ export function VendorPremiumDashboardClient() {
   
   // Accordion state for commercial breakdowns
   const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set())
+  // Accordion state for the "Earlier research" studies (collapsed by default)
+  const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
   
   const togglePillar = (pillarName: string) => {
     setExpandedPillars(prev => {
@@ -522,6 +546,18 @@ export function VendorPremiumDashboardClient() {
         next.delete(pillarName)
       } else {
         next.add(pillarName)
+      }
+      return next
+    })
+  }
+
+  const toggleStudy = (studyKey: string) => {
+    setExpandedStudies(prev => {
+      const next = new Set(prev)
+      if (next.has(studyKey)) {
+        next.delete(studyKey)
+      } else {
+        next.add(studyKey)
       }
       return next
     })
@@ -702,22 +738,6 @@ export function VendorPremiumDashboardClient() {
           setDemandPipeline(sorted)
         }
         
-        // Call f_commercial_breakdown RPC with all three filters
-        const { data: qRows, error: qError } = await supabase
-          .rpc('f_commercial_breakdown', {
-            p_region_group: selectedRegion,
-            p_industry_group: selectedIndustry,
-            p_size_band: selectedSize
-          })
-        
-        if (qError) {
-          console.log("[v0] Commercial breakdown RPC error:", qError)
-        } else {
-          // Filter to reportable rows only
-          const reportableRows = (qRows || []).filter((r: QuestionRow) => r.is_reportable)
-          setQuestionData(reportableRows)
-        }
-        
       } catch (err) {
         console.log("[v0] Filtered fetch error:", err)
         setError("Failed to load data")
@@ -728,6 +748,40 @@ export function VendorPremiumDashboardClient() {
     
     fetchFilteredData()
   }, [supabase, selectedRegion, selectedIndustry, selectedSize])
+
+  // ---------------------------------------------------------------------------
+  // FETCH MARKET-WIDE COMMERCIAL BREAKDOWNS (current 2026 wave + earlier studies)
+  // Both RPCs take no parameters — fetch once on mount.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchCommercial() {
+      const [currentRes, earlierRes] = await Promise.all([
+        supabase.rpc("get_vendor_commercial_current"),
+        supabase.rpc("get_vendor_commercial_earlier"),
+      ])
+      if (cancelled) return
+
+      if (currentRes.error) {
+        console.log("[v0] get_vendor_commercial_current RPC error:", currentRes.error)
+        setCurrentCommercial([])
+      } else {
+        setCurrentCommercial((currentRes.data as CommercialCurrentRow[]) ?? [])
+      }
+
+      if (earlierRes.error) {
+        console.log("[v0] get_vendor_commercial_earlier RPC error:", earlierRes.error)
+        setEarlierCommercial([])
+      } else {
+        setEarlierCommercial((earlierRes.data as CommercialEarlierRow[]) ?? [])
+      }
+    }
+    fetchCommercial()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   // ---------------------------------------------------------------------------
   // FETCH SEGMENT SIZE + FILTER-AWARE SERVICE DEMAND (all seven filters)
@@ -826,24 +880,24 @@ export function VendorPremiumDashboardClient() {
   }, [vendorBreakdown])
 
   // ---------------------------------------------------------------------------
-  // GROUP QUESTIONS BY VENDOR_PILLAR DYNAMICALLY (with year/report badges)
+  // GROUP CURRENT-WAVE QUESTIONS BY VENDOR_PILLAR (market-wide, 2026)
   // ---------------------------------------------------------------------------
   
   const groupedByPillar = useMemo(() => {
-    if (!questionData.length) return []
+    if (!currentCommercial.length) return [] as [string, GroupedQuestion[]][]
     
-    // Group questions by q_code + source_year (to preserve year badges)
+    // Group rows by q_code into question cards
     const questionMap = new Map<string, GroupedQuestion>()
     
-    for (const row of questionData) {
-      const key = `${row.q_code}-${row.source_year}`
+    for (const row of currentCommercial) {
+      const key = row.q_code
       
       if (!questionMap.has(key)) {
         questionMap.set(key, {
           qCode: row.q_code,
           questionLabel: row.question_label,
-          sourceYear: row.source_year,
-          reportName: row.report_name,
+          vendorPillar: row.vendor_pillar || "Other",
+          baseN: row.base_n,
           answers: []
         })
       }
@@ -854,39 +908,71 @@ export function VendorPremiumDashboardClient() {
       })
     }
     
-    // Now group by vendor_pillar
+    // Now group questions by vendor_pillar
     const pillarMap = new Map<string, GroupedQuestion[]>()
     
-    for (const row of questionData) {
-      const key = `${row.q_code}-${row.source_year}`
-      const pillar = row.vendor_pillar || "Other"
-      
+    for (const question of questionMap.values()) {
+      const pillar = question.vendorPillar || "Other"
       if (!pillarMap.has(pillar)) {
         pillarMap.set(pillar, [])
       }
-      
-      const question = questionMap.get(key)
-      if (question && !pillarMap.get(pillar)!.some(q => q.qCode === question.qCode && q.sourceYear === question.sourceYear)) {
-        pillarMap.get(pillar)!.push(question)
-      }
-    }
-    
-    // Sort questions within each pillar: newest year first
-    for (const [, questions] of pillarMap) {
-      questions.sort((a, b) => b.sourceYear - a.sourceYear)
+      pillarMap.get(pillar)!.push(question)
     }
     
     // Sort pillars by question count descending, but pin "Sustainable Service Demand" last
     return [...pillarMap.entries()]
       .sort((a, b) => {
-        // Pin "Sustainable Service Demand" to the bottom
         if (a[0] === "Sustainable Service Demand") return 1
         if (b[0] === "Sustainable Service Demand") return -1
-        // Otherwise sort by question count descending
         return b[1].length - a[1].length
       })
     
-  }, [questionData])
+  }, [currentCommercial])
+
+  // ---------------------------------------------------------------------------
+  // GROUP EARLIER STUDIES BY STUDY (study + source_year), then by q_code
+  // ---------------------------------------------------------------------------
+
+  const groupedByStudy = useMemo(() => {
+    if (!earlierCommercial.length)
+      return [] as { studyKey: string; study: string; sourceYear: number; questions: GroupedQuestion[] }[]
+
+    // study key -> { meta, q_code -> GroupedQuestion }
+    const studyMap = new Map<
+      string,
+      { study: string; sourceYear: number; questions: Map<string, GroupedQuestion> }
+    >()
+
+    for (const row of earlierCommercial) {
+      const studyKey = `${row.study}-${row.source_year}`
+      if (!studyMap.has(studyKey)) {
+        studyMap.set(studyKey, { study: row.study, sourceYear: row.source_year, questions: new Map() })
+      }
+      const entry = studyMap.get(studyKey)!
+      if (!entry.questions.has(row.q_code)) {
+        entry.questions.set(row.q_code, {
+          qCode: row.q_code,
+          questionLabel: row.question_label,
+          vendorPillar: row.vendor_pillar || "Other",
+          baseN: row.base_n,
+          answers: [],
+        })
+      }
+      entry.questions.get(row.q_code)!.answers.push({
+        answer_option: row.answer_option,
+        pct: row.pct,
+      })
+    }
+
+    return [...studyMap.entries()]
+      .map(([studyKey, entry]) => ({
+        studyKey,
+        study: entry.study,
+        sourceYear: entry.sourceYear,
+        questions: [...entry.questions.values()],
+      }))
+      .sort((a, b) => b.sourceYear - a.sourceYear)
+  }, [earlierCommercial])
   
   // Expand first pillar by default when data loads (only runs once when groupedByPillar first populates)
   const [hasInitializedAccordion, setHasInitializedAccordion] = useState(false)
@@ -1391,7 +1477,7 @@ export function VendorPremiumDashboardClient() {
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
                 <p className="text-sm text-slate-400">
-                  Questions grouped by vendor pillar. Based on all responses across the 2022–2026 waves.
+                  Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
                 </p>
               </div>
               
@@ -1453,8 +1539,8 @@ export function VendorPremiumDashboardClient() {
                                   <QuestionCard
                                     key={`${pillarName}-${idx}`}
                                     questionLabel={q.questionLabel}
-                                    sourceYear={q.sourceYear}
-                                    reportName={q.reportName}
+                                    caption="Global Workforce Deployment · % of respondents"
+                                    baseN={q.baseN}
                                     answers={q.answers}
                                   />
                                 ))}
@@ -1468,6 +1554,71 @@ export function VendorPremiumDashboardClient() {
                 </div>
               )}
             </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 3b: EARLIER RESEARCH (one-off GME studies, 2022–2023)        */}
+            {/* =================================================================== */}
+
+            {groupedByStudy.length > 0 && (
+              <div className="space-y-4">
+                <div className="mb-1">
+                  <h2 className="text-lg font-semibold text-slate-300 mb-1">Earlier research</h2>
+                  <p className="text-sm text-slate-500">
+                    From earlier one-off GME studies (2022–2023). Shown for context — not part of the current wave.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {groupedByStudy.map(({ studyKey, study, sourceYear, questions }) => {
+                    const isExpanded = expandedStudies.has(studyKey)
+                    return (
+                      <div
+                        key={studyKey}
+                        className="rounded-2xl border border-slate-700/40 bg-brand-navy-2/40 overflow-hidden"
+                      >
+                        {/* Study Accordion Header (collapsed by default) */}
+                        <button
+                          onClick={() => toggleStudy(studyKey)}
+                          className="w-full px-6 py-4 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-sm font-medium text-slate-300">
+                              {study} · {sourceYear}
+                            </h3>
+                            <span className="text-xs text-slate-500">({questions.length} questions)</span>
+                          </div>
+                          <ChevronDown
+                            className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+
+                        {/* Study Accordion Content */}
+                        <div
+                          className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                            isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                          }`}
+                        >
+                          <div className="px-6 pb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {questions.map((q, idx) => (
+                                <QuestionCard
+                                  key={`${studyKey}-${idx}`}
+                                  questionLabel={q.questionLabel}
+                                  caption={study}
+                                  baseN={q.baseN}
+                                  answers={q.answers}
+                                  subtag={q.vendorPillar}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
