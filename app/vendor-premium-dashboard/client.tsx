@@ -134,7 +134,6 @@ function QuestionCard({
   subtag?: string
 }) {
   const sortedAnswers = [...answers].sort((a, b) => b.pct - a.pct)
-  const smallSample = baseN > 0 && baseN < 30
   
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
@@ -146,10 +145,7 @@ function QuestionCard({
           </span>
         )}
       </div>
-      <p className="text-[10px] text-slate-500 mb-1">{caption} · n={baseN}</p>
-      {smallSample && (
-        <p className="text-[10px] text-amber-400/80 mb-2">small sample (n={baseN})</p>
-      )}
+      <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
       <div className="space-y-2 mt-2">
         {sortedAnswers.map((answer, idx) => {
           // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
@@ -309,13 +305,8 @@ function DemandColumn({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] text-slate-500">
-          {suppressed ? "Market-wide figures" : `Segment base n=${segBaseN}`}
+          {suppressed ? "Market-wide figures" : "Segment figures"}
         </span>
-        {confidence === "limited" && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-            Limited sample (n={segBaseN})
-          </span>
-        )}
       </div>
 
       {loading ? (
@@ -439,7 +430,6 @@ function WhitespacePanel({
           <div className="space-y-4">
             {rows.map((row, idx) => {
               const saturated = row.tag === "Saturated"
-              const lowConfidence = row.confidence === "limited" || row.confidence === "suppressed"
               return (
                 <div
                   key={`${row.category}-${idx}`}
@@ -457,11 +447,6 @@ function WhitespacePanel({
                       </span>
                       {row.is_emerging && (
                         <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
-                      )}
-                      {lowConfidence && !row.is_emerging && (
-                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-                          Limited sample (n={row.have_base_n})
-                        </span>
                       )}
                     </div>
                     {row.tag === "Opening" && row.gap !== null && (
@@ -1336,7 +1321,7 @@ export function VendorPremiumDashboardClient() {
                             {row.is_reportable ? (
                               <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
                             ) : (
-                              <span className="text-xs text-slate-500 italic shrink-0">Insufficient sample</span>
+                              <span className="text-xs text-slate-500 italic shrink-0">—</span>
                             )}
                           </div>
                           {row.is_reportable && (
@@ -1412,7 +1397,7 @@ export function VendorPremiumDashboardClient() {
                       {row.is_reportable ? (
                         <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
                       ) : (
-                        <p className="text-sm text-slate-400 italic">Insufficient sample in this segment to report</p>
+                        <p className="text-sm text-slate-400 italic">—</p>
                       )}
                     </div>
                   ))}
@@ -1484,7 +1469,7 @@ export function VendorPremiumDashboardClient() {
               {groupedByPillar.length === 0 ? (
                 <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
                   <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">Insufficient sample in this segment to report.</p>
+                  <p className="text-slate-400">No breakdowns to report for this segment.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
