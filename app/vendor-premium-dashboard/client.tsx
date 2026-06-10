@@ -362,7 +362,15 @@ const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
   Saturated: "border-slate-600/50 bg-slate-700/30 text-slate-400",
 }
 
-function WhitespacePanel({ rows, loading }: { rows: WhitespaceRow[]; loading: boolean }) {
+function WhitespacePanel({
+  rows,
+  loading,
+  error,
+}: {
+  rows: WhitespaceRow[]
+  loading: boolean
+  error: string | null
+}) {
   const takeaway = rows
     .filter((r) => r.tag === "Emerging" || r.tag === "Opening")
     .slice(0, 3)
@@ -386,6 +394,12 @@ function WhitespacePanel({ rows, loading }: { rows: WhitespaceRow[]; loading: bo
         <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
           <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
           <p className="text-sm text-slate-400">Finding openings…</p>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-center">
+          <Database className="h-6 w-6 text-amber-400/70 mx-auto mb-2" />
+          <p className="text-sm text-amber-300">Couldn&apos;t load white-space data.</p>
+          <p className="text-xs text-slate-500 mt-1">{error}</p>
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
@@ -530,6 +544,7 @@ export function VendorPremiumDashboardClient() {
   const [segmentSize, setSegmentSize] = useState<number | null>(null)
   const [vendorBreakdown, setVendorBreakdown] = useState<VendorBreakdownRow[]>([])
   const [whitespace, setWhitespace] = useState<WhitespaceRow[]>([])
+  const [whitespaceError, setWhitespaceError] = useState<string | null>(null)
   const [demandLoading, setDemandLoading] = useState(true)
 
   const resetFilters = () => {
@@ -762,9 +777,11 @@ export function VendorPremiumDashboardClient() {
       }
 
       if (whitespaceRes.error) {
-        console.log("[v0] Vendor whitespace RPC error:", whitespaceRes.error)
+        console.error("[v0] get_vendor_whitespace RPC error:", whitespaceRes.error, "params:", params)
+        setWhitespaceError(whitespaceRes.error.message ?? "Failed to load white-space data")
         setWhitespace([])
       } else {
+        setWhitespaceError(null)
         setWhitespace((whitespaceRes.data as WhitespaceRow[]) ?? [])
       }
       setDemandLoading(false)
@@ -1184,7 +1201,7 @@ export function VendorPremiumDashboardClient() {
             {/* WHERE THE WHITE SPACE IS (headline opportunity answer)              */}
             {/* =================================================================== */}
 
-            <WhitespacePanel rows={whitespace} loading={demandLoading} />
+            <WhitespacePanel rows={whitespace} loading={demandLoading} error={whitespaceError} />
 
             {/* =================================================================== */}
             {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
