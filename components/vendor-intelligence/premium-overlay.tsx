@@ -7,7 +7,7 @@ const premiumFeatures = [
   "Transformation Activity Index",
   "Market Demand Heatmaps",
   "Opportunity Intelligence",
-  "Quarterly Vendor Briefings",
+  "Bi-Annual Executive Summary",
 ]
 
 export function PremiumVendorOverlay() {

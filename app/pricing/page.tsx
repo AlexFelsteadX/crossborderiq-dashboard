@@ -476,7 +476,7 @@ export default function PricingPage() {
                     "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
                     "Segment all intelligence by Region, Industry and Company size",
                     "Full Global Workforce Intelligence dashboard included",
-                    "Quarterly Vendor Briefings",
+                    "Bi-Annual Executive Summary",
                     "Full report library — including members-only reports",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -543,7 +543,7 @@ export default function PricingPage() {
                     "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
                     "Segment all intelligence by Region, Industry and Company size",
                     "Full Global Workforce Intelligence dashboard included",
-                    "Quarterly Vendor Briefings",
+                    "Bi-Annual Executive Summary",
                     "Full report library — including members-only reports",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
