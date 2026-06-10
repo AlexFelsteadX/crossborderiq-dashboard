@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       <h1 style="font-size:22px;margin:0 0 16px;">Your Contributor access is live</h1>
       <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for completing the Global Workforce Deployment survey. Your responses help power the benchmarks that make CBIQ valuable to the whole community.</p>
       <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Your Intelligence Contributor access is now active. You can explore your dashboard and see how your organisation compares.</p>
-      <a href="https://www.cbiq.ai/dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your dashboard</a>
+      <a href="https://www.cbiq.ai/contributor-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your dashboard</a>
       <p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ — Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p>
     </div>
   </div>`,
