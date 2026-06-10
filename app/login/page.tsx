@@ -145,21 +145,26 @@ function LoginForm() {
             >
               Sign in
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode("signup")
-                setError(null)
-                setSuccess(null)
-              }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                mode === "signup"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-slate-400 hover:text-slate-100"
-              }`}
-            >
-              Create account
-            </button>
+            {mode === "signin" ? (
+              <Link
+                href="/pricing"
+                className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
+              >
+                Create account
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("signup")
+                  setError(null)
+                  setSuccess(null)
+                }}
+                className="flex-1 py-2 text-sm font-medium rounded-md transition-colors bg-primary text-primary-foreground"
+              >
+                Create account
+              </button>
+            )}
           </div>
 
           {/* Error from callback */}
