@@ -422,15 +422,11 @@ function WhitespacePanel({
               return (
                 <div
                   key={`${row.category}-${idx}`}
-                  className={`rounded-xl border p-4 transition-opacity ${
-                    saturated
-                      ? "border-slate-700/40 bg-brand-navy-2/30 opacity-60"
-                      : "border-primary/15 bg-brand-navy-2/60"
-                  }`}
+                  className="rounded-xl border border-primary/15 bg-brand-navy-2/60 p-4"
                 >
                   <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-medium ${saturated ? "text-slate-400" : "text-slate-100"}`}>
+                      <span className="text-sm font-medium text-slate-100">
                         {row.category}
                       </span>
                       <span
