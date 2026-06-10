@@ -91,6 +91,21 @@ interface VendorBreakdownRow {
   confidence: Confidence
 }
 
+// Ranked (best-first) white-space opportunity row from get_vendor_whitespace.
+type WhitespaceTag = "Opening" | "Emerging" | "Saturated"
+
+interface WhitespaceRow {
+  category: string
+  tag: WhitespaceTag
+  want_pct: number // already 0–100
+  have_pct: number | null // already 0–100, null for emerging
+  gap: number | null
+  is_emerging: boolean
+  have_base_n: number
+  want_base_n: number
+  confidence: Confidence
+}
+
 // =============================================================================
 // QUESTION CARD COMPONENT (styled to match homepage theme)
 // =============================================================================
@@ -338,6 +353,139 @@ function DemandColumn({
 }
 
 // =============================================================================
+// WHERE THE WHITE SPACE IS (ranked openings, best-first)
+// =============================================================================
+
+const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
+  Opening: "border-primary/40 bg-primary/10 text-primary",
+  Emerging: "border-sky-400/40 bg-sky-400/10 text-sky-300",
+  Saturated: "border-slate-600/50 bg-slate-700/30 text-slate-400",
+}
+
+function WhitespacePanel({ rows, loading }: { rows: WhitespaceRow[]; loading: boolean }) {
+  const takeaway = rows
+    .filter((r) => r.tag === "Emerging" || r.tag === "Opening")
+    .slice(0, 3)
+    .map((r) => r.category)
+    .join(", ")
+
+  return (
+    <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
+      </div>
+      <p className="text-sm text-slate-400 mb-1">
+        What the market wants vs what this segment already outsources — your biggest openings first.
+      </p>
+      <p className="text-xs text-slate-500 mb-5 italic">
+        Demand is market-wide; &apos;already outsources&apos; reflects your selected segment.
+      </p>
+
+      {loading ? (
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
+          <p className="text-sm text-slate-400">Finding openings…</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+          <p className="text-sm text-slate-400">No white-space data for this segment.</p>
+        </div>
+      ) : (
+        <>
+          {takeaway && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 mb-5">
+              <p className="text-sm text-slate-200">
+                <span className="font-semibold text-primary">Biggest openings:</span> {takeaway}.
+              </p>
+            </div>
+          )}
+          <div className="space-y-4">
+            {rows.map((row, idx) => {
+              const saturated = row.tag === "Saturated"
+              const lowConfidence = row.confidence === "limited" || row.confidence === "suppressed"
+              return (
+                <div
+                  key={`${row.category}-${idx}`}
+                  className={`rounded-xl border p-4 transition-opacity ${
+                    saturated
+                      ? "border-slate-700/40 bg-brand-navy-2/30 opacity-60"
+                      : "border-primary/15 bg-brand-navy-2/60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-sm font-medium ${saturated ? "text-slate-400" : "text-slate-100"}`}>
+                        {row.category}
+                      </span>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                      >
+                        {row.tag}
+                      </span>
+                      {row.is_emerging && (
+                        <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
+                      )}
+                      {lowConfidence && !row.is_emerging && (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+                          Limited sample (n={row.have_base_n})
+                        </span>
+                      )}
+                    </div>
+                    {row.tag === "Opening" && row.gap !== null && (
+                      <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt opening</span>
+                    )}
+                    {saturated && row.have_pct !== null && (
+                      <span className="text-xs text-slate-500 italic shrink-0">
+                        Already outsourced by {row.have_pct}%
+                      </span>
+                    )}
+                    {row.is_emerging && (
+                      <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}% opportunity</span>
+                    )}
+                  </div>
+
+                  {/* Market wants bar */}
+                  <div className="mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] text-slate-400">Market wants</span>
+                      <span className="text-[11px] font-medium text-primary">{row.want_pct}%</span>
+                    </div>
+                    <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(row.want_pct, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Already outsources bar (omitted for emerging rows) */}
+                  {!row.is_emerging && row.have_pct !== null && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] text-slate-400">Already outsources</span>
+                        <span className="text-[11px] font-medium text-slate-400">{row.have_pct}%</span>
+                      </div>
+                      <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-slate-500/70 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(row.have_pct, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
 // MAIN CLIENT COMPONENT
 // =============================================================================
 
@@ -381,6 +529,7 @@ export function VendorPremiumDashboardClient() {
   // Live segment size + filter-aware service-demand breakdown.
   const [segmentSize, setSegmentSize] = useState<number | null>(null)
   const [vendorBreakdown, setVendorBreakdown] = useState<VendorBreakdownRow[]>([])
+  const [whitespace, setWhitespace] = useState<WhitespaceRow[]>([])
   const [demandLoading, setDemandLoading] = useState(true)
 
   const resetFilters = () => {
@@ -589,9 +738,10 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes] = await Promise.all([
+      const [sizeRes, breakdownRes, whitespaceRes] = await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
         supabase.rpc("get_vendor_breakdown", params),
+        supabase.rpc("get_vendor_whitespace", params),
       ])
       if (cancelled) return
 
@@ -609,6 +759,13 @@ export function VendorPremiumDashboardClient() {
         setVendorBreakdown([])
       } else {
         setVendorBreakdown((breakdownRes.data as VendorBreakdownRow[]) ?? [])
+      }
+
+      if (whitespaceRes.error) {
+        console.log("[v0] Vendor whitespace RPC error:", whitespaceRes.error)
+        setWhitespace([])
+      } else {
+        setWhitespace((whitespaceRes.data as WhitespaceRow[]) ?? [])
       }
       setDemandLoading(false)
     }
@@ -1022,6 +1179,12 @@ export function VendorPremiumDashboardClient() {
                 </p>
               </div>
             </div>
+
+            {/* =================================================================== */}
+            {/* WHERE THE WHITE SPACE IS (headline opportunity answer)              */}
+            {/* =================================================================== */}
+
+            <WhitespacePanel rows={whitespace} loading={demandLoading} />
 
             {/* =================================================================== */}
             {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
