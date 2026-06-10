@@ -1,6 +1,6 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, TrendingUp, BarChart3, Sparkles, Filter, Building2, Globe, Users, ArrowRight, ArrowDown } from "lucide-react"
+import { Lock, TrendingUp, BarChart3, Sparkles, Filter, Building2, Globe, Users, ArrowRight, ArrowDown, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
@@ -356,6 +356,55 @@ export default async function VendorIntelligencePage() {
               </div>
             </div>
           </Link>
+        </div>
+
+        {/* Client Intelligence Passes - Sponsor intelligence for your clients */}
+        <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-8 md:p-10 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 lg:gap-8 items-start">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+              <Gift className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 mb-4">
+                <Sparkles className="h-3.5 w-3.5" />
+                Client Intelligence Passes
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-4 text-balance">
+                Sponsor intelligence for your clients
+              </h2>
+              <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl">
+                As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
+                Premium access for your corporate clients — extending independent, benchmarked workforce
+                intelligence to the organisations you work with most closely. It&apos;s a natural value-add to your
+                client relationships, a differentiator in competitive processes, and a way to keep your clients&apos;
+                mobility strategy visible to you. Because every client you bring onto the platform can contribute
+                to the Global Workforce Deployment survey, each sponsorship makes the benchmarks you rely on
+                sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
+                opens the door.
+              </p>
+
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
+                <div className="rounded-xl border border-primary/20 bg-[#1a3344]/30 p-4">
+                  <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Premium</p>
+                  <p className="text-xs text-slate-400">Includes 5 sponsored Client Intelligence Passes</p>
+                </div>
+                <div className="rounded-xl border border-primary/30 bg-[#1a3344]/30 p-4">
+                  <p className="text-sm font-semibold text-foreground mb-1">Strategic Partner</p>
+                  <p className="text-xs text-slate-400">Includes 10 sponsored Client Intelligence Passes</p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <a
+                  href="mailto:crossborderiq@gemevents.co"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
+                >
+                  <span>Additional passes available — contact us</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Unlock CTA - Matching homepage styling */}

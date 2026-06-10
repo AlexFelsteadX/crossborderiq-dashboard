@@ -477,6 +477,7 @@ export default function PricingPage() {
                     "Segment all intelligence by Region, Industry and Company size",
                     "Full Global Workforce Intelligence dashboard included",
                     "Bi-Annual Executive Summary",
+                    "Includes 5 sponsored Client Intelligence Passes",
                     "Full report library — including members-only reports",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -544,6 +545,7 @@ export default function PricingPage() {
                     "Segment all intelligence by Region, Industry and Company size",
                     "Full Global Workforce Intelligence dashboard included",
                     "Bi-Annual Executive Summary",
+                    "Includes 10 sponsored Client Intelligence Passes",
                     "Full report library — including members-only reports",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
