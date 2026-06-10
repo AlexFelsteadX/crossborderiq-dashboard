@@ -1490,7 +1490,7 @@ export function VendorPremiumDashboardClient() {
                 
                 <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
                   <MessageSquare className="h-8 w-8 text-primary mb-3" />
-                  <h3 className="text-sm font-medium text-slate-200 mb-1">Quarterly Vendor Briefing</h3>
+                  <h3 className="text-sm font-medium text-slate-200 mb-1">Bi-Annual Executive Summary</h3>
                   <p className="text-xs text-slate-400 mb-3">Live market intelligence sessions for vendors</p>
                   <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-400" disabled>
                     Coming Q3 2026

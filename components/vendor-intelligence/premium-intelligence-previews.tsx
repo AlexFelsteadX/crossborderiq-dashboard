@@ -152,9 +152,9 @@ export function PremiumIntelligencePreviews() {
           </div>
         </PreviewCard>
 
-        {/* 5. Quarterly Vendor Briefings */}
+        {/* 5. Bi-Annual Executive Summary */}
         <PreviewCard 
-          title="Quarterly Vendor Briefings"
+          title="Bi-Annual Executive Summary"
           footer="Quarterly executive intelligence summaries"
         >
           <div className="space-y-1">
@@ -198,7 +198,7 @@ export function PremiumIntelligencePreviews() {
               "Transformation Activity Index™",
               "Market Demand Intelligence™",
               "Vendor Opportunity Intelligence™",
-              "Quarterly Vendor Briefings™",
+              "Bi-Annual Executive Summary™",
               "Regional Demand Analysis",
             ].map((feature, index) => (
               <div key={index} className="flex items-center gap-2">
