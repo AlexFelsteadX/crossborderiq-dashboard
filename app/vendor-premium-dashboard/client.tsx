@@ -1024,28 +1024,20 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* HERO PANEL: ESTABLISHED vs EMERGING DEMAND */}
+            {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
             {/* =================================================================== */}
             
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Service Demand Intelligence</h2>
+                <h2 className="text-xl font-semibold text-slate-100">Where demand is heading</h2>
               </div>
               <p className="text-sm text-slate-400 mb-6">
-                Comparing current outsourcing patterns with emerging interest signals for your selected segment.
+                Forward-looking signals — what this segment is investing in next, alongside the services buyers are actively seeking.
               </p>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <DemandColumn
-                  title="Established demand"
-                  subtitle="What they outsource today"
-                  items={establishedDemand.items}
-                  confidence={establishedDemand.confidence}
-                  segBaseN={establishedDemand.segBaseN}
-                  barColor="var(--brand-teal)"
-                  loading={demandLoading}
-                />
+                {/* Co-headline A: Emerging demand (E13, segment-aware) */}
                 <DemandColumn
                   title="Emerging demand"
                   subtitle="Investment focus, next 12–18 months"
@@ -1055,58 +1047,78 @@ export function VendorPremiumDashboardClient() {
                   barColor="#2dd4bf"
                   loading={demandLoading}
                 />
+
+                {/* Co-headline B: Stated service interest (SI1, market-wide — not filtered) */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-slate-100">Stated service interest</h3>
+                      <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                        Market-wide
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">Services GME event audiences are actively seeking</p>
+                  </div>
+
+                  {serviceInterest.length === 0 ? (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+                      <p className="text-sm text-slate-400">No stated interest data available.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {serviceInterest.map((row, idx) => (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
+                            {row.is_reportable ? (
+                              <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
+                            ) : (
+                              <span className="text-xs text-slate-500 italic shrink-0">Insufficient sample</span>
+                            )}
+                          </div>
+                          {row.is_reportable && (
+                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
+                                style={{ width: `${row.pct}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <p className="text-xs text-slate-500 mt-6 italic">
-                Teal bars = your selected segment · marker = market-wide benchmark.
+                Emerging demand: teal bars = your selected segment · marker = market-wide benchmark. Stated interest is market-wide.
               </p>
             </div>
 
             {/* =================================================================== */}
-            {/* PANEL: STATED SERVICE INTEREST (MARKET-WIDE — unaffected by filters) */}
+            {/* CONTEXT (demoted): CURRENT OUTSOURCING BASELINE (Q49, segment-aware) */}
             {/* =================================================================== */}
             
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/50 p-5 lg:p-6 opacity-90">
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Stated service interest</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
+                <Database className="h-4 w-4 text-slate-500" />
+                <h3 className="text-base font-medium text-slate-300">Current outsourcing baseline</h3>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Services GME event audiences are actively seeking.
+              <p className="text-xs text-slate-500 mb-5">
+                What this segment already outsources — the baseline for spotting white space.
               </p>
 
-              {serviceInterest.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-                  <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400">No stated interest data available.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {serviceInterest.map((row, idx) => (
-                    <div key={idx}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
-                        {row.is_reportable ? (
-                          <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
-                        ) : (
-                          <span className="text-xs text-slate-500 italic shrink-0">Insufficient sample</span>
-                        )}
-                      </div>
-                      {row.is_reportable && (
-                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
-                            style={{ width: `${row.pct}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <DemandColumn
+                title="Established demand"
+                subtitle="What they outsource today"
+                items={establishedDemand.items}
+                confidence={establishedDemand.confidence}
+                segBaseN={establishedDemand.segBaseN}
+                barColor="var(--brand-teal)"
+                loading={demandLoading}
+              />
             </div>
 
             {/* =================================================================== */}
