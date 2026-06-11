@@ -260,7 +260,7 @@ function LoginForm() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-200 mb-1.5">
-                Password
+                {mode === "signup" ? "Create password" : "Password"}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
