@@ -97,18 +97,7 @@ export async function POST(request: NextRequest) {
           await sendEmail({
             to: recipientEmail,
             subject: "Your CBIQ Contributor access is live",
-            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;">
-    <div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;">
-      <span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span>
-    </div>
-    <div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
-      <h1 style="font-size:22px;margin:0 0 16px;">Your Contributor access is live</h1>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for completing the Global Workforce Deployment survey. Your responses help power the benchmarks that make CBIQ valuable to the whole community.</p>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Your Intelligence Contributor access is now active. You can explore your dashboard and see how your organisation compares.</p>
-      <a href="https://www.cbiq.ai/contributor-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your dashboard</a>
-      <p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ — Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p>
-    </div>
-  </div>`,
+            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background-color:#ffffff;"><div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;"><img src="https://www.cbiq.ai/cbiq-lockup.png" alt="CBIQ" height="32" style="display:block;height:32px;width:auto;border:0;" /></div><div style="padding:32px;color:#0a1628;"><h1 style="font-size:22px;margin:0 0 16px;">Your Contributor access is live</h1><p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for completing the Global Workforce Deployment survey. Your responses help power the benchmarks that make CBIQ valuable to the whole community.</p><p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Your Intelligence Contributor access is now active. You can explore your dashboard and see how your organisation compares.</p><a href="https://www.cbiq.ai/contributor-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your dashboard</a></div><div style="background-color:#0a1628;padding:20px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8;margin:0 0 8px;">Powered by</p><img src="https://www.cbiq.ai/images/GME_White_transparent.png" alt="Global Mobility Executive" height="24" style="display:inline-block;height:24px;width:auto;border:0;" /></div></div>`,
           })
         } catch (emailError) {
           // Extra safety net — the helper already swallows errors, but never let email break the webhook.
