@@ -204,46 +204,8 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-12 max-w-6xl mx-auto">
-              {/* Card 1: Free Dashboard */}
-              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-slate-100 mb-1">Free Dashboard</h3>
-                  <p className="text-xs text-slate-400 mb-4">Executive snapshot of the global workforce industry.</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-slate-100">FREE</span>
-                  </div>
-                </div>
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "Strategic Mobility Index™",
-                    "Industry Snapshot",
-                    "AI Adoption Snapshot",
-                    "Future of Mobility Snapshot",
-                    "Limited Benchmark Insights",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
-                <div className="mt-auto">
-                  <Button variant="outline" className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
-                    <Link href="/workforce-intelligence">View the free dashboard</Link>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Card 2: Premium - 14 Days Free via Survey */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch mb-12 max-w-4xl mx-auto">
+              {/* Card 1: Premium - 14 Days Free via Survey */}
               <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
