@@ -146,12 +146,26 @@ function LoginForm() {
               Sign in
             </button>
             {mode === "signin" ? (
-              <Link
-                href="/pricing"
-                className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
-              >
-                Create account
-              </Link>
+              nextUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup")
+                    setError(null)
+                    setSuccess(null)
+                  }}
+                  className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
+                >
+                  Create account
+                </button>
+              ) : (
+                <Link
+                  href="/pricing"
+                  className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
+                >
+                  Create account
+                </Link>
+              )
             ) : (
               <button
                 type="button"
