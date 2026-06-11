@@ -271,7 +271,7 @@ export default async function WorkforceIntelligencePage() {
           </Link>
 
           {/* Pillar Deep-Dives */}
-          <Link href="/contribute" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
+          <Link href="/pricing" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
             <div className="absolute top-4 right-4 z-20">
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/40">
                 <Users className="h-3 w-3" />
@@ -410,7 +410,7 @@ export default async function WorkforceIntelligencePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="bg-primary hover:bg-primary/90 font-semibold px-8 h-12">
-              <Link href="/contribute">
+              <Link href="/pricing">
                 Contribute to the Survey — Free Access
               </Link>
             </Button>
