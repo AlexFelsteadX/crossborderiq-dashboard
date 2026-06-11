@@ -43,10 +43,8 @@ function LoginForm() {
         return
       }
 
-      // Create account - include next param in redirect URL
-      const redirectUrl = nextUrl 
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`
-        : `${window.location.origin}/auth/callback`
+      // Create account - send the confirmation link straight to the final destination
+      const redirectUrl = `${window.location.origin}${nextUrl || "/"}`
       
       const { error } = await supabase.auth.signUp({
         email,
