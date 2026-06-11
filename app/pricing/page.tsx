@@ -204,7 +204,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch mb-12 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-12 max-w-6xl mx-auto">
               {/* Card 1: Free Dashboard */}
               <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
                 <div className="mb-6">
@@ -243,7 +243,56 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              {/* Card 2: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
+              {/* Card 2: Premium - 14 Days Free via Survey */}
+              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
+                    Survey Reward
+                  </span>
+                </div>
+                <div className="mb-6 pt-3">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">Premium — 14 Days Free</h3>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Complete the Global Workforce Deployment survey and unlock the full Premium dashboard, free for 14
+                    days.
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-slate-100">FREE</span>
+                    <span className="text-sm text-slate-400">for 14 days</span>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "All 7 intelligence pillars",
+                    "Year-on-Year trends",
+                    "Benchmarking filters (region, industry, company size)",
+                    "Branded PDF export",
+                    "Full report library",
+                    "Full Premium dashboard",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days</p>
+                <button
+                  type="button"
+                  onClick={scrollToComparison}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </button>
+                <div className="mt-auto">
+                  <Button className="w-full bg-primary hover:bg-primary/90" asChild>
+                    <Link href="/contributor-dashboard">Complete the survey</Link>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 3: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
               <div
                 id="global-workforce-intelligence"
                 className="flex flex-col rounded-2xl border-2 border-primary bg-gradient-to-b from-[#13455a] to-[#0c2433] p-6 pt-8 relative shadow-[0_0_80px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] scroll-mt-24 overflow-hidden lg:scale-[1.04] lg:-my-2 z-10"
@@ -301,6 +350,8 @@ export default function PricingPage() {
                   </ul>
                 </div>
 
+                <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
+
                 <button
                   type="button"
                   onClick={scrollToComparison}
@@ -337,16 +388,6 @@ export default function PricingPage() {
                       {actionError}
                     </p>
                   )}
-
-                  {/* Secondary path: earn Premium free via the survey */}
-                  <p className="text-center mt-3">
-                    <Link
-                      href="/contributor-dashboard"
-                      className="text-xs text-slate-400 hover:text-primary underline underline-offset-2 transition-colors"
-                    >
-                      Or unlock 14 days of Premium free — complete the survey
-                    </Link>
-                  </p>
 
                   {/* Scarcity Statement */}
                   <p className="text-xs text-center text-slate-400 mt-4 italic leading-relaxed">
