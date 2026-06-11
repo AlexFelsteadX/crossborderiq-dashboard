@@ -238,14 +238,8 @@ export default function PricingPage() {
                 </button>
                 <div className="mt-auto">
                   <Button variant="outline" className="w-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
-                    <Link href="/login?mode=signup&next=/contributor-dashboard">Create free account</Link>
+                    <Link href="/workforce-intelligence">View the free dashboard</Link>
                   </Button>
-                  <p className="mt-3 text-center text-xs text-slate-400">
-                    Already have an account?{" "}
-                    <Link href="/login?next=/contributor-dashboard" className="text-primary hover:underline">
-                      Log in
-                    </Link>
-                  </p>
                 </div>
               </div>
 
