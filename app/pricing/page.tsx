@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle } from "lucide-react"
+import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
@@ -21,6 +21,7 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [view, setView] = useState<PathView>("corporate")
   const [actionError, setActionError] = useState<string | null>(null)
+  const [contributorAccessOpen, setContributorAccessOpen] = useState(false)
 
   const { user, tier, loading: authLoading } = useAuth()
 
@@ -287,6 +288,42 @@ export default function PricingPage() {
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
                     <Link href="/contribute">Get Contributor Access</Link>
                   </Button>
+                </div>
+
+                <div className="mt-4 border-t border-primary/20 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setContributorAccessOpen((open) => !open)}
+                    aria-expanded={contributorAccessOpen}
+                    className="flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-slate-100 hover:text-primary transition-colors"
+                  >
+                    <span>How do I get access?</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-primary transition-transform duration-200 ${contributorAccessOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {contributorAccessOpen && (
+                    <div className="mt-4 space-y-4">
+                      <ol className="space-y-3">
+                        {[
+                          "Create a free account.",
+                          "Complete the Global Workforce Deployment survey (about 10–15 minutes).",
+                          "Instantly unlock your Contributor dashboard.",
+                        ].map((step, i) => (
+                          <li key={i} className="flex items-start gap-3 text-sm text-slate-300">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                              {i + 1}
+                            </span>
+                            <span className="pt-0.5">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="text-xs leading-relaxed text-slate-400">
+                        Each contribution gives you 3 months&apos; access — re-take the survey any time to renew. Your
+                        responses are always anonymised and aggregated, and never identify your organisation.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
