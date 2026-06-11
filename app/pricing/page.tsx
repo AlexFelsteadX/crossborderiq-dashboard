@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle, ChevronDown } from "lucide-react"
+import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
@@ -21,7 +21,6 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [view, setView] = useState<PathView>("corporate")
   const [actionError, setActionError] = useState<string | null>(null)
-  const [contributorAccessOpen, setContributorAccessOpen] = useState(false)
 
   const { user, tier, loading: authLoading } = useAuth()
 
@@ -205,7 +204,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch mb-12 max-w-4xl mx-auto">
               {/* Card 1: Free Dashboard */}
               <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
                 <div className="mb-6">
@@ -244,90 +243,7 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              {/* Card 2: Intelligence Contributor Access */}
-              <div className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
-                    Requires Survey Contribution
-                  </span>
-                </div>
-                <div className="mb-6 pt-3">
-                  <h3 className="text-lg font-medium text-slate-100 mb-1">Intelligence Contributor Access™</h3>
-                  <p className="text-xs text-slate-400 mb-4">
-                    Free access, in exchange for contributing to the research.
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold text-slate-100">FREE</span>
-                  </div>
-                  <p className="text-xs text-primary font-medium mt-1">in exchange for completing the survey</p>
-                </div>
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "Full Contributor Dashboard access",
-                    "Complete breakdown across all 7 intelligence pillars",
-                    "Question-by-question response data, continuously updated",
-                    "Aggregated, anonymised benchmarks",
-                    "3 months' access per contribution — renew any time",
-                    "Full report library — including members-only reports",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
-                <div className="mt-auto">
-                  <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-                    <Link href="/contributor-dashboard">Get Contributor Access</Link>
-                  </Button>
-                </div>
-
-                <div className="mt-4 border-t border-primary/20 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setContributorAccessOpen((open) => !open)}
-                    aria-expanded={contributorAccessOpen}
-                    className="flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-slate-100 hover:text-primary transition-colors"
-                  >
-                    <span>How do I get access?</span>
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-primary transition-transform duration-200 ${contributorAccessOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                  {contributorAccessOpen && (
-                    <div className="mt-4 space-y-4">
-                      <ol className="space-y-3">
-                        {[
-                          "Create a free account.",
-                          "Complete the Global Workforce Deployment survey (about 10–15 minutes).",
-                          "Instantly unlock your Contributor dashboard.",
-                        ].map((step, i) => (
-                          <li key={i} className="flex items-start gap-3 text-sm text-slate-300">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                              {i + 1}
-                            </span>
-                            <span className="pt-0.5">{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                      <p className="text-xs leading-relaxed text-slate-400">
-                        Each contribution gives you 3 months&apos; access — re-take the survey any time to renew. Your
-                        responses are always anonymised and aggregated, and never identify your organisation.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Card 3: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
+              {/* Card 2: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
               <div
                 id="global-workforce-intelligence"
                 className="flex flex-col rounded-2xl border-2 border-primary bg-gradient-to-b from-[#13455a] to-[#0c2433] p-6 pt-8 relative shadow-[0_0_80px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] scroll-mt-24 overflow-hidden lg:scale-[1.04] lg:-my-2 z-10"
@@ -422,6 +338,16 @@ export default function PricingPage() {
                     </p>
                   )}
 
+                  {/* Secondary path: earn Premium free via the survey */}
+                  <p className="text-center mt-3">
+                    <Link
+                      href="/contributor-dashboard"
+                      className="text-xs text-slate-400 hover:text-primary underline underline-offset-2 transition-colors"
+                    >
+                      Or unlock 14 days of Premium free — complete the survey
+                    </Link>
+                  </p>
+
                   {/* Scarcity Statement */}
                   <p className="text-xs text-center text-slate-400 mt-4 italic leading-relaxed">
                     Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
@@ -438,7 +364,6 @@ export default function PricingPage() {
                   <thead>
                     <tr className="border-b border-primary/20">
                       <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
-                      <th className="text-center p-4 text-sm font-medium text-slate-100">Intelligence Contributor Access</th>
                       <th className="text-center p-4 text-sm font-medium text-primary">Global Workforce Intelligence</th>
                     </tr>
                   </thead>
@@ -457,13 +382,6 @@ export default function PricingPage() {
                       <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
                         <td className="p-4 text-sm text-slate-300">{row.feature}</td>
                         <td className="p-4 text-center">
-                          {row.contributor ? (
-                            <Check className="h-5 w-5 text-primary mx-auto" />
-                          ) : (
-                            <X className="h-5 w-5 text-slate-600 mx-auto" />
-                          )}
-                        </td>
-                        <td className="p-4 text-center">
                           {row.membership ? (
                             <Check className="h-5 w-5 text-primary mx-auto" />
                           ) : (
@@ -475,7 +393,6 @@ export default function PricingPage() {
                     {/* Access duration row with text instead of checkmarks */}
                     <tr className="hover:bg-brand-navy/40 transition-colors">
                       <td className="p-4 text-sm text-slate-300">Access duration</td>
-                      <td className="p-4 text-center text-xs text-slate-400">3 months per contribution (renewable)</td>
                       <td className="p-4 text-center text-xs text-primary font-medium">Continuous while subscribed</td>
                     </tr>
                   </tbody>
