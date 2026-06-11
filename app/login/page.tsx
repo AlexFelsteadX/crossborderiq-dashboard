@@ -7,13 +7,14 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Mail, Lock, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
+import { Mail, Lock, ArrowLeft, AlertCircle, CheckCircle, User } from "lucide-react"
 
 function LoginForm() {
   const searchParams = useSearchParams()
   const [mode, setMode] = useState<"signin" | "signup">(
     searchParams.get("mode") === "signup" ? "signup" : "signin"
   )
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -34,6 +35,14 @@ function LoginForm() {
     setSuccess(null)
 
     if (mode === "signup") {
+      // Require a full name before creating the account
+      const trimmedName = fullName.trim()
+      if (!trimmedName) {
+        setError("Please enter your full name.")
+        setLoading(false)
+        return
+      }
+
       // Create account - include next param in redirect URL
       const redirectUrl = nextUrl 
         ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`
@@ -43,6 +52,7 @@ function LoginForm() {
         email,
         password,
         options: {
+          data: { full_name: trimmedName },
           emailRedirectTo: redirectUrl,
         },
       })
@@ -208,6 +218,27 @@ function LoginForm() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "signup" && (
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-slate-200 mb-1.5">
+                  Full name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    className="pl-10 bg-brand-navy/60 border-primary/20 text-slate-100 placeholder:text-slate-500 focus-visible:ring-primary focus-visible:border-primary"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-200 mb-1.5">
                 Email address
