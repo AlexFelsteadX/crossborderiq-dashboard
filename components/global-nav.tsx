@@ -86,9 +86,8 @@ export function GlobalNav() {
 
   // TODO: Move Premium Dashboard behind authenticated member access once Supabase authentication and role-based access are implemented.
   const moreNavItems: NavItem[] = [
-    { href: "/contribute", label: "Intelligence Contributor Access" },
     // Contributor Dashboard is only useful to logged-in users (guests dead-end at the login wall),
-    // so only show it when authenticated. Guests use "Intelligence Contributor Access" above.
+    // so only show it when authenticated.
     ...(user ? [{ href: "/contributor-dashboard", label: "Contributor Dashboard" }] : []),
     { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
     { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
