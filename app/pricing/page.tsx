@@ -286,7 +286,7 @@ export default function PricingPage() {
                 </button>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-                    <Link href="/contribute">Get Contributor Access</Link>
+                    <Link href="/contributor-dashboard">Get Contributor Access</Link>
                   </Button>
                 </div>
 
