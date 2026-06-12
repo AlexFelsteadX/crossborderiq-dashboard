@@ -247,7 +247,7 @@ export default function PricingPage() {
                 </a>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-                    <Link href="/contributor-dashboard">Complete the survey</Link>
+                    <Link href="/contributor-dashboard">Contribute to the Survey</Link>
                   </Button>
                 </div>
               </div>
