@@ -52,19 +52,29 @@ function buildWelcomeEmail(tier: string | undefined): { subject: string; html: s
 // Send the tier-specific welcome email for a completed checkout. Fully isolated
 // in try/catch so an email failure can never affect the webhook response or the
 // tier-granting logic. Only premium/vendor tiers receive an email.
+// Tier is derived from the subscription's price using the SAME PRICE_ID_TO_TIER
+// map as the tier-write — live sessions have empty metadata, so we never read it here.
 async function sendCheckoutWelcomeEmail(
   supabase: ReturnType<typeof createAdminClient>,
-  session: Stripe.Checkout.Session
+  session: Stripe.Checkout.Session,
+  subscription: Stripe.Subscription | null
 ) {
   try {
-    const tier = session.metadata?.tier as string | undefined
+    const priceId = subscription?.items.data[0]?.price?.id
+    const tier = priceId ? PRICE_ID_TO_TIER[priceId] : undefined
+    console.log("[StripeWebhook] Welcome email resolved tier:", tier, "priceId:", priceId)
+
     const template = buildWelcomeEmail(tier)
-    if (!template) return
+    if (!template) {
+      console.log("[StripeWebhook] No welcome email for tier, skipping:", tier)
+      return
+    }
+    console.log("[StripeWebhook] Welcome email branch entered for tier:", tier)
 
     // Resolve recipient: checkout email first, then fall back to the membership record.
     let recipient = session.customer_details?.email ?? session.customer_email ?? undefined
     if (!recipient) {
-      const fallbackUserId = session.client_reference_id || (session.metadata?.user_id as string | undefined)
+      const fallbackUserId = session.client_reference_id || undefined
       if (fallbackUserId) {
         const { data: membership } = await supabase
           .from("memberships")
@@ -74,13 +84,15 @@ async function sendCheckoutWelcomeEmail(
         recipient = (membership?.email as string | undefined) ?? undefined
       }
     }
+    console.log("[StripeWebhook] Welcome email recipient:", recipient)
 
     if (!recipient) {
       console.log("[StripeWebhook] No email found for welcome email, skipping send")
       return
     }
 
-    await sendEmail({ to: recipient, subject: template.subject, html: template.html })
+    const sendResult = await sendEmail({ to: recipient, subject: template.subject, html: template.html })
+    console.log("[StripeWebhook] Welcome email sendEmail result:", sendResult)
   } catch (emailError) {
     const message = emailError instanceof Error ? emailError.message : "Unknown error"
     console.log("[StripeWebhook] Welcome email send error (ignored):", message)
@@ -209,15 +221,17 @@ export async function POST(request: NextRequest) {
         const subscriptionId = session.subscription as string
         const fallbackUserId = session.client_reference_id || (session.metadata?.user_id as string | undefined)
 
+        let subscription: Stripe.Subscription | null = null
         if (subscriptionId) {
           // Retrieve full subscription details
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          subscription = await stripe.subscriptions.retrieve(subscriptionId)
           await syncSubscription(supabase, customerId, subscription, fallbackUserId)
         }
 
         // After the paid tier is written, send the matching welcome email.
+        // Tier is derived from the subscription price (same map as the tier-write).
         // Isolated so it can never affect the webhook response or tier writes.
-        await sendCheckoutWelcomeEmail(supabase, session)
+        await sendCheckoutWelcomeEmail(supabase, session, subscription)
         break
       }
 
