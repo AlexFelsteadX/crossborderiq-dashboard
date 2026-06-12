@@ -3,9 +3,9 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Download, BookOpen, ArrowRight, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { globalWorkforceIntelligencePlan } from "@/lib/plans"
 import { useAuth } from "@/hooks/use-auth"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -190,91 +190,98 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[...freeReports]
               .sort((a, b) => Number(b.year) - Number(a.year))
-              .map((report, index) => (
-              <div
-                key={index}
-                className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] transition-all duration-200"
-              >
-                {/* Report Cover Image */}
-                <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
-                  <img 
-                    src={report.image}
-                    alt={report.title}
-                    className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {/* Report Badge */}
-                  <div className="absolute top-3 right-3">
-                    {report.gated ? (
-                      <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
-                        MEMBERS ONLY
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
-                        FREE REPORT
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Report Info */}
-                <div className="p-5 flex flex-col flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-slate-400">{report.category}</span>
-                    <span className="text-xs text-slate-400">•</span>
-                    <span className="text-xs text-slate-400">{report.year}</span>
-                    <span className="text-xs text-slate-400">•</span>
-                    <span className="text-xs text-slate-400">{report.pages} pages</span>
-                  </div>
-                  <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight">{report.title}</h3>
-                  <p className="text-sm text-slate-400 flex-1 mb-5">{report.description}</p>
-                  {report.gated ? (
-                    isMember ? (
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent"
-                        asChild
+              .map((report, index) => {
+                // Resolve the single destination for this card so the WHOLE card is
+                // clickable (matching its hover affordance), not just the inner button.
+                const locked = report.gated && !isMember
+                const downloadable = report.gated ? isMember : report.available
+                const href = report.gated
+                  ? isMember
+                    ? `/api/reports/${report.downloadId}/download`
+                    : "/contribute"
+                  : report.available
+                    ? report.pdfUrl
+                    : undefined
+                const external = !report.gated && report.available
+                const ctaLabel = locked ? "Unlock with Contributor Access" : downloadable ? "Download Report" : "Coming Soon"
+                const isDisabled = !href
+
+                const cardClassName =
+                  "rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group transition-all duration-200" +
+                  (isDisabled
+                    ? " opacity-90"
+                    : " hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]")
+
+                const cardInner = (
+                  <>
+                    {/* Report Cover Image */}
+                    <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
+                      <img
+                        src={report.image || "/placeholder.svg"}
+                        alt={report.title}
+                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {/* Report Badge */}
+                      <div className="absolute top-3 right-3">
+                        {report.gated ? (
+                          <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
+                            MEMBERS ONLY
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
+                            FREE REPORT
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Report Info */}
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs text-slate-400">{report.category}</span>
+                        <span className="text-xs text-slate-400">•</span>
+                        <span className="text-xs text-slate-400">{report.year}</span>
+                        <span className="text-xs text-slate-400">•</span>
+                        <span className="text-xs text-slate-400">{report.pages} pages</span>
+                      </div>
+                      <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight">{report.title}</h3>
+                      <p className="text-sm text-slate-400 flex-1 mb-5">{report.description}</p>
+                      {/* Visual CTA — the whole card is the link, so this is a styled span, not a nested control */}
+                      <span
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "w-full gap-2 bg-transparent",
+                          isDisabled
+                            ? "border-primary/20 text-slate-500 cursor-not-allowed"
+                            : "border-primary/40 text-primary group-hover:bg-primary/10",
+                        )}
                       >
-                        <a href={`/api/reports/${report.downloadId}/download`}>
-                          <Download className="h-4 w-4" />
-                          Download Report
-                        </a>
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent"
-                        asChild
-                      >
-                        <Link href="/contribute">
-                          <Download className="h-4 w-4" />
-                          Unlock with Contributor Access
-                        </Link>
-                      </Button>
-                    )
-                  ) : report.available ? (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent"
-                      asChild
-                    >
-                      <a href={report.pdfUrl} target="_blank" rel="noopener noreferrer">
                         <Download className="h-4 w-4" />
-                        Download Report
-                      </a>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-primary/20 text-slate-500 bg-transparent cursor-not-allowed"
-                      disabled
-                    >
-                      <Download className="h-4 w-4" />
-                      Coming Soon
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+                        {ctaLabel}
+                      </span>
+                    </div>
+                  </>
+                )
+
+                if (isDisabled) {
+                  return (
+                    <div key={index} className={cardClassName} aria-disabled="true">
+                      {cardInner}
+                    </div>
+                  )
+                }
+
+                return (
+                  <a
+                    key={index}
+                    href={href}
+                    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className={cardClassName}
+                  >
+                    {cardInner}
+                  </a>
+                )
+              })}
           </div>
         </div>
 
@@ -287,56 +294,19 @@ export default function ReportsPage() {
                 Help Shape Global Workforce Intelligence™
               </h2>
               <p className="text-slate-300 mb-8 text-base leading-relaxed">
-                Contribute data to CBIQ&apos;s annual Workforce Deployment Survey and gain complimentary access to flagship intelligence reports and benchmark findings.
+                Complete CBIQ&apos;s annual Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards, plus complimentary access to flagship intelligence reports and benchmark findings.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                  <Link href="/contribute">
-                    Become an Intelligence Contributor
+                  <Link href="/contributor-dashboard">
+                    Contribute to the Survey
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button variant="outline" className="gap-2 px-6 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
                   <Link href="/pricing">
                     View all membership options
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Paid Membership Positioning */}
-        <div className="mb-12">
-          <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <h3 className="text-lg font-semibold text-slate-100">Global Workforce Intelligence™</h3>
-                  <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                    Founding Member
-                  </span>
-                </div>
-                <p className="text-sm text-slate-300 mb-4">
-                  {globalWorkforceIntelligencePlan.description}
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {globalWorkforceIntelligencePlan.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                      <span className="text-xs text-slate-200">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="shrink-0 text-center lg:text-right">
-                <p className="text-2xl font-bold text-slate-100 mb-1">£995 / $1,295</p>
-                <p className="text-sm text-slate-400 mb-4">per year</p>
-                <Button className="gap-2 bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                  <Link href="/pricing#global-workforce-intelligence">
-                    View Membership
-                    <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
               </div>
