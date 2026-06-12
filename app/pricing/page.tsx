@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, Star, Users, Building2, Sparkles, Loader2, AlertCircle } from "lucide-react"
+import { Check, Star, Users, Building2, Sparkles, Loader2, AlertCircle, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
@@ -235,6 +235,13 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days (once every 12 months)</p>
+                <a
+                  href="#whats-the-difference"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </a>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
                     <Link href="/contributor-dashboard">Complete the survey</Link>
@@ -323,6 +330,14 @@ export default function PricingPage() {
 
                 <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
 
+                <a
+                  href="#whats-the-difference"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
+                >
+                  See full comparison
+                  <ArrowDown className="h-3 w-3" />
+                </a>
+
                 <div className="mt-auto">
                   {(() => {
                     const cta = getCtaState("premium")
@@ -356,6 +371,77 @@ export default function PricingPage() {
                     Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* What's The Difference? Comparison Table */}
+            <div id="whats-the-difference" className="max-w-3xl mx-auto scroll-mt-24">
+              <h3 className="text-xl font-semibold text-slate-100 mb-2 text-center">What&apos;s The Difference?</h3>
+              <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
+                Same core intelligence — see exactly what membership adds.
+              </p>
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+                <table className="w-full min-w-[520px]">
+                  <thead>
+                    <tr className="border-b border-primary/20">
+                      <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
+                      <th className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
+                        Premium — 14 Days Free
+                      </th>
+                      <th className="text-center p-4 text-sm font-medium text-primary whitespace-nowrap">
+                        Premium — £995 / yr
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-primary/10">
+                    {/* Shared features: tick in both columns */}
+                    {[
+                      "All 7 intelligence pillars (60+ datasets)",
+                      "Year-on-Year trends",
+                      "Benchmarking filters (region, industry, company size, assignee population)",
+                      "Branded PDF export",
+                      "Full Premium dashboard",
+                      "Full report library",
+                    ].map((feature, i) => (
+                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
+                        <td className="p-4 text-sm text-slate-300">{feature}</td>
+                        <td className="p-4 text-center">
+                          <Check className="h-5 w-5 text-primary mx-auto" />
+                        </td>
+                        <td className="p-4 text-center">
+                          <Check className="h-5 w-5 text-primary mx-auto" />
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Paid-only features: muted dash for trial, teal tick for paid, highlight band */}
+                    {[
+                      "Custom benchmarking requests",
+                      "Live data — new waves & reports all year",
+                      "Annual analyst benchmarking briefing",
+                    ].map((feature, i) => (
+                      <tr key={i} className="bg-primary/[0.07] hover:bg-primary/10 transition-colors">
+                        <td className="p-4 text-sm font-medium text-primary">{feature}</td>
+                        <td className="p-4 text-center text-slate-600" aria-label="Not included">
+                          —
+                        </td>
+                        <td className="p-4 text-center">
+                          <Check className="h-5 w-5 text-primary mx-auto" />
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Text rows (not ticks) */}
+                    {[
+                      { label: "Access duration", trial: "14 days", paid: "Continuous while subscribed" },
+                      { label: "Availability", trial: "Once every 12 months", paid: "Ongoing" },
+                    ].map((row, i) => (
+                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
+                        <td className="p-4 text-sm text-slate-300">{row.label}</td>
+                        <td className="p-4 text-center text-xs text-slate-400 font-medium">{row.trial}</td>
+                        <td className="p-4 text-center text-xs text-primary font-medium">{row.paid}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
