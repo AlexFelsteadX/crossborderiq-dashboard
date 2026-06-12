@@ -383,8 +383,11 @@ export default function PricingPage() {
               <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
                 Same core intelligence — see exactly what membership adds.
               </p>
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-                <table className="w-full min-w-[520px]">
+              {/* Relative wrapper so the mobile scroll-fade can sit outside the
+                  horizontally scrolling region (and therefore stay put while scrolling). */}
+              <div className="relative">
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+                  <table className="w-full min-w-[520px]">
                   <thead>
                     <tr className="border-b border-primary/20">
                       <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
@@ -445,7 +448,16 @@ export default function PricingPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
+                {/* Mobile-only scroll affordance: a subtle right-edge fade making it
+                    obvious the table scrolls horizontally to reveal the £995/yr column.
+                    Non-interactive so it never blocks touch/scroll; hidden on md+. */}
+                <div
+                  aria-hidden="true"
+                  className="md:hidden pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-2xl bg-gradient-to-l from-brand-navy-3 to-transparent"
+                />
               </div>
+              <p className="md:hidden mt-2 text-center text-xs text-slate-500">Swipe to compare both columns →</p>
             </div>
           </div>
         )}
