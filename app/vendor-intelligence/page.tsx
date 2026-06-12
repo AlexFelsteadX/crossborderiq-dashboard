@@ -360,49 +360,47 @@ export default async function VendorIntelligencePage() {
 
         {/* Client Intelligence Passes - Sponsor intelligence for your clients */}
         <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-8 md:p-10 mb-12">
-          <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 lg:gap-8 items-start">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+          <div className="flex flex-col items-center text-center">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0 mb-4">
               <Gift className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 mb-4">
-                <Sparkles className="h-3.5 w-3.5" />
-                Client Intelligence Passes
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-4 text-balance">
-                Sponsor intelligence for your clients
-              </h2>
-              <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl">
-                As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
-                Premium access for your corporate clients — extending independent, benchmarked workforce
-                intelligence to the organisations you work with most closely. It&apos;s a natural value-add to your
-                client relationships, a differentiator in competitive processes, and a way to keep your clients&apos;
-                mobility strategy visible to you. Because every client you bring onto the platform can contribute
-                to the Global Workforce Deployment survey, each sponsorship makes the benchmarks you rely on
-                sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
-                opens the door.
-              </p>
+            <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 mb-4">
+              <Sparkles className="h-3.5 w-3.5" />
+              Client Intelligence Passes
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-4 text-balance">
+              Sponsor intelligence for your clients
+            </h2>
+            <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl mx-auto">
+              As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
+              Premium access for your corporate clients — extending independent, benchmarked workforce
+              intelligence to the organisations you work with most closely. It&apos;s a natural value-add to your
+              client relationships, a differentiator in competitive processes, and a way to keep your clients&apos;
+              mobility strategy visible to you. Every client you bring onto the platform can contribute
+              to the Global Workforce Deployment Survey, so each sponsorship makes the benchmarks you rely on
+              sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
+              opens the door.
+            </p>
 
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
-                <div className="rounded-xl border border-primary/20 bg-[#1a3344]/30 p-4">
-                  <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Premium</p>
-                  <p className="text-xs text-slate-400">Includes 5 sponsored Client Intelligence Passes</p>
-                </div>
-                <div className="rounded-xl border border-primary/30 bg-[#1a3344]/30 p-4">
-                  <p className="text-sm font-semibold text-foreground mb-1">Strategic Partner</p>
-                  <p className="text-xs text-slate-400">Includes 10 sponsored Client Intelligence Passes</p>
-                </div>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full">
+              <div className="rounded-xl border border-primary/20 bg-[#1a3344]/30 p-4">
+                <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Premium</p>
+                <p className="text-xs text-slate-400">Includes 5 sponsored Client Intelligence Passes</p>
               </div>
+              <div className="rounded-xl border border-primary/30 bg-[#1a3344]/30 p-4">
+                <p className="text-sm font-semibold text-foreground mb-1">Strategic Partner</p>
+                <p className="text-xs text-slate-400">Includes 10 sponsored Client Intelligence Passes</p>
+              </div>
+            </div>
 
-              <div className="mt-5">
-                <a
-                  href="mailto:crossborderiq@gemevents.co"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
-                >
-                  <span>Additional passes available — contact us</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </a>
-              </div>
+            <div className="mt-5">
+              <a
+                href="mailto:crossborderiq@gemevents.co"
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
+              >
+                <span>Additional passes available — contact us</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </a>
             </div>
           </div>
         </div>
@@ -421,20 +419,20 @@ export default async function VendorIntelligencePage() {
             and commercial intelligence — segmented by region, industry, and company size.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8">
-              <Link href="/pricing#vendor-access">
-                Request Access
-              </Link>
-            </Button>
             <Button
               asChild
               size="lg"
               className="px-8 h-12 font-semibold text-primary-foreground bg-gradient-to-b from-primary to-[#0f8e80] border border-primary/60 shadow-[0_8px_28px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] transition-all hover:-translate-y-0.5 hover:from-primary hover:to-primary hover:shadow-[0_14px_36px_-8px_rgb(var(--brand-teal-rgb)_/_0.8)]"
             >
-              <Link href="/pricing#vendor-access">
-                Upgrade to Vendor — £9,950 / $12,950
+              <Link href="/pricing">
+                View all membership options
               </Link>
             </Button>
+          </div>
+          <div className="mt-6">
+            <Link href="/methodology" className="text-sm text-slate-400 hover:text-primary underline underline-offset-4">
+              View methodology
+            </Link>
           </div>
         </div>
       </main>
