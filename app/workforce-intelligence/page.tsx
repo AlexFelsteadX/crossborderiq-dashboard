@@ -126,7 +126,7 @@ export default async function WorkforceIntelligencePage() {
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
-            See where your segment stands.
+            See how you compare.
           </h1>
 
           <p className="text-lg text-slate-300 max-w-3xl mx-auto mb-6 text-pretty">
