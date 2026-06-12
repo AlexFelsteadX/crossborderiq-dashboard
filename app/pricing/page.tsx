@@ -287,17 +287,38 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mb-6">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3 pb-3 border-b border-primary/20">
-                    {globalWorkforceIntelligencePlan.featuresIntro}
-                  </p>
                   <ul className="space-y-3">
-                    {globalWorkforceIntelligencePlan.features.map((feature, i) => (
+                    {[
+                      "All 7 intelligence pillars",
+                      "Year-on-Year trends across every metric",
+                      "Benchmarking filters by region, industry & company size",
+                      "Branded PDF export — board-ready benchmarks",
+                      "Full Premium dashboard, continuously updated",
+                      "Full report library — including members-only reports",
+                    ].map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
                         <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
+
+                  {/* Paid-only extras beyond the trial */}
+                  <div className="mt-5 pt-5 border-t border-primary/20">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Beyond the 14-day trial:</p>
+                    <ul className="space-y-3">
+                      {[
+                        "Custom benchmarking requests — bespoke peer cuts on demand",
+                        "Live, not frozen — new data waves & members-only reports all year",
+                        "Annual analyst benchmarking briefing — a yearly 1:1 on your segment",
+                      ].map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
+                          <Star className="h-4 w-4 text-primary fill-current shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
 
                 <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
