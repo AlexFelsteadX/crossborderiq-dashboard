@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { MmiCard } from "./mmi-card"
+import { PremiumUpgradeButton } from "./premium-cta"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -250,18 +251,11 @@ export default async function WorkforceIntelligencePage() {
             </div>
           </div>
 
-          {/* Summary line + unlock CTA scrolling to the two conversion-path cards */}
+          {/* Summary line (the conversion-path cards sit directly below this section) */}
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-            <p className="text-sm text-slate-300 mb-4">
+            <p className="text-sm text-slate-300">
               7 pillars · 60+ datasets · members-only reports · branded PDF export
             </p>
-            <a
-              href="#access-full-research"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-            >
-              Unlock the full dashboard
-              <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
-            </a>
           </div>
         </section>
 
@@ -281,7 +275,7 @@ export default async function WorkforceIntelligencePage() {
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <Link href="/pricing">Contribute to the Survey — Free Access</Link>
+                <Link href="/contributor-dashboard">Contribute to the Survey — Free Access</Link>
               </Button>
             </div>
           </div>
@@ -300,15 +294,13 @@ export default async function WorkforceIntelligencePage() {
             <p className="text-sm text-slate-300 mb-6">
               £995 / $1,295 — continuous access + annual analyst briefing.
             </p>
-            <div className="mt-auto">
-              <Button
-                asChild
-                size="lg"
-                className="w-full h-12 font-semibold text-primary-foreground bg-gradient-to-b from-primary to-[#0f8e80] border border-primary/60 shadow-[0_8px_28px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] transition-all hover:-translate-y-0.5 hover:from-primary hover:to-primary hover:shadow-[0_14px_36px_-8px_rgb(var(--brand-teal-rgb)_/_0.8)]"
-              >
-                <Link href="/pricing#global-workforce-intelligence">Upgrade to Premium — £995 / $1,295</Link>
-              </Button>
-            </div>
+            <PremiumUpgradeButton />
+          </div>
+          {/* Low-key path to compare all tiers (text link, not a third button) */}
+          <div className="md:col-span-2 text-center">
+            <Link href="/pricing" className="text-sm text-slate-400 hover:text-primary underline underline-offset-4">
+              View all membership options
+            </Link>
           </div>
         </div>
 
