@@ -589,7 +589,7 @@ export default function PricingPage() {
         <div className="mt-16 text-center">
           <p className="text-sm text-slate-400">
             Need a custom solution?{" "}
-            <a href="mailto:crossborderiq@gemevents.co" className="text-primary hover:underline">
+            <a href="mailto:crossborderiq@gemevents.co?subject=CBIQ%20enquiry" className="text-primary hover:underline">
               Contact us
             </a>{" "}
             for enterprise pricing and bespoke intelligence packages.

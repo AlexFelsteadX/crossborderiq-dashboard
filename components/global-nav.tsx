@@ -251,8 +251,14 @@ export function GlobalNav() {
                   </div>
                 </div>
               ) : (
-                /* Logged out - single prominent Log in button */
-                <div className="hidden sm:flex items-center gap-3">
+                /* Logged out - single prominent Log in button + quiet Contact link */
+                <div className="hidden sm:flex items-center gap-4">
+                  <a
+                    href="mailto:crossborderiq@gemevents.co?subject=CBIQ%20enquiry"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Contact
+                  </a>
                   <Link href="/login?mode=signin">
                     <Button className="bg-primary hover:bg-primary/90 text-sm">
                       Log in
