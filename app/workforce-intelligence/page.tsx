@@ -317,7 +317,7 @@ export default async function WorkforceIntelligencePage() {
           <p className="text-xs text-slate-500">
             Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymised ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
-              view methodology
+              View methodology
             </Link>
           </p>
         </div>

@@ -592,14 +592,14 @@ export default async function HomePage() {
         {/* ============ INTELLIGENCE REPORTS ============ */}
         <section className="py-24 px-6 bg-[#0c1a2c]">
           <div className="max-w-[1400px] mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-slate-50 mb-4">Intelligence Reports</h2>
-                <p className="text-slate-400 max-w-2xl">
-                  Research reports and benchmark findings from the CBIQ intelligence programme.
-                </p>
-              </div>
-              <Button variant="outline" className="gap-2 mt-4 md:mt-0 border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
+            <div className="text-center mb-14">
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-50 mb-4">Intelligence Reports</h2>
+              <p className="text-slate-400 max-w-2xl mx-auto">
+                Research reports and benchmark findings from the CBIQ intelligence programme.
+              </p>
+            </div>
+            <div className="flex justify-center mb-12">
+              <Button variant="outline" className="gap-2 border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                 <Link href="/reports">
                   View All Reports
                   <ArrowRight className="h-4 w-4" />

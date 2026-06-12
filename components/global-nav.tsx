@@ -260,7 +260,7 @@ export function GlobalNav() {
                     Contact
                   </a>
                   <Link href="/login?mode=signin">
-                    <Button className="bg-primary hover:bg-primary/90 text-sm">
+                    <Button className="bg-primary hover:bg-primary/90 text-sm cursor-pointer">
                       Log in
                     </Button>
                   </Link>
@@ -363,7 +363,7 @@ export function GlobalNav() {
                   onClick={() => setMobileOpen(false)}
                   className="block w-full"
                 >
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-sm">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-sm cursor-pointer">
                     Log in
                   </Button>
                 </Link>
