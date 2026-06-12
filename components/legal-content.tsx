@@ -153,7 +153,10 @@ export function LegalContent({ content }: { content: string }) {
       i++
     }
 
-    const isLastUpdated = paraLines.length === 1 && /last updated/i.test(paraLines[0])
+    // Only the standalone meta line (e.g. "**Last updated: 8 June 2026**") gets the
+    // small muted styling. Match the start of the line so body sentences that merely
+    // mention the "Last updated" date keep normal paragraph styling.
+    const isLastUpdated = paraLines.length === 1 && /^(\*\*)?last updated/i.test(paraLines[0].trim())
 
     blocks.push(
       <p
