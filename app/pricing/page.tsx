@@ -223,7 +223,7 @@ export default function PricingPage() {
                   {[
                     "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
                     "Year-on-Year trends across every metric",
-                    "Benchmarking filters by region, industry & company size",
+                    "Benchmarking filters by region, industry, company size & assignee population size (long- & short-term)",
                     "Branded PDF export — board-ready benchmarks",
                     "Full Premium dashboard, continuously updated",
                     "Full report library — including members-only reports",
@@ -234,7 +234,7 @@ export default function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days</p>
+                <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days (once every 12 months)</p>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
                     <Link href="/contributor-dashboard">Complete the survey</Link>
@@ -291,7 +291,7 @@ export default function PricingPage() {
                     {[
                       "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
                       "Year-on-Year trends across every metric",
-                      "Benchmarking filters by region, industry & company size",
+                      "Benchmarking filters by region, industry, company size & assignee population size (long- & short-term)",
                       "Branded PDF export — board-ready benchmarks",
                       "Full Premium dashboard, continuously updated",
                       "Full report library — including members-only reports",
