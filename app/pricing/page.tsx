@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle } from "lucide-react"
+import { Check, Star, Users, Building2, Sparkles, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
@@ -33,10 +33,6 @@ export default function PricingPage() {
       setView("corporate")
     }
   }, [])
-
-  const scrollToComparison = () => {
-    document.getElementById("comparison-table")?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
 
   // Decide what the primary CTA for a paid plan should do, based on the
   // logged-in user's tier. Returns the label and the action to perform.
@@ -239,14 +235,6 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days</p>
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
                     <Link href="/contributor-dashboard">Complete the survey</Link>
@@ -314,15 +302,6 @@ export default function PricingPage() {
 
                 <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
 
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
-
                 <div className="mt-auto">
                   {(() => {
                     const cta = getCtaState("premium")
@@ -356,61 +335,6 @@ export default function PricingPage() {
                     Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
                   </p>
                 </div>
-              </div>
-            </div>
-
-            {/* What's The Difference? Comparison Table */}
-            <div id="comparison-table" className="max-w-3xl mx-auto scroll-mt-24">
-              <h3 className="text-xl font-semibold text-slate-100 mb-2 text-center">What&apos;s The Difference?</h3>
-              <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
-                Same intelligence — the difference is how long you keep it.
-              </p>
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-                <table className="w-full min-w-[420px]">
-                  <thead>
-                    <tr className="border-b border-primary/20">
-                      <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
-                      <th className="text-center p-4 text-sm font-medium text-slate-100">Premium — 14 Days Free</th>
-                      <th className="text-center p-4 text-sm font-medium text-primary">Premium — £995 / yr</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary/10">
-                    {[
-                      "All 7 intelligence pillars",
-                      "Year-on-Year trends across every metric",
-                      "Benchmarking filters (region, industry, company size)",
-                      "Branded PDF export",
-                      "Full Premium dashboard, continuously updated",
-                      "Full report library (members-only reports)",
-                    ].map((feature, i) => (
-                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
-                        <td className="p-4 text-sm text-slate-300">{feature}</td>
-                        <td className="p-4 text-center">
-                          <Check className="h-5 w-5 text-primary mx-auto" />
-                        </td>
-                        <td className="p-4 text-center">
-                          <Check className="h-5 w-5 text-primary mx-auto" />
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Differentiator rows: text values, not ticks */}
-                    {[
-                      { label: "Access duration", trial: "14 days", paid: "Continuous while subscribed" },
-                      { label: "Availability", trial: "Once every 12 months", paid: "Ongoing, renews yearly" },
-                      {
-                        label: "Price",
-                        trial: "Free — complete the survey",
-                        paid: "£995 / $1,295 per year",
-                      },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
-                        <td className="p-4 text-sm text-slate-300">{row.label}</td>
-                        <td className="p-4 text-center text-xs text-slate-400 font-medium">{row.trial}</td>
-                        <td className="p-4 text-center text-xs text-primary font-medium">{row.paid}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
