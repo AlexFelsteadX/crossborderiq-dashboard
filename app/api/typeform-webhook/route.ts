@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextRequest, NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email"
+import crypto from "crypto"
 
 // Create admin client with service role key (server-side only)
 function createAdminClient() {
@@ -21,7 +22,24 @@ function createAdminClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    // Verify the Typeform-Signature header (HMAC SHA-256 of the raw body)
+    // BEFORE parsing or trusting any of the payload.
+    const rawBody = await request.text()
+    const signature = request.headers.get("typeform-signature")
+    const secret = process.env.TYPEFORM_WEBHOOK_SECRET
+
+    if (!secret || !signature) {
+      return NextResponse.json({ ok: false, message: "Missing signature" }, { status: 401 })
+    }
+    const expected =
+      "sha256=" + crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("base64")
+    const sigBuf = Buffer.from(signature)
+    const expBuf = Buffer.from(expected)
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return NextResponse.json({ ok: false, message: "Invalid signature" }, { status: 401 })
+    }
+
+    const body = JSON.parse(rawBody)
 
     // Extract hidden fields from Typeform response
     // Typeform sends: { form_response: { hidden: { uid, email } } }
