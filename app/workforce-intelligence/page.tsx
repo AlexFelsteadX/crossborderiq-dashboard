@@ -1,6 +1,6 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, Users, Sparkles, ArrowDown, TrendingUp, TrendingDown } from "lucide-react"
+import { Lock, Users, Sparkles, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
@@ -10,15 +10,6 @@ export const metadata = {
   title: "Global Workforce Intelligence",
   description:
     "Benchmark your global mobility strategy, AI adoption and future-of-work readiness against peers by region, industry and company size. Powered by GME.",
-}
-
-interface PillarScore {
-  pillar: string
-  short_name: string
-  metric_label: string
-  pct: number
-  base_n: number
-  sort_order: number
 }
 
 interface StrategicMobilityIndex {
@@ -37,16 +28,16 @@ const REGION_TASTE_VALUES: RegionDatum[] = [
   { region: "Middle East", value: 29 },
 ]
 
-// TODO: wire to live YoY data — direction only (figure stays locked)
-const YOY_DIRECTIONS: ("up" | "down")[] = ["up", "up", "up"]
+// ---------------------------------------------------------------------------
+// STATIC LOCKED-PREVIEW LABELS — LABEL STRINGS ONLY.
+// CRITICAL: no real metric value, percentage, score or live data appears below.
+// Every label here is a static string sourced from the Premium dashboard
+// components; nothing is fetched for the locked "Inside the full dashboard"
+// section. (See components/dashboard/indices.tsx and lib/workforce-themes.ts.)
+// ---------------------------------------------------------------------------
 
-// Fallback metric names used only if live pillar data is unavailable.
-// The third tile is fixed to AI-tool adoption per the year-on-year teaser spec.
-const FALLBACK_METRIC_NAMES = ["Mobility Maturity", "Future of Mobility", "AI-tool adoption"]
-
-// The seven intelligence pillars by display name (used for the locked content map
-// fallback when live pillar rows are unavailable).
-const ALL_PILLAR_NAMES = [
+// Pillar names mirroring the dashboard's "Pillar snapshot" tiles.
+const PILLAR_NAMES = [
   "Mobility Maturity Index",
   "AI Adoption Index",
   "Future of Mobility Index",
@@ -56,34 +47,65 @@ const ALL_PILLAR_NAMES = [
   "International Remote Work Index",
 ]
 
+// Year-on-year metric labels — the full set, to convey the "volume" of the
+// reveal. Sourced verbatim from the dashboard's index ranked-bar lists
+// (components/dashboard/indices.tsx). Labels only, no figures.
+const YOY_METRIC_LABELS = [
+  "Immigration & regulatory changes",
+  "Tax compliance",
+  "Cost management",
+  "Geopolitical instability",
+  "Remote work compliance",
+  "Risk management / duty of care",
+  "Talent deployment agility",
+  "Operational efficiency",
+  "Enhanced employee experience",
+  "ROI measurement",
+  "AI adoption",
+  "Flexibility & hybrid working",
+  "Remote work options",
+  "Work-life balance",
+  "Policy transparency",
+  "Faster relocation processes",
+]
+
+// Detailed-breakdown sections — real section names from lib/workforce-themes.ts
+// (THEME_ORDER), each with representative question rows drawn from the dashboard's
+// index ranked-bar lists (components/dashboard/indices.tsx). Labels only.
+const BREAKDOWN_SECTIONS: { name: string; rows: string[] }[] = [
+  {
+    name: "Operational pressure",
+    rows: [
+      "Immigration & regulatory changes",
+      "Tax compliance",
+      "Cost management",
+      "Geopolitical instability",
+      "Remote work compliance",
+    ],
+  },
+  {
+    name: "Employee experience",
+    rows: [
+      "Flexibility & hybrid working",
+      "Remote work options",
+      "Work-life balance",
+      "Policy transparency",
+      "Wellbeing support",
+    ],
+  },
+]
+
 export default async function WorkforceIntelligencePage() {
   const supabase = await createClient()
 
-  // Fetch pillar scores (live)
-  const { data: pillarData, error } = await supabase
-    .from("v_pillar_score")
-    .select("pillar, short_name, metric_label, pct, base_n, sort_order")
-    .order("sort_order", { ascending: true })
-
-  // Fetch Strategic Mobility Index score (live, already a whole number percentage)
-  const { data: smiData } = await supabase
+  // Fetch Strategic Mobility Index score (live, already a whole number percentage).
+  // This is the only live read on this public page — it drives the MMI gauge.
+  const { data: smiData, error } = await supabase
     .from("v_strategic_mobility_index")
     .select("index_score")
     .single()
 
   const smiScore = (smiData as StrategicMobilityIndex | null)?.index_score ?? 0
-
-  const pillars = (pillarData as PillarScore[] | null) ?? []
-
-  // Year-on-year teaser tiles: first two reuse real metric names where available;
-  // the third tile is fixed to AI-tool adoption (TODO: wire to live YoY data; direction is a placeholder).
-  const yoyTiles = [0, 1, 2].map((i) => ({
-    label: i === 2 ? FALLBACK_METRIC_NAMES[2] : (pillars[i]?.short_name ?? FALLBACK_METRIC_NAMES[i]),
-    direction: YOY_DIRECTIONS[i],
-  }))
-
-  // Locked content map: list the 7 pillars by name (live names where available).
-  const pillarNames = pillars.length >= 7 ? pillars.slice(0, 7).map((p) => p.short_name) : ALL_PILLAR_NAMES
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -133,57 +155,123 @@ export default async function WorkforceIntelligencePage() {
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
         <MmiCard allRegionsValue={smiScore} regions={REGION_TASTE_VALUES} />
 
-        {/* 4. YEAR-ON-YEAR TEASER — label + direction arrow only, figure locked */}
-        <div className="mb-12">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Year-on-year movement</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {yoyTiles.map((tile, i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.15em] mb-2">
-                    {tile.label}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    {tile.direction === "up" ? (
-                      <TrendingUp className="h-5 w-5 text-primary" />
-                    ) : (
-                      <TrendingDown className="h-5 w-5 text-slate-400" />
-                    )}
-                    {/* Figure locked */}
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
-                      <Lock className="h-3 w-3" />
-                      Locked
-                    </span>
-                  </div>
-                </div>
-                <span className="text-2xl font-bold text-slate-600 blur-[4px] select-none" aria-hidden="true">
-                  ██%
-                </span>
-              </div>
-            ))}
+        {/* 4 + 5. INSIDE THE FULL DASHBOARD — single richer locked preview.
+            DATA-SAFETY: every element below is built from static label strings only.
+            No live value, percentage or score is fetched or rendered for any locked tile. */}
+        <section className="mb-12">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
+            <p className="text-sm text-slate-400 mt-1">Everything below unlocks with Premium.</p>
           </div>
-        </div>
 
-        {/* 5. LOCKED CONTENT MAP — 7 pillars by name */}
-        <div className="mb-12">
-          <h2 className="text-lg font-semibold text-foreground mb-4">What&apos;s inside</h2>
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-              {pillarNames.map((name) => (
-                <div key={name} className="flex items-center gap-2 rounded-lg border border-slate-700 bg-[#1a3344]/40 px-3 py-2.5">
-                  <Lock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                  <span className="text-xs text-slate-300">{name}</span>
+          {/* Pillar snapshot — locked gauge tiles, one per pillar (names only, no %) */}
+          <div className="mb-10">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
+              Pillar snapshot
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {PILLAR_NAMES.map((name) => (
+                <div
+                  key={name}
+                  className="relative rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex flex-col items-center text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                >
+                  {/* Muted placeholder ring — purely decorative, no value */}
+                  <div className="relative w-[84px] h-[84px]" aria-hidden="true">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 84 84">
+                      <circle cx="42" cy="42" r="36" fill="none" stroke="#1a3344" strokeWidth="8" />
+                      <circle
+                        cx="42"
+                        cy="42"
+                        r="36"
+                        fill="none"
+                        stroke="rgb(var(--brand-teal-rgb) / 0.25)"
+                        strokeWidth="8"
+                        strokeDasharray="226"
+                        strokeDashoffset="158"
+                        strokeLinecap="round"
+                        className="blur-[1px]"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Lock className="h-5 w-5 text-slate-500" />
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium text-slate-300 mt-3 leading-tight">{name}</p>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-400 text-center">
-              7 pillars · 60+ datasets · members-only reports · branded PDF export.
-            </p>
           </div>
-        </div>
+
+          {/* Year-on-year movement — the FULL grid of metric cards (labels only, no numbers/arrows) */}
+          <div className="mb-10">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
+              Year-on-year movement
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {YOY_METRIC_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-primary/20 border-l-4 border-l-slate-600/50 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex items-center justify-between gap-3 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                >
+                  <p className="text-sm font-medium text-slate-300 leading-tight">{label}</p>
+                  <Lock className="h-4 w-4 text-slate-500 shrink-0" />
+                </div>
+              ))}
+            </div>
+            {/* Muted placeholder bar beneath, conveying the locked trend strip */}
+            <div className="mt-4 h-2 rounded-full bg-[#1a3344] overflow-hidden" aria-hidden="true">
+              <div className="h-full w-2/3 bg-primary/15 blur-[2px]" />
+            </div>
+          </div>
+
+          {/* Detailed breakdowns — locked question-level sections (row labels only, no %) */}
+          <div className="mb-10">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
+              Detailed breakdowns
+            </h3>
+            <div className="space-y-4">
+              {BREAKDOWN_SECTIONS.map((section) => (
+                <div
+                  key={section.name}
+                  className="rounded-xl border border-primary/15 bg-brand-navy-2/50 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between gap-4 px-5 py-4 bg-primary/5 border-b border-primary/10">
+                    <h4 className="text-base font-semibold text-slate-200">{section.name}</h4>
+                    <Lock className="h-4 w-4 text-slate-500 shrink-0" />
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    {section.rows.map((row) => (
+                      <div key={row} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-400 flex-1 truncate">{row}</span>
+                        <div className="w-32 h-2 bg-[#1a3344] rounded-full overflow-hidden" aria-hidden="true">
+                          <div
+                            className="h-full bg-primary/15 blur-[2px] rounded-full"
+                            style={{ width: "60%" }}
+                          />
+                        </div>
+                        <Lock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Summary line + unlock CTA scrolling to the two conversion-path cards */}
+          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+            <p className="text-sm text-slate-300 mb-4">
+              7 pillars · 60+ datasets · members-only reports · branded PDF export
+            </p>
+            <a
+              href="#access-full-research"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+            >
+              Unlock the full dashboard
+              <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+            </a>
+          </div>
+        </section>
 
         {/* 6. TWO CONVERSION PATHS (existing CTAs preserved) */}
         <div
