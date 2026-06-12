@@ -100,15 +100,6 @@ export function GlobalNav() {
 
   const allNavItems = [...mainNavItems, ...moreNavItems]
 
-  const handleRequestAccess = () => {
-    if (pathname === "/pricing") {
-      const pricingSection = document.getElementById("pricing-cards")
-      pricingSection?.scrollIntoView({ behavior: "smooth" })
-    } else {
-      window.location.href = "/pricing"
-    }
-  }
-
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="px-6 py-4 flex items-center justify-between max-w-[1600px] mx-auto">
@@ -260,20 +251,13 @@ export function GlobalNav() {
                   </div>
                 </div>
               ) : (
-                /* Logged out - show login link and Request Access */
+                /* Logged out - single prominent Log in button */
                 <div className="hidden sm:flex items-center gap-3">
-                  <Link
-                    href="/login"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Log in
+                  <Link href="/login?mode=signin">
+                    <Button className="bg-primary hover:bg-primary/90 text-sm">
+                      Log in
+                    </Button>
                   </Link>
-                  <Button 
-                    onClick={handleRequestAccess}
-                    className="bg-primary hover:bg-primary/90 text-sm"
-                  >
-                    Request Access
-                  </Button>
                 </div>
               )}
             </>
@@ -368,26 +352,15 @@ export function GlobalNav() {
                 
                 </>
               ) : (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="block w-full"
-                  >
-                    <Button variant="outline" className="w-full text-sm">
-                      Log in
-                    </Button>
-                  </Link>
-                  <Button 
-                    onClick={() => {
-                      setMobileOpen(false)
-                      handleRequestAccess()
-                    }}
-                    className="w-full bg-primary hover:bg-primary/90 text-sm"
-                  >
-                    Request Access
+                <Link
+                  href="/login?mode=signin"
+                  onClick={() => setMobileOpen(false)}
+                  className="block w-full"
+                >
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-sm">
+                    Log in
                   </Button>
-                </>
+                </Link>
               )}
             </div>
           </nav>
