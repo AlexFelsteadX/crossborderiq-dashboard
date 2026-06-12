@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, X, Star, Users, Building2, Sparkles, Loader2, ArrowDown, AlertCircle } from "lucide-react"
+import { Check, Star, Users, Building2, Sparkles, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
@@ -33,10 +33,6 @@ export default function PricingPage() {
       setView("corporate")
     }
   }, [])
-
-  const scrollToComparison = () => {
-    document.getElementById("comparison-table")?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
 
   // Decide what the primary CTA for a paid plan should do, based on the
   // logged-in user's tier. Returns the label and the action to perform.
@@ -239,14 +235,6 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days</p>
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
                     <Link href="/contributor-dashboard">Complete the survey</Link>
@@ -299,29 +287,41 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mb-6">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3 pb-3 border-b border-primary/20">
-                    {globalWorkforceIntelligencePlan.featuresIntro}
-                  </p>
                   <ul className="space-y-3">
-                    {globalWorkforceIntelligencePlan.features.map((feature, i) => (
+                    {[
+                      "All 7 intelligence pillars",
+                      "Year-on-Year trends across every metric",
+                      "Benchmarking filters by region, industry & company size",
+                      "Branded PDF export — board-ready benchmarks",
+                      "Full Premium dashboard, continuously updated",
+                      "Full report library — including members-only reports",
+                    ].map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
                         <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
+
+                  {/* Paid-only extras beyond the trial */}
+                  <div className="mt-5 pt-5 border-t border-primary/20">
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Beyond the 14-day trial:</p>
+                    <ul className="space-y-3">
+                      {[
+                        "Custom benchmarking requests — bespoke peer cuts on demand",
+                        "Live, not frozen — new data waves & members-only reports all year",
+                        "Annual analyst benchmarking briefing — a yearly 1:1 on your segment",
+                      ].map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
+                          <Star className="h-4 w-4 text-primary fill-current shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
 
                 <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
-
-                <button
-                  type="button"
-                  onClick={scrollToComparison}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
-                >
-                  See full comparison
-                  <ArrowDown className="h-3 w-3" />
-                </button>
 
                 <div className="mt-auto">
                   {(() => {
@@ -356,50 +356,6 @@ export default function PricingPage() {
                     Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
                   </p>
                 </div>
-              </div>
-            </div>
-
-            {/* What's The Difference? Comparison Table */}
-            <div id="comparison-table" className="max-w-3xl mx-auto scroll-mt-24">
-              <h3 className="text-xl font-semibold text-slate-100 mb-6 text-center">What&apos;s The Difference?</h3>
-              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-primary/20">
-                      <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
-                      <th className="text-center p-4 text-sm font-medium text-primary">Global Workforce Intelligence</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary/10">
-                    {[
-                      { feature: "Full Contributor Dashboard", contributor: true, membership: true },
-                      { feature: "All 7 Intelligence Pillars", contributor: true, membership: true },
-                      { feature: "Continuously updated survey data", contributor: true, membership: true },
-                      { feature: "Year-on-Year Trends", contributor: false, membership: true },
-                      { feature: "Region Filtering", contributor: false, membership: true },
-                      { feature: "Industry Filtering", contributor: false, membership: true },
-                      { feature: "Company Size Filtering", contributor: false, membership: true },
-                      { feature: "Branded PDF Export", contributor: false, membership: true },
-                      { feature: "Premium Dashboard", contributor: false, membership: true },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
-                        <td className="p-4 text-sm text-slate-300">{row.feature}</td>
-                        <td className="p-4 text-center">
-                          {row.membership ? (
-                            <Check className="h-5 w-5 text-primary mx-auto" />
-                          ) : (
-                            <X className="h-5 w-5 text-slate-600 mx-auto" />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Access duration row with text instead of checkmarks */}
-                    <tr className="hover:bg-brand-navy/40 transition-colors">
-                      <td className="p-4 text-sm text-slate-300">Access duration</td>
-                      <td className="p-4 text-center text-xs text-primary font-medium">Continuous while subscribed</td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
