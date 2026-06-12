@@ -27,6 +27,9 @@ function LoginForm() {
   // Check for error from auth callback
   const callbackError = searchParams.get("error")
   const nextUrl = searchParams.get("next")
+  // Checkout intent: logged-out premium signups go straight to Stripe (no email round-trip)
+  const intent = searchParams.get("intent")
+  const intentTier = searchParams.get("tier")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,6 +44,41 @@ function LoginForm() {
         setError("Please enter your full name.")
         setLoading(false)
         return
+      }
+
+      // Checkout-intent signup: create an email-confirmed account, establish a
+      // session, and go straight to Stripe. Free/normal signup is left untouched below.
+      if (intent === "checkout") {
+        try {
+          const res = await fetch("/api/signup-checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: trimmedName,
+              email,
+              password,
+              tier: intentTier || "premium",
+            }),
+          })
+          const data = await res.json()
+
+          if (!res.ok || !data?.url) {
+            if (data?.code === "user_exists") {
+              setMode("signin")
+            }
+            setError(data?.error ? getErrorMessage(data.error) : "Could not start checkout. Please try again.")
+            setLoading(false)
+            return
+          }
+
+          // Redirect the browser to Stripe Checkout
+          window.location.href = data.url
+          return
+        } catch {
+          setError("Could not start checkout. Please try again.")
+          setLoading(false)
+          return
+        }
       }
 
       // Create account - send the confirmation link straight to the final destination
