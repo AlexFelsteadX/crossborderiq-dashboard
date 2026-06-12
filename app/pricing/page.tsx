@@ -71,13 +71,10 @@ export default function PricingPage() {
   const handlePrimaryCta = (plan: PlanTier) => {
     const { action } = getCtaState(plan)
     if (action === "signup") {
-      // Logged-out premium visitors carry a checkout intent through signup so they
-      // can be sent straight to checkout once authenticated.
-      if (plan === "premium") {
-        window.location.href = "/login?mode=signup&intent=checkout&tier=premium"
-        return
-      }
-      window.location.href = "/login?mode=signup&next=/pricing"
+      // Logged-out self-serve visitors (premium and vendor) carry a checkout intent
+      // through signup so they can be sent straight to checkout once authenticated.
+      // The tier value reuses the PlanTier/STRIPE_PLANS key exactly.
+      window.location.href = `/login?mode=signup&intent=checkout&tier=${plan}`
       return
     }
     if (action === "checkout") {
