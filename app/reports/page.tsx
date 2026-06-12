@@ -287,13 +287,13 @@ export default function ReportsPage() {
                 Help Shape Global Workforce Intelligence™
               </h2>
               <p className="text-slate-300 mb-8 text-base leading-relaxed">
-                Contribute data to CBIQ&apos;s annual Workforce Deployment Survey and gain complimentary access to flagship intelligence reports and benchmark findings.
+                Complete CBIQ&apos;s annual Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards, plus complimentary access to flagship intelligence reports and benchmark findings.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                  <Link href="/contribute">
-                    Become an Intelligence Contributor
+                  <Link href="/contributor-dashboard">
+                    Complete the survey
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
