@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             tier: planKey,
           },
         },
-        success_url: `${origin}/checkout/success`,
+        success_url: `${origin}/checkout/success?tier=${planKey}`,
         cancel_url: `${origin}/pricing`,
         allow_promotion_codes: true,
       }

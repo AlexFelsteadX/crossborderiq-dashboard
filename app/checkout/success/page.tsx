@@ -4,7 +4,21 @@ import { CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
-export default function CheckoutSuccessPage() {
+export default async function CheckoutSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tier?: string }>
+}) {
+  // Tier-aware primary CTA. Reuses the same tier values the checkout flow sends
+  // (premium / vendor). Unknown/missing falls back to a safe generic dashboard link.
+  const { tier } = await searchParams
+  const dashboardCta =
+    tier === "vendor"
+      ? { label: "Go to Vendor Dashboard", href: "/vendor-premium-dashboard" }
+      : tier === "premium"
+        ? { label: "Go to Premium Dashboard", href: "/premium-dashboard" }
+        : { label: "Go to Dashboard", href: "/member-dashboard" }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <GlobalNav />
@@ -23,7 +37,7 @@ export default function CheckoutSuccessPage() {
           
           <div className="space-y-3">
             <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-              <Link href="/premium-dashboard">Go to Premium Dashboard</Link>
+              <Link href={dashboardCta.href}>{dashboardCta.label}</Link>
             </Button>
             <Button variant="outline" className="w-full" asChild>
               <Link href="/">Return to Homepage</Link>
