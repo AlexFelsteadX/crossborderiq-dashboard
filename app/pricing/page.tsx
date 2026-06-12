@@ -221,12 +221,12 @@ export default function PricingPage() {
                 </div>
                 <ul className="space-y-3 mb-6">
                   {[
-                    "All 7 intelligence pillars",
-                    "Year-on-Year trends",
-                    "Benchmarking filters (region, industry, company size)",
-                    "Branded PDF export",
-                    "Full report library",
-                    "Full Premium dashboard",
+                    "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
+                    "Year-on-Year trends across every metric",
+                    "Benchmarking filters by region, industry & company size",
+                    "Branded PDF export — board-ready benchmarks",
+                    "Full Premium dashboard, continuously updated",
+                    "Full report library — including members-only reports",
                   ].map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
                       <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -289,7 +289,7 @@ export default function PricingPage() {
                 <div className="mb-6">
                   <ul className="space-y-3">
                     {[
-                      "All 7 intelligence pillars",
+                      "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
                       "Year-on-Year trends across every metric",
                       "Benchmarking filters by region, industry & company size",
                       "Branded PDF export — board-ready benchmarks",
@@ -305,7 +305,7 @@ export default function PricingPage() {
 
                   {/* Paid-only extras beyond the trial */}
                   <div className="mt-5 pt-5 border-t border-primary/20">
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Beyond the 14-day trial:</p>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Additional benefits:</p>
                     <ul className="space-y-3">
                       {[
                         "Custom benchmarking requests — bespoke peer cuts on demand",
