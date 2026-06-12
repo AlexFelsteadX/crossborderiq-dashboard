@@ -47,7 +47,7 @@ Any change to subscription pricing applies to future renewals and new purchases,
 
 ## 7. Contact
 
-For any billing, cancellation or refund question:
+For any billing, cancellation or refund questions:
 GEM Events & Consultancy – FZCO
 Email: **crossborderiq@gemevents.co**`
 

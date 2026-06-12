@@ -299,7 +299,7 @@ export default function ReportsPage() {
                 </Button>
                 <Button variant="outline" className="gap-2 px-6 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
                   <Link href="/pricing">
-                    View Membership Options
+                    View all membership options
                   </Link>
                 </Button>
               </div>

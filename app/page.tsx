@@ -692,11 +692,11 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
-                  title: "Intelligence Contributor Access",
+                  title: "Premium — 14 Days Free",
                   price: "Free",
-                  description: "Full 7-pillar Contributor Dashboard, continuously updated",
-                  features: ["All 7 Intelligence Pillars", "Continuously updated survey data", "3 months per contribution (renewable)"],
-                  cta: "Get Contributor Access",
+                  description: "Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards",
+                  features: ["All 7 Intelligence Pillars", "Continuously updated dashboards", "14 days of full Premium access"],
+                  cta: "Complete the survey",
                   href: "/contributor-dashboard",
                   highlight: false
                 },

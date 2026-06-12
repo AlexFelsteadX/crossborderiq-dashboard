@@ -40,7 +40,7 @@ export default function MethodologyPage() {
               </div>
               <h3 className="text-base font-semibold text-slate-100 mb-2">Executive Event Intelligence</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Insights gathered from around 1,500 HR, Mobility, Talent and Workforce leaders engaging at industry events throughout the year.
+                Insights gathered from over 1,500 HR, Mobility, Talent and Workforce leaders engaging at industry events throughout the year.
               </p>
             </div>
             
@@ -131,7 +131,7 @@ export default function MethodologyPage() {
             </Button>
             <Button variant="outline" asChild>
               <Link href="/pricing">
-                View Membership Options
+                View all membership options
               </Link>
             </Button>
           </div>

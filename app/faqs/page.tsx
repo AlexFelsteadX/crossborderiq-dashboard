@@ -153,7 +153,7 @@ export default function FAQsPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button className="bg-primary hover:bg-primary/90" asChild>
-              <Link href="/pricing">View Membership Options</Link>
+              <Link href="/pricing">View all membership options</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/contribute">Become an Intelligence Contributor</Link>

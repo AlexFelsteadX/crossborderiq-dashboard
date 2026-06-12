@@ -52,7 +52,7 @@ export default function ContactPage() {
               Interested in CBIQ intelligence products?
             </p>
             <Button className="bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-              <a href="/pricing">View Membership Options</a>
+              <a href="/pricing">View all membership options</a>
             </Button>
           </div>
         </div>
