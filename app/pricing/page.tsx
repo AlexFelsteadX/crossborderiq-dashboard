@@ -71,6 +71,12 @@ export default function PricingPage() {
   const handlePrimaryCta = (plan: PlanTier) => {
     const { action } = getCtaState(plan)
     if (action === "signup") {
+      // Logged-out premium visitors carry a checkout intent through signup so they
+      // can be sent straight to checkout once authenticated.
+      if (plan === "premium") {
+        window.location.href = "/login?mode=signup&intent=checkout&tier=premium"
+        return
+      }
       window.location.href = "/login?mode=signup&next=/pricing"
       return
     }
