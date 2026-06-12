@@ -696,7 +696,7 @@ export default async function HomePage() {
                   price: "Free",
                   description: "Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards",
                   features: ["All 7 Intelligence Pillars", "Continuously updated dashboards", "14 days of full Premium access"],
-                  cta: "Complete the survey",
+                  cta: "Contribute to the Survey",
                   href: "/contributor-dashboard",
                   highlight: false
                 },
