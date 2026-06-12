@@ -1,10 +1,10 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, Users, Sparkles, BarChart3, ArrowRight, ArrowDown, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react"
+import { Lock, Users, Sparkles, ArrowDown, TrendingUp, TrendingDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { RegionFilterTaste, type RegionDatum } from "./region-filter-taste"
+import { MmiCard, type RegionDatum } from "./mmi-card"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -29,14 +29,7 @@ interface StrategicMobilityIndex {
 // PLACEHOLDER DATA (no live source yet) — see summary at bottom of request.
 // ---------------------------------------------------------------------------
 
-// TODO: wire to live data — hero hook stat (e.g. AI-tool adoption over 12 months)
-const HERO_HOOK_STAT = {
-  from: "21%",
-  to: "35%",
-  label: "AI-tool adoption in 12 months",
-}
-
-// TODO: wire to live RPC — per-region headline value (whole-number percentages)
+// TODO: wire to live RPC — per-region headline MMI value (whole-number percentages)
 const REGION_TASTE_VALUES: RegionDatum[] = [
   { region: "Europe", value: 34 },
   { region: "Americas", value: 38 },
@@ -45,10 +38,11 @@ const REGION_TASTE_VALUES: RegionDatum[] = [
 ]
 
 // TODO: wire to live YoY data — direction only (figure stays locked)
-const YOY_DIRECTIONS: ("up" | "down")[] = ["up", "up", "down"]
+const YOY_DIRECTIONS: ("up" | "down")[] = ["up", "up", "up"]
 
 // Fallback metric names used only if live pillar data is unavailable.
-const FALLBACK_METRIC_NAMES = ["Mobility Maturity", "AI Adoption", "Future of Mobility"]
+// The third tile is fixed to AI-tool adoption per the year-on-year teaser spec.
+const FALLBACK_METRIC_NAMES = ["Mobility Maturity", "Future of Mobility", "AI-tool adoption"]
 
 // The seven intelligence pillars by display name (used for the locked content map
 // fallback when live pillar rows are unavailable).
@@ -81,9 +75,10 @@ export default async function WorkforceIntelligencePage() {
 
   const pillars = (pillarData as PillarScore[] | null) ?? []
 
-  // Year-on-year teaser tiles: reuse real metric names where available; direction is a placeholder.
+  // Year-on-year teaser tiles: first two reuse real metric names where available;
+  // the third tile is fixed to AI-tool adoption (TODO: wire to live YoY data; direction is a placeholder).
   const yoyTiles = [0, 1, 2].map((i) => ({
-    label: pillars[i]?.short_name ?? FALLBACK_METRIC_NAMES[i],
+    label: i === 2 ? FALLBACK_METRIC_NAMES[2] : (pillars[i]?.short_name ?? FALLBACK_METRIC_NAMES[i]),
     direction: YOY_DIRECTIONS[i],
   }))
 
@@ -106,18 +101,6 @@ export default async function WorkforceIntelligencePage() {
           <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
             Trusted by 1,500+ Global Workforce Leaders
-          </div>
-
-          {/* Prominent hook stat (placeholder) */}
-          <div className="mb-6 flex flex-col items-center">
-            <div className="inline-flex items-baseline gap-3 rounded-2xl border border-primary/30 bg-brand-navy-2/60 px-6 py-4 shadow-[0_0_50px_-12px_rgb(var(--brand-teal-rgb)_/_0.45)]">
-              <span className="text-3xl md:text-4xl font-bold text-slate-400 tracking-tight">{HERO_HOOK_STAT.from}</span>
-              <ArrowUpRight className="h-7 w-7 text-primary" />
-              <span className="text-4xl md:text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                {HERO_HOOK_STAT.to}
-              </span>
-            </div>
-            <span className="mt-2 text-xs text-slate-400 uppercase tracking-wide">{HERO_HOOK_STAT.label}</span>
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
@@ -146,105 +129,9 @@ export default async function WorkforceIntelligencePage() {
           </div>
         )}
 
-        {/* 2. MOBILITY MATURITY INDEX card (existing index card, gauge + live value preserved) */}
-        <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* Left: Circular Gauge - Same as homepage */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="absolute -inset-8 bg-primary/20 rounded-full blur-[60px]" />
-                <div className="relative w-56 h-56">
-                  {/* Outer glow ring */}
-                  <div className="absolute inset-0 rounded-full bg-primary/10" />
-
-                  {/* SVG Gauge - Same as homepage */}
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                    {/* Background track - muted dark */}
-                    <circle cx="100" cy="100" r="85" fill="none" stroke="#1a3344" strokeWidth="14" />
-                    {/* Progress arc - bright teal */}
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="85"
-                      fill="none"
-                      stroke="url(#smiGradientBrightWI)"
-                      strokeWidth="14"
-                      strokeDasharray={534}
-                      strokeDashoffset={534 * (1 - smiScore / 100)}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000"
-                      filter="url(#glowWI)"
-                    />
-                    {/* Gradient and glow definitions */}
-                    <defs>
-                      <linearGradient id="smiGradientBrightWI" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="var(--brand-teal)" />
-                        <stop offset="100%" stopColor="#2dd4bf" />
-                      </linearGradient>
-                      <filter id="glowWI" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                        <feMerge>
-                          <feMergeNode in="coloredBlur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                    </defs>
-                  </svg>
-
-                  {/* Center content - bright and prominent */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                      {smiScore}%
-                    </span>
-                    <span className="text-xs text-slate-400 mt-1">Industry Average</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Description and regional breakdown */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">Mobility Maturity Index</h2>
-              </div>
-              <p className="text-sm text-slate-300 mb-6">
-                The industry&apos;s first composite benchmark for workforce mobility maturity — combining four
-                intelligence pillars into a single score.
-              </p>
-
-              {/* Frosted regional breakdown */}
-              <div className="space-y-3 mb-6">
-                {["Europe", "Americas", "Asia-Pacific", "Middle East"].map((region) => (
-                  <div key={region} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-300 w-28">{region}</span>
-                    <div className="flex-1 h-2 bg-[#1a3344] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary/40 rounded-full blur-[2px]"
-                        style={{ width: `${Math.random() * 20 + 55}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-slate-500 blur-[3px] w-8">██</span>
-                  </div>
-                ))}
-              </div>
-
-              <Link
-                href="/pricing#global-workforce-intelligence"
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
-              >
-                <span>Unlock regional breakdown</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. LIVE FILTER TASTE — single Region dropdown bound to one headline number */}
-        <div className="mb-12">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Try a live filter</h2>
-          <RegionFilterTaste regions={REGION_TASTE_VALUES} metricLabel={HERO_HOOK_STAT.label} />
-        </div>
+        {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
+            Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
+        <MmiCard allRegionsValue={smiScore} regions={REGION_TASTE_VALUES} />
 
         {/* 4. YEAR-ON-YEAR TEASER — label + direction arrow only, figure locked */}
         <div className="mb-12">
