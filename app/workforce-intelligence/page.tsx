@@ -4,7 +4,7 @@ import { Lock, Users, Sparkles, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { MmiCard, type RegionDatum } from "./mmi-card"
+import { MmiCard } from "./mmi-card"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -19,14 +19,6 @@ interface StrategicMobilityIndex {
 // ---------------------------------------------------------------------------
 // PLACEHOLDER DATA (no live source yet) — see summary at bottom of request.
 // ---------------------------------------------------------------------------
-
-// TODO: wire to live RPC — per-region headline MMI value (whole-number percentages)
-const REGION_TASTE_VALUES: RegionDatum[] = [
-  { region: "Europe", value: 34 },
-  { region: "Americas", value: 38 },
-  { region: "Asia-Pacific", value: 31 },
-  { region: "Middle East", value: 29 },
-]
 
 // ---------------------------------------------------------------------------
 // STATIC LOCKED-PREVIEW LABELS — LABEL STRINGS ONLY.
@@ -153,7 +145,7 @@ export default async function WorkforceIntelligencePage() {
 
         {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
-        <MmiCard allRegionsValue={smiScore} regions={REGION_TASTE_VALUES} />
+        <MmiCard allRegionsValue={smiScore} />
 
         {/* 4 + 5. INSIDE THE FULL DASHBOARD — single richer locked preview.
             DATA-SAFETY: every element below is built from static label strings only.
@@ -323,7 +315,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Trusted by 1,500+ workforce leaders · aggregated &amp; anonymised ·{" "}
+            Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymised ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               view methodology
             </Link>

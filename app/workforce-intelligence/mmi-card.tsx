@@ -1,48 +1,31 @@
 "use client"
 
-import { useState } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BarChart3, Lock } from "lucide-react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-export interface RegionDatum {
-  region: string
-  /** Headline Mobility Maturity Index value for the region, as a whole-number percentage. */
-  value: number
-}
-
 interface MmiCardProps {
   /** Live, all-regions industry-average MMI value (whole-number percentage). */
   allRegionsValue: number
-  /** Placeholder per-region values (TODO: wire to per-region RPC). */
-  regions: RegionDatum[]
 }
 
-const ALL_REGIONS = "All regions"
-
 // Locked peer-segment filters, mirroring the Premium dashboard's filter bar.
-const LOCKED_FILTERS = ["Industry", "Company size", "Long-term & permanent", "Short-term & business travel"]
+// Region is locked alongside the others — no fabricated per-region values are shown.
+const LOCKED_FILTERS = ["Region", "Industry", "Company size", "Long-term & permanent", "Short-term & business travel"]
 
 /**
  * Mobility Maturity Index card with an integrated peer-segment filter bar.
  *
- * - Region is a live, enabled dropdown that drives the headline gauge (number + arc + sub-label).
- * - "All regions" (default) shows the EXISTING live industry-average value passed in as a prop.
- * - Per-region values come from a placeholder map passed by the server component
- *   (TODO: wire to per-region RPC).
- * - The other four peer-segment filters are visibly locked (disabled, greyed, lock icon).
+ * - The gauge ALWAYS shows the live all-regions industry-average value passed in as a prop.
+ * - All peer-segment filters (including Region) are visibly locked teasers: disabled,
+ *   greyed, with a lock icon and "Unlock to filter" treatment. No fabricated per-segment
+ *   numbers are ever displayed.
  *
  * This is a client component and never imports the server Supabase client; all live
  * data arrives via props from the server page.
  */
-export function MmiCard({ allRegionsValue, regions }: MmiCardProps) {
-  const [selected, setSelected] = useState(ALL_REGIONS)
-
-  const isAllRegions = selected === ALL_REGIONS
-  const current = regions.find((r) => r.region === selected)
-  const value = isAllRegions ? allRegionsValue : (current?.value ?? allRegionsValue)
-  const subLabel = isAllRegions ? "Industry average" : `${selected} average`
+export function MmiCard({ allRegionsValue }: MmiCardProps) {
+  const value = allRegionsValue
 
   return (
     <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
@@ -53,29 +36,6 @@ export function MmiCard({ allRegionsValue, regions }: MmiCardProps) {
           <span className="text-xs font-semibold uppercase tracking-wide">Filter your peer segment</span>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          {/* Region — live, enabled */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="mmi-region" className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">
-              Region
-            </label>
-            <Select value={selected} onValueChange={setSelected}>
-              <SelectTrigger
-                id="mmi-region"
-                className="h-9 w-48 bg-brand-navy border-primary/40 text-foreground"
-              >
-                <SelectValue placeholder="Select a region" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_REGIONS}>{ALL_REGIONS}</SelectItem>
-                {regions.map((r) => (
-                  <SelectItem key={r.region} value={r.region}>
-                    {r.region}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Locked filters — disabled, greyed, lock icon */}
           {LOCKED_FILTERS.map((label) => (
             <div key={label} className="flex flex-col gap-1.5">
@@ -96,7 +56,7 @@ export function MmiCard({ allRegionsValue, regions }: MmiCardProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-        {/* Left: Circular Gauge — driven by selected region */}
+        {/* Left: Circular Gauge — live all-regions industry average */}
         <div className="flex justify-center">
           <div className="relative">
             <div className="absolute -inset-8 bg-primary/20 rounded-full blur-[60px]" />
@@ -134,10 +94,10 @@ export function MmiCard({ allRegionsValue, regions }: MmiCardProps) {
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)] transition-all duration-300">
+                <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
                   {value}%
                 </span>
-                <span className="text-xs text-slate-400 mt-1">{subLabel}</span>
+                <span className="text-xs text-slate-400 mt-1">Industry average</span>
               </div>
             </div>
           </div>
@@ -151,14 +111,14 @@ export function MmiCard({ allRegionsValue, regions }: MmiCardProps) {
           </div>
           <p className="text-sm text-slate-300 mb-6">
             The industry&apos;s first composite benchmark for workforce mobility maturity — combining four intelligence
-            pillars into a single score. Filter by region to see how your segment compares.
+            pillars into a single score. Unlock to filter by region and segment to see how your peers compare.
           </p>
 
           <Link
             href="/pricing#global-workforce-intelligence"
             className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
           >
-            <span>Unlock industry, company-size &amp; assignee-type filters</span>
+            <span>Unlock region, industry, company-size &amp; assignee-type filters</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
