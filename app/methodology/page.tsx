@@ -121,12 +121,12 @@ export default function MethodologyPage() {
         <section className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]">
           <h2 className="text-xl font-semibold text-slate-100 mb-3">Help Shape Workforce Intelligence<span className="text-primary">™</span></h2>
           <p className="text-sm text-slate-400 max-w-xl mx-auto mb-6">
-            CBIQ members contribute to the industry&apos;s most comprehensive workforce intelligence benchmarks while gaining access to exclusive reports, benchmarking insights and executive intelligence.
+            Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access, helping build the industry&apos;s most comprehensive workforce intelligence benchmarks while gaining access to exclusive reports, benchmarking insights and executive intelligence.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button className="gap-2 bg-primary hover:bg-primary/90" asChild>
-              <Link href="/contribute">
-                Become an Intelligence Contributor
+              <Link href="/contributor-dashboard">
+                Contribute to the Survey
               </Link>
             </Button>
             <Button variant="outline" asChild>
