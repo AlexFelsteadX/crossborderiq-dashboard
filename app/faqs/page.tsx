@@ -29,16 +29,16 @@ const faqs = [
     answer: "CBIQ continuously refreshes benchmark data throughout the year through event participation, member surveying and annual flagship research programmes.\n\nNew intelligence findings and reports are released regularly.",
   },
   {
-    question: "What is Intelligence Contributor Access™?",
-    answer: "Intelligence Contributor Access™ is available to organisations that contribute benchmark data to CBIQ.\n\nContributors help shape workforce intelligence benchmarks and receive complimentary access to selected intelligence reports, industry findings and quarterly updates.",
+    question: "How do I get free Premium access?",
+    answer: "Complete the Global Workforce Deployment Survey™ and you'll unlock 14 days of full Premium access — free.\n\nIt's the free on-ramp to Global Workforce Intelligence™: contribute your perspective to the benchmarks and get complete dashboard access for 14 days in return.",
   },
   {
-    question: "What do contributors receive?",
-    answer: "• Intelligence dashboard access (pillar deep-dives)\n• Strategic Mobility Index™ findings\n• AI Adoption Index™ findings\n• Future of Mobility Index™\n• Executive benchmark reports\n• Quarterly intelligence updates\n• Industry trend analysis",
+    question: "What's included in the 14-day free Premium access?",
+    answer: "For 14 days you get the complete Global Workforce Intelligence™ feature set, including:\n\n• Full dashboard access (pillar deep-dives)\n• Regional, industry and workforce-size benchmarking\n• Strategic Mobility Index™ findings\n• AI Adoption Index™ findings\n• Future of Mobility Index™\n• Executive benchmark reports\n• Quarterly intelligence updates\n• Industry trend analysis",
   },
   {
-    question: "What is NOT included with Contributor Access™?",
-    answer: "• Year-on-Year Trends\n• Regional filtering\n• Industry filtering\n• Workforce size filtering\n• Peer / advanced benchmarking\n• Branded / exportable benchmark reports",
+    question: "What happens after the 14-day free Premium access ends?",
+    answer: "After 14 days, full Premium features become locked unless you subscribe to Global Workforce Intelligence™.\n\nPremium-only capabilities include:\n\n• Year-on-Year Trends\n• Regional filtering\n• Industry filtering\n• Workforce size filtering\n• Peer / advanced benchmarking\n• Branded / exportable benchmark reports\n\nYou can continue exploring the free public dashboard at any time.",
   },
   {
     question: "What is Global Workforce Intelligence™?",
@@ -54,7 +54,7 @@ const faqs = [
   },
   {
     question: "Why is Global Workforce Intelligence™ a paid membership?",
-    answer: "The membership provides access to continuously updated intelligence, advanced benchmarking tools, peer comparison capabilities and premium research content not available through Contributor Access™.",
+    answer: "The membership provides access to continuously updated intelligence, advanced benchmarking tools, peer comparison capabilities and premium research content beyond the 14-day free Premium access unlocked by completing the Global Workforce Deployment Survey™.",
   },
   {
     question: "What is Vendor Intelligence™?",
@@ -77,22 +77,30 @@ const faqs = [
     answer: "All responses are anonymised before analysis.\n\nCBIQ does not sell, share or disclose individual participant data.\n\nOnly aggregated benchmark results are published.",
   },
   {
-    question: "How do I request access?",
-    answer: "Click the Request Access button located throughout the platform.\n\nOur team will review your requirements and recommend the most appropriate membership option.",
+    question: "How do I get access?",
+    answer: "There are a few ways to access CBIQ intelligence:\n\n• Free public dashboard — explore headline workforce intelligence at /workforce-intelligence. No account required.\n• 14 days of free Premium — complete the Global Workforce Deployment Survey™ to unlock full Premium access for 14 days, free.\n• Global Workforce Intelligence™ — full Premium membership is £995/year via secure checkout.\n• Vendor Intelligence™ — for service providers, see the pricing page for options.",
   },
   {
     question: "Which membership option is right for me?",
-    answer: "For HR, Mobility, Talent and Workforce leaders:\n• Intelligence Contributor Access™\n• Global Workforce Intelligence™\n\nFor service providers:\n• Vendor Intelligence™\n• Strategic Intelligence Partner",
+    answer: "For HR, Mobility, Talent and Workforce leaders:\n• Free public dashboard\n• 14 days of free Premium via the Global Workforce Deployment Survey™\n• Global Workforce Intelligence™\n\nFor service providers:\n• Vendor Intelligence™\n• Strategic Intelligence Partner",
   },
 ]
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false)
-
+function FAQItem({
+  question,
+  answer,
+  isOpen,
+  onToggle,
+}: {
+  question: string
+  answer: string
+  isOpen: boolean
+  onToggle: () => void
+}) {
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] overflow-hidden">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-primary/5 transition-colors"
       >
         <span className="text-sm font-medium text-slate-100 pr-4">{question}</span>
@@ -116,6 +124,8 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 export default function FAQsPage() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
+
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
       {/* Premium Dark Gradient Mesh Background - Same as homepage */}
@@ -141,7 +151,13 @@ export default function FAQsPage() {
         {/* FAQ Accordion */}
         <div className="space-y-3 mb-12">
           {faqs.map((faq, index) => (
-            <FAQItem key={index} question={faq.question} answer={faq.answer} />
+            <FAQItem
+              key={index}
+              question={faq.question}
+              answer={faq.answer}
+              isOpen={openIndex === index}
+              onToggle={() => setOpenIndex(openIndex === index ? null : index)}
+            />
           ))}
         </div>
 
@@ -153,13 +169,10 @@ export default function FAQsPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button className="bg-primary hover:bg-primary/90" asChild>
+              <Link href="/contributor-dashboard">Contribute to the Survey</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link href="/pricing">View all membership options</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/contribute">Become an Intelligence Contributor</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/pricing">Request Access</Link>
             </Button>
           </div>
         </div>
