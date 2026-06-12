@@ -224,9 +224,9 @@ export default function PricingPage() {
                 </div>
                 <ul className="space-y-3 mb-6">
                   {[
-                    "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
+                    "All 7 intelligence pillars — 60+ question-level datasets, not just headline statistics",
                     "Year-on-Year trends across every metric",
-                    "Benchmarking filters by region, industry, company size & assignee population size (long- & short-term)",
+                    "Benchmarking filters by region, industry, company size & assignee population size (long & short-term)",
                     "Branded PDF export — board-ready benchmarks",
                     "Full Premium dashboard, continuously updated",
                     "Full report library — including members-only reports",
@@ -299,9 +299,9 @@ export default function PricingPage() {
                 <div className="mb-6">
                   <ul className="space-y-3">
                     {[
-                      "All 7 intelligence pillars — 60+ question-level datasets, not just headline stats",
+                      "All 7 intelligence pillars — 60+ question-level datasets, not just headline statistics",
                       "Year-on-Year trends across every metric",
-                      "Benchmarking filters by region, industry, company size & assignee population size (long- & short-term)",
+                      "Benchmarking filters by region, industry, company size & assignee population size (long & short-term)",
                       "Branded PDF export — board-ready benchmarks",
                       "Full Premium dashboard, continuously updated",
                       "Full report library — including members-only reports",
@@ -381,7 +381,7 @@ export default function PricingPage() {
             <div id="whats-the-difference" className="max-w-3xl mx-auto scroll-mt-24">
               <h3 className="text-xl font-semibold text-slate-100 mb-2 text-center">What&apos;s The Difference?</h3>
               <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
-                Same core intelligence — see exactly what membership adds.
+                Same core intelligence: see exactly what each access provides
               </p>
               {/* Relative wrapper so the mobile scroll-fade can sit outside the
                   horizontally scrolling region (and therefore stay put while scrolling). */}
