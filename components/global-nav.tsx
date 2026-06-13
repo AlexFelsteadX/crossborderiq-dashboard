@@ -85,12 +85,33 @@ export function GlobalNav() {
   }
 
   // TODO: Move Premium Dashboard behind authenticated member access once Supabase authentication and role-based access are implemented.
-  const moreNavItems: NavItem[] = [
+  // Tier-aware dashboard links in the More dropdown (uses the same `tier` from useAuth):
+  // - vendor: Premium + Vendor Premium dashboards (no Contributor Dashboard)
+  // - premium: Premium dashboard only
+  // - free / contributor / guest: unchanged from before
+  let dashboardMoreItems: NavItem[]
+  if (tier === "vendor") {
+    dashboardMoreItems = [
+      { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
+      { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
+    ]
+  } else if (tier === "premium") {
+    dashboardMoreItems = [
+      { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
+    ]
+  } else {
+    // free + contributor + guest: keep exactly as before.
     // Contributor Dashboard is only useful to logged-in users (guests dead-end at the login wall),
     // so only show it when authenticated.
-    ...(user ? [{ href: "/contributor-dashboard", label: "Contributor Dashboard" }] : []),
-    { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
-    { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
+    dashboardMoreItems = [
+      ...(user ? [{ href: "/contributor-dashboard", label: "Contributor Dashboard" }] : []),
+      { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
+      { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
+    ]
+  }
+
+  const moreNavItems: NavItem[] = [
+    ...dashboardMoreItems,
     { href: "/methodology", label: "Methodology" },
     { href: "/faqs", label: "FAQs" },
     { href: "/contact", label: "Contact Us" },
