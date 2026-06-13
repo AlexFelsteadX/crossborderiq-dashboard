@@ -93,7 +93,7 @@ interface GroupedQuestion {
   segBaseN: number
   overallBaseN: number
   confidence: Confidence
-  answers: { option: string; segPct: number; overallPct: number }[]
+  answers: { option: string; segPct: number; overallPct: number; segN: number }[]
 }
 
 // =============================================================================
@@ -226,6 +226,11 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   const roundedTotal = q.answers.reduce((s, a) => s + shownPct(a), 0)
   const showRoundingNote = !isMultiSelect && roundedTotal !== 100
 
+  // Low-base annotation (non-agreement-scale cards only): flag any answer cell
+  // based on fewer than 5 respondents.
+  const LOW_BASE = 5
+  const hasLowBaseCell = !isAgreementScale && q.answers.some((a) => a.segN < LOW_BASE)
+
   // Agreement scale -> sort by numeric value descending (7 at top).
   // Otherwise -> existing count-sorted behaviour (segment, or overall when suppressed).
   const answers = isAgreementScale
@@ -305,6 +310,9 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                   {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
                   )}
+                  {!isAgreementScale && answer.segN < LOW_BASE && (
+                    <span className="text-slate-500 font-normal ml-1.5">· n={answer.segN}</span>
+                  )}
                 </span>
               </div>
               <div className="relative h-2 bg-[#1a3344] rounded-full overflow-hidden">
@@ -335,6 +343,11 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
       {showRoundingNote && (
         <p className="text-[10px] text-slate-500 mt-3">
           Percentages are rounded and may not total 100%.
+        </p>
+      )}
+      {hasLowBaseCell && (
+        <p className="text-[10px] text-slate-500 mt-3">
+          n shown where a cell is based on fewer than 5 responses.
         </p>
       )}
     </div>
@@ -579,6 +592,7 @@ export function PremiumDashboardClient() {
         option: row.answer_option,
         segPct: row.seg_pct,
         overallPct: row.overall_pct,
+        segN: row.seg_n,
       })
     }
 
