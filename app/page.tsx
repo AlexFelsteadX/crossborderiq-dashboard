@@ -78,6 +78,9 @@ export default async function HomePage() {
     viewerTier = (tierData as string) || "free"
   }
   const isMember = ["contributor", "premium", "vendor"].includes(viewerTier)
+  // Paid tiers already have full access, so the home hero hides the "Contribute Data" CTA for them.
+  // Free users (and logged-out visitors, who default to "free") still see it.
+  const hasFullAccess = ["premium", "vendor"].includes(viewerTier)
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col">
@@ -808,11 +811,15 @@ export default async function HomePage() {
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/40 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
-                    <Link href="/contribute">
-                      Contribute Data
-                    </Link>
-                  </Button>
+                  {/* Hide "Contribute Data" for paid tiers (premium/vendor) — they already have full access.
+                      Free users and logged-out visitors keep it. */}
+                  {!hasFullAccess && (
+                    <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/40 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
+                      <Link href="/contribute">
+                        Contribute Data
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
