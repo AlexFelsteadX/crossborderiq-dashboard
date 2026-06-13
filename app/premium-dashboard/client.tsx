@@ -198,10 +198,45 @@ function FilterSelect({
 function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
   const suppressed = q.confidence === "suppressed"
 
-  // Sort answers by the figure being shown (segment, or overall when suppressed).
-  const answers = [...q.answers].sort((a, b) =>
-    suppressed ? b.overallPct - a.overallPct : b.segPct - a.segPct,
-  )
+  // Per-row primary percentage (matches the figure each row already displays).
+  const shownPct = (answer: GroupedQuestion["answers"][number]) =>
+    Math.round((suppressed ? answer.overallPct : answer.segPct) * 100)
+
+  // Agreement-scale detection: every option is a single digit, >=4 distinct
+  // values, and the maximum numeric option is exactly 7.
+  const distinctOptions = Array.from(new Set(q.answers.map((a) => a.option)))
+  const numericValues = distinctOptions.map((o) => Number(o))
+  const isAgreementScale =
+    distinctOptions.length >= 4 &&
+    distinctOptions.every((o) => /^[0-9]$/.test(o)) &&
+    Math.max(...numericValues) === 7
+  const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
+
+  // Agreement scale -> sort by numeric value descending (7 at top).
+  // Otherwise -> existing count-sorted behaviour (segment, or overall when suppressed).
+  const answers = isAgreementScale
+    ? [...q.answers].sort((a, b) => Number(b.option) - Number(a.option))
+    : [...q.answers].sort((a, b) =>
+        suppressed ? b.overallPct - a.overallPct : b.segPct - a.segPct,
+      )
+
+  // Summary built from the same primary percentages each row displays (each rounded, then summed).
+  const agreementSummary = isAgreementScale
+    ? [
+        {
+          label: "Strongly agree (6–7)",
+          value: q.answers.filter((a) => Number(a.option) >= 6).reduce((s, a) => s + shownPct(a), 0),
+        },
+        {
+          label: "Agree side (5–7)",
+          value: q.answers.filter((a) => Number(a.option) >= 5).reduce((s, a) => s + shownPct(a), 0),
+        },
+        {
+          label: "Disagree (0–3)",
+          value: q.answers.filter((a) => Number(a.option) <= 3).reduce((s, a) => s + shownPct(a), 0),
+        },
+      ]
+    : null
 
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
@@ -215,15 +250,36 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
 
+      {agreementSummary && (
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          {agreementSummary.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-lg border border-primary/15 bg-brand-navy-3/50 px-3 py-2"
+            >
+              <p className="text-base font-semibold text-slate-200">{s.value}%</p>
+              <p className="text-[11px] text-slate-500 leading-tight">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2.5">
         {answers.map((answer, idx) => {
           const segDisplay = Math.round(answer.segPct * 100)
           const overallDisplay = Math.round(answer.overallPct * 100)
           const shown = suppressed ? overallDisplay : segDisplay
+          // Anchor the agreement-scale endpoints.
+          let optionLabel = answer.option
+          if (isAgreementScale) {
+            if (Number(answer.option) === 7) optionLabel = `${answer.option} · strongly agree`
+            else if (Number(answer.option) === lowestValue)
+              optionLabel = `${answer.option} · strongly disagree`
+          }
           return (
             <div key={idx}>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400 truncate pr-2">{answer.option}</span>
+                <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">
                   {shown}%
                   {!suppressed && (
