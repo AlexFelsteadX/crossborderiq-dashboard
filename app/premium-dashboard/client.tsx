@@ -18,6 +18,10 @@ import { createClient } from "@/lib/supabase/client"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
 import { THEME_ORDER, themeForPillar, type WorkforceTheme } from "@/lib/workforce-themes"
 
+// Temporary master switch: hide every respondent-count / base-size display across
+// the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
+const SHOW_COUNTS = false
+
 // =============================================================================
 // TYPES (shapes returned by the five premium RPCs)
 // =============================================================================
@@ -93,7 +97,7 @@ interface GroupedQuestion {
   segBaseN: number
   overallBaseN: number
   confidence: Confidence
-  answers: { option: string; segPct: number; overallPct: number }[]
+  answers: { option: string; segPct: number; overallPct: number; segN: number }[]
 }
 
 // =============================================================================
@@ -131,7 +135,7 @@ const DEFAULT_FILTERS: Filters = {
 function LimitedChip({ base }: { base: number }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-      Limited sample (n={base})
+      Limited sample{SHOW_COUNTS && ` (n=${base})`}
     </span>
   )
 }
@@ -195,8 +199,13 @@ function FilterSelect({
 // BLOCK 3 — BREAKDOWN QUESTION CARD (segment vs overall)
 // =============================================================================
 
-function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
+function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered: boolean }) {
   const suppressed = q.confidence === "suppressed"
+
+  // The overall/benchmark comparison is only meaningful when a segment filter is
+  // active. With no filter the segment IS the whole population, so we show a single
+  // percentage and hide the "(all X%)" text, the benchmark marker, and its legend.
+  const showComparison = !suppressed && isFiltered
 
   // Per-row primary percentage (matches the figure each row already displays).
   const shownPct = (answer: GroupedQuestion["answers"][number]) =>
@@ -211,6 +220,20 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
     distinctOptions.every((o) => /^[0-9]$/.test(o)) &&
     Math.max(...numericValues) === 7
   const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
+
+  // Multi-select detection: NOT an agreement scale, and the shown percentages
+  // sum to more than 115% (single-select questions sum to ~100%).
+  const isMultiSelect =
+    !isAgreementScale && q.answers.reduce((s, a) => s + shownPct(a), 0) > 115
+
+  // Single-response cards only: note when rounded percentages don't total exactly 100.
+  const roundedTotal = q.answers.reduce((s, a) => s + shownPct(a), 0)
+  const showRoundingNote = !isMultiSelect && roundedTotal !== 100
+
+  // Low-base annotation (non-agreement-scale cards only): flag any answer cell
+  // based on fewer than 5 respondents.
+  const LOW_BASE = 5
+  const hasLowBaseCell = !isAgreementScale && q.answers.some((a) => a.segN < LOW_BASE)
 
   // Agreement scale -> sort by numeric value descending (7 at top).
   // Otherwise -> existing count-sorted behaviour (segment, or overall when suppressed).
@@ -244,11 +267,19 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
         <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="text-[11px] text-slate-500">
-          {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-        </span>
+        {SHOW_COUNTS && (
+          <span className="text-[11px] text-slate-500">
+            {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
+          </span>
+        )}
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
+
+      {isMultiSelect && (
+        <p className="text-[11px] text-slate-500 mb-3 -mt-1">
+          Multiple answers allowed · percentages total more than 100%
+        </p>
+      )}
 
       {agreementSummary && (
         <div className="mb-4 grid grid-cols-3 gap-2">
@@ -282,8 +313,11 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
                 <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">
                   {shown}%
-                  {!suppressed && (
+                  {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
+                  )}
+                  {SHOW_COUNTS && !isAgreementScale && answer.segN < LOW_BASE && (
+                    <span className="text-slate-500 font-normal ml-1.5">· n={answer.segN}</span>
                   )}
                 </span>
               </div>
@@ -292,8 +326,8 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
                   className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
                   style={{ width: `${Math.min(shown, 100)}%` }}
                 />
-                {/* Faint overall marker (only meaningful on segment view) */}
-                {!suppressed && (
+                {/* Faint overall marker (only meaningful on a filtered segment view) */}
+                {showComparison && (
                   <span
                     className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
                     style={{ left: `${Math.min(overallDisplay, 100)}%` }}
@@ -307,9 +341,19 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
       </div>
 
       {suppressed && <FallbackNote className="mt-3" />}
-      {!suppressed && (
+      {showComparison && (
         <p className="text-[10px] text-slate-500 mt-3">
           Teal = your segment · marker = overall benchmark
+        </p>
+      )}
+      {showRoundingNote && (
+        <p className="text-[10px] text-slate-500 mt-3">
+          Percentages are rounded and may not total 100%.
+        </p>
+      )}
+      {SHOW_COUNTS && hasLowBaseCell && (
+        <p className="text-[10px] text-slate-500 mt-3">
+          n shown where a cell is based on fewer than 5 responses.
         </p>
       )}
     </div>
@@ -322,11 +366,13 @@ function BreakdownSection({
   questions,
   isOpen,
   onToggle,
+  isFiltered,
 }: {
   sectionName: string
   questions: GroupedQuestion[]
   isOpen: boolean
   onToggle: () => void
+  isFiltered: boolean
 }) {
   return (
     <section
@@ -358,7 +404,7 @@ function BreakdownSection({
         <div className="px-5 pb-5 pt-1">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
-              <PremiumQuestionCard key={q.qCode} q={q} />
+              <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
             ))}
           </div>
         </div>
@@ -431,9 +477,11 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-slate-500">
-          n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
-        </span>
+        {SHOW_COUNTS && (
+          <span className="text-[11px] text-slate-500">
+            n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
+          </span>
+        )}
         {row.confidence === "limited" && <LimitedChip base={row.base_2026} />}
       </div>
       {suppressed && <FallbackNote className="mt-2" />}
@@ -552,6 +600,7 @@ export function PremiumDashboardClient() {
         option: row.answer_option,
         segPct: row.seg_pct,
         overallPct: row.overall_pct,
+        segN: row.seg_n,
       })
     }
 
@@ -672,16 +721,20 @@ export function PremiumDashboardClient() {
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-300 inline-flex items-center gap-2">
-                {loadingMain ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                ) : null}
-                Showing{" "}
-                <strong className="text-primary">
-                  {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
-                </strong>{" "}
-                organisations
-              </span>
+              {SHOW_COUNTS ? (
+                <span className="text-sm text-slate-300 inline-flex items-center gap-2">
+                  {loadingMain ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  ) : null}
+                  Showing{" "}
+                  <strong className="text-primary">
+                    {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
+                  </strong>{" "}
+                  organisations
+                </span>
+              ) : (
+                loadingMain && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -775,9 +828,11 @@ export function PremiumDashboardClient() {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and AI maturity.
                 </p>
-                <p className="text-xs text-slate-400 mt-3">
-                  Based on {Math.round(mmi.base_n).toLocaleString()} organisations
-                </p>
+                {SHOW_COUNTS && (
+                  <p className="text-xs text-slate-400 mt-3">
+                    Based on {Math.round(mmi.base_n).toLocaleString()} organisations
+                  </p>
+                )}
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
               </div>
 
@@ -839,7 +894,7 @@ export function PremiumDashboardClient() {
                     {p.metric_label && (
                       <p className="text-[11px] text-slate-500 mt-1 leading-snug">{p.metric_label}</p>
                     )}
-                    <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>
+                    {SHOW_COUNTS && <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>}
                     {r.isLimited && (
                       <span className="mt-1 text-[10px] font-medium text-amber-400">Limited sample</span>
                     )}
@@ -871,7 +926,9 @@ export function PremiumDashboardClient() {
                           {remotePillar.metric_label}
                         </span>
                       )}
-                      <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
+                      {SHOW_COUNTS && (
+                        <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
+                      )}
                       {r.isFallback && <FallbackNote />}
                     </div>
                   </div>
@@ -922,6 +979,7 @@ export function PremiumDashboardClient() {
                 onToggle={() =>
                   setOpenSection((prev) => (prev === sectionName ? null : sectionName))
                 }
+                isFiltered={isFiltered}
               />
             ) : null,
           )}
