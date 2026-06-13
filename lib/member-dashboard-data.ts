@@ -226,7 +226,7 @@ export const smiPillars = {
 
 // Year-on-year trend metrics
 export const yearOnYearTrends = [
-  { metric: "Strategic Mobility Index", value2025: 59, value2026: 63, change: 4 },
+  { metric: "Mobility Maturity Index", value2025: 59, value2026: 63, change: 4 },
   { metric: "AI Adoption", value2025: 21, value2026: 35, change: 14 },
   { metric: "Technology Adoption", value2025: 52, value2026: 55, change: 3 },
   { metric: "Policy Transformation", value2025: 60, value2026: 53, change: -7 },

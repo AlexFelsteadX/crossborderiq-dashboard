@@ -34,7 +34,7 @@ const faqs = [
   },
   {
     question: "What's included in the 14-day free Premium access?",
-    answer: "For 14 days you get the complete Global Workforce Intelligence™ feature set, including:\n\n• Full dashboard access (pillar deep-dives)\n• Regional, industry and workforce-size benchmarking\n• Strategic Mobility Index™ findings\n• AI Adoption Index™ findings\n• Future of Mobility Index™\n• Executive benchmark reports\n• Quarterly intelligence updates\n• Industry trend analysis",
+    answer: "For 14 days you get the complete Global Workforce Intelligence™ feature set, including:\n\n• Full dashboard access (pillar deep-dives)\n• Regional, industry and workforce-size benchmarking\n• Mobility Maturity Index™ findings\n• AI Adoption Index™ findings\n• Future of Mobility Index™\n• Executive benchmark reports\n• Quarterly intelligence updates\n• Industry trend analysis",
   },
   {
     question: "What happens after the 14-day free Premium access ends?",
@@ -46,7 +46,7 @@ const faqs = [
   },
   {
     question: "What does Global Workforce Intelligence™ include?",
-    answer: "• Full dashboard access\n• Regional benchmarking\n• Industry benchmarking\n• Workforce size benchmarking\n• Strategic Mobility Index™ analysis\n• AI Adoption benchmarking\n• Executive intelligence reports\n• Quarterly intelligence releases\n• Peer comparison capabilities",
+    answer: "• Full dashboard access\n• Regional benchmarking\n• Industry benchmarking\n• Workforce size benchmarking\n• Mobility Maturity Index™ analysis\n• AI Adoption benchmarking\n• Executive intelligence reports\n• Quarterly intelligence releases\n• Peer comparison capabilities",
   },
   {
     question: "Can I benchmark my organisation?",

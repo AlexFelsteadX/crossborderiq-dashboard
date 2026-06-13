@@ -36,9 +36,9 @@ const previewCards = [
     ],
   },
   {
-    title: "Strategic Mobility Index™ Comparison",
+    title: "Mobility Maturity Index™ Comparison",
     icon: TrendingUp,
-    description: "Compare your Strategic Mobility Index™ score against regional and industry benchmarks.",
+    description: "Compare your Mobility Maturity Index™ score against regional and industry benchmarks.",
     previewData: [
       { label: "Your Score", value: "63%", subtext: "Developing Strategic" },
       { label: "Industry Avg", value: "58%", subtext: "Developing Strategic" },
@@ -71,7 +71,7 @@ const accessFeatures = [
   "Regional Comparisons",
   "Industry Comparisons",
   "Workforce Size Comparisons",
-  "Strategic Mobility Index™ Benchmarking",
+  "Mobility Maturity Index™ Benchmarking",
   "AI Adoption Benchmarking",
   "Custom Peer Groups",
   "Exportable Reports",

@@ -351,7 +351,7 @@ export default function MemberDashboardPage() {
         {/* Executive KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm p-4">
-            <p className="text-xs text-muted-foreground mb-1">Strategic Mobility Index™</p>
+            <p className="text-xs text-muted-foreground mb-1">Mobility Maturity Index™</p>
             <p className="text-3xl font-bold text-primary">{filteredKPIs.smi}%</p>
             <p className="text-xs text-muted-foreground mt-1">Composite Score</p>
           </div>
@@ -390,7 +390,7 @@ export default function MemberDashboardPage() {
             {/* Left: Index Gauge */}
             <div className="lg:w-1/3 flex flex-col items-center justify-center">
               <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                Strategic Mobility Index<span className="text-primary text-sm">™</span>
+                Mobility Maturity Index<span className="text-primary text-sm">™</span>
               </h2>
               <div className="relative w-40 h-40">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -457,7 +457,7 @@ export default function MemberDashboardPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-4">
-                The Strategic Mobility Index™ measures how strategically embedded Global Mobility is within workforce planning, 
+                The Mobility Maturity Index™ measures how strategically embedded Global Mobility is within workforce planning, 
                 leadership decision-making, operational transformation, technology adoption and business growth.
               </p>
             </div>
@@ -484,7 +484,7 @@ export default function MemberDashboardPage() {
 
         {/* Regional Benchmarking */}
         <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Regional Strategic Mobility Index™</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Regional Mobility Maturity Index™</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <div className="space-y-3">
@@ -518,7 +518,7 @@ export default function MemberDashboardPage() {
               <div className="rounded-lg border border-border bg-card/50 p-4">
                 <p className="text-xs text-muted-foreground mb-1">Highest Strategic Importance</p>
                 <p className="text-lg font-semibold text-foreground">{regionalSummary.topSMI?.region ?? "—"}</p>
-                <p className="text-xs text-primary">{regionalSummary.topSMI?.value ?? "—"}% SMI Score</p>
+                <p className="text-xs text-primary">{regionalSummary.topSMI?.value ?? "—"}% MMI Score</p>
               </div>
               <div className="rounded-lg border border-border bg-card/50 p-4">
                 <p className="text-xs text-muted-foreground mb-1">Highest Operational Pressure</p>
@@ -545,7 +545,7 @@ export default function MemberDashboardPage() {
                 <YAxis tick={{ fill: '#A7B0B8', fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Bar dataKey="smi" name="SMI" fill="var(--brand-teal-deep)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="smi" name="MMI" fill="var(--brand-teal-deep)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="aiAdoption" name="AI Adoption" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -563,7 +563,7 @@ export default function MemberDashboardPage() {
                 <YAxis tick={{ fill: '#A7B0B8', fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line type="monotone" dataKey="smi" name="SMI" stroke="var(--brand-teal-deep)" strokeWidth={2} dot={{ fill: 'var(--brand-teal-deep)' }} />
+                <Line type="monotone" dataKey="smi" name="MMI" stroke="var(--brand-teal-deep)" strokeWidth={2} dot={{ fill: 'var(--brand-teal-deep)' }} />
                 <Line type="monotone" dataKey="aiAdoption" name="AI Adoption" stroke="#0ea5e9" strokeWidth={2} dot={{ fill: '#0ea5e9' }} />
                 <Line type="monotone" dataKey="maturity" name="Maturity" stroke="#22c55e" strokeWidth={2} dot={{ fill: '#22c55e' }} />
               </LineChart>
@@ -701,7 +701,7 @@ export default function MemberDashboardPage() {
             {[
               { title: "Global Workforce Deployment Survey Report 2025", type: "Full Report", pages: "31 pages" },
               { title: "Global Workforce Deployment Survey Report 2026", type: "Full Report", pages: "36 pages" },
-              { title: "Strategic Mobility Index™ Briefing", type: "Executive Briefing", pages: "12 pages" },
+              { title: "Mobility Maturity Index™ Briefing", type: "Executive Briefing", pages: "12 pages" },
               { title: "AI Adoption Benchmark Briefing", type: "Executive Briefing", pages: "8 pages" },
               { title: "Future of Mobility Intelligence Briefing", type: "Executive Briefing", pages: "10 pages" },
             ].map((report) => (

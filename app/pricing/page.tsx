@@ -395,7 +395,7 @@ export default function PricingPage() {
                         Premium — 14 Days Free
                       </th>
                       <th className="text-center p-4 text-sm font-medium text-primary whitespace-nowrap">
-                        Premium — £995 / yr
+                        Premium — £995 / $1,295 / yr
                       </th>
                     </tr>
                   </thead>

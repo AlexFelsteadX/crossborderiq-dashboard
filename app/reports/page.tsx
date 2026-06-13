@@ -168,7 +168,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
               {[
                 "Global Workforce Deployment Survey Report",
-                "Strategic Mobility Index™",
+                "Mobility Maturity Index™",
                 "AI Adoption Index™",
                 "Future of Mobility Index™",
                 "Executive Benchmark Reports",

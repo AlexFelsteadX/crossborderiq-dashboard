@@ -11,7 +11,7 @@ export function StrategicMobilityIndexBreakdown() {
 
   return (
     <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-6">Strategic Mobility Index™ Breakdown</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-6">Mobility Maturity Index™ Breakdown</h2>
       
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Gauge */}

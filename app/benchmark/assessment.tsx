@@ -74,7 +74,7 @@ export function BenchmarkAssessment({
           <span className="text-[11px] font-medium text-primary uppercase tracking-wider">Free assessment</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 mb-2 text-balance">
-          Strategic Mobility Index™
+          Mobility Maturity Index™
         </h1>
         <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
           Ten quick questions. Get your score, benchmarked against the wider market, and unlock Contributor
@@ -176,7 +176,7 @@ export function BenchmarkAssessment({
             </>
           ) : (
             <>
-              Get my Strategic Mobility Index™
+              Get my Mobility Maturity Index™
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </>
           )}
@@ -284,7 +284,7 @@ function Result({
       )}
 
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-        <p className="text-sm text-slate-400 mb-6">Your Strategic Mobility Index™</p>
+        <p className="text-sm text-slate-400 mb-6">Your Mobility Maturity Index™</p>
 
         <div className="relative mx-auto h-40 w-40 mb-6">
           <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">

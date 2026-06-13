@@ -91,7 +91,7 @@ export function StrategicMobilityIndex() {
               <span className="text-xs text-primary font-medium uppercase tracking-wider">Flagship Benchmark</span>
             </div>
             <h2 className="text-xl lg:text-2xl font-semibold text-foreground">
-              CBIQ Strategic Mobility Index™
+              CBIQ Mobility Maturity Index™
             </h2>
           </div>
         </div>
@@ -139,7 +139,7 @@ export function StrategicMobilityIndex() {
         </div>
 
         <p className="mt-8 pt-6 border-t border-white/5 text-sm text-muted-foreground leading-relaxed italic">
-          &quot;The Strategic Mobility Index measures how strategically embedded Global Mobility is within workforce planning, 
+          &quot;The Mobility Maturity Index measures how strategically embedded Global Mobility is within workforce planning, 
           leadership decision-making and organizational transformation.&quot;
         </p>
       </div>
