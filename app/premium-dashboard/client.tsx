@@ -221,14 +221,86 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     Math.max(...numericValues) === 7
   const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
 
+  // Direction-matrix detection: every option is "<move type>: <direction>" split on
+  // the LAST ": ", the suffix is one of the four directions, and there are >=2 move types.
+  const DIRECTION_ORDER = ["Increase", "Remain the same", "Decrease", "Not applicable"] as const
+  const DIRECTION_COLORS: Record<(typeof DIRECTION_ORDER)[number], string> = {
+    Increase: "#1D9E75",
+    "Remain the same": "#888780",
+    Decrease: "#D85A30",
+    "Not applicable": "#D3D1C7",
+  }
+  const canonDirection = (suffix: string): (typeof DIRECTION_ORDER)[number] | null => {
+    switch (suffix.trim().toLowerCase()) {
+      case "increase":
+        return "Increase"
+      case "remain the same":
+        return "Remain the same"
+      case "decrease":
+        return "Decrease"
+      case "not applicable":
+        return "Not applicable"
+      default:
+        return null
+    }
+  }
+  const splitMatrixOption = (option: string) => {
+    const idx = option.lastIndexOf(": ")
+    if (idx === -1) return null
+    const dir = canonDirection(option.slice(idx + 2))
+    if (!dir) return null
+    return { prefix: option.slice(0, idx).trim(), direction: dir }
+  }
+  const parsedMatrix = q.answers.map((a) => ({ a, parts: splitMatrixOption(a.option) }))
+  const isDirectionMatrix =
+    !isAgreementScale &&
+    parsedMatrix.length > 0 &&
+    parsedMatrix.every((p) => p.parts !== null) &&
+    new Set(parsedMatrix.map((p) => p.parts!.prefix)).size >= 2
+
+  // Build one stacked row per move type (only when it's a direction matrix).
+  const matrixRows = isDirectionMatrix
+    ? (() => {
+        const rawPct = (a: GroupedQuestion["answers"][number]) =>
+          suppressed ? a.overallPct : a.segPct
+        const groups = new Map<string, Record<(typeof DIRECTION_ORDER)[number], number>>()
+        const order: string[] = []
+        for (const { a, parts } of parsedMatrix) {
+          if (!parts) continue
+          if (!groups.has(parts.prefix)) {
+            groups.set(parts.prefix, {
+              Increase: 0,
+              "Remain the same": 0,
+              Decrease: 0,
+              "Not applicable": 0,
+            })
+            order.push(parts.prefix)
+          }
+          groups.get(parts.prefix)![parts.direction] += rawPct(a)
+        }
+        return order
+          .map((prefix) => {
+            const sums = groups.get(prefix)!
+            const total =
+              sums.Increase + sums["Remain the same"] + sums.Decrease + sums["Not applicable"]
+            // Normalise within the move type so its four segments fill 100%.
+            const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0)
+            const segments = DIRECTION_ORDER.map((dir) => ({ dir, width: pct(sums[dir]) }))
+            const net = Math.round(pct(sums.Increase) - pct(sums.Decrease))
+            return { prefix, segments, net }
+          })
+          .sort((a, b) => b.net - a.net)
+      })()
+    : null
+
   // Multi-select detection: NOT an agreement scale, and the shown percentages
   // sum to more than 115% (single-select questions sum to ~100%).
   const isMultiSelect =
-    !isAgreementScale && q.answers.reduce((s, a) => s + shownPct(a), 0) > 115
+    !isAgreementScale && !isDirectionMatrix && q.answers.reduce((s, a) => s + shownPct(a), 0) > 115
 
   // Single-response cards only: note when rounded percentages don't total exactly 100.
   const roundedTotal = q.answers.reduce((s, a) => s + shownPct(a), 0)
-  const showRoundingNote = !isMultiSelect && roundedTotal !== 100
+  const showRoundingNote = !isMultiSelect && !isDirectionMatrix && roundedTotal !== 100
 
   // Low-base annotation (non-agreement-scale cards only): flag any answer cell
   // based on fewer than 5 respondents.
@@ -260,6 +332,61 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         },
       ]
     : null
+
+  if (isDirectionMatrix && matrixRows) {
+    const netLabel = (net: number) =>
+      net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
+    return (
+      <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
+        </div>
+
+        {/* Direction legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
+          {DIRECTION_ORDER.map((dir) => (
+            <span key={dir} className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: DIRECTION_COLORS[dir] }}
+              />
+              {dir}
+            </span>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          {matrixRows.map((row) => (
+            <div key={row.prefix} className="grid grid-cols-[9rem_1fr_4rem] items-center gap-3">
+              <span className="text-xs text-slate-300 truncate" title={row.prefix}>
+                {row.prefix}
+              </span>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
+                {row.segments
+                  .filter((s) => s.width > 0)
+                  .map((s) => (
+                    <div
+                      key={s.dir}
+                      className="h-full"
+                      style={{ width: `${s.width}%`, backgroundColor: DIRECTION_COLORS[s.dir] }}
+                      title={`${s.dir} ${Math.round(s.width)}%`}
+                    />
+                  ))}
+              </div>
+              <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
+                {netLabel(row.net)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {suppressed && <FallbackNote className="mt-3" />}
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
