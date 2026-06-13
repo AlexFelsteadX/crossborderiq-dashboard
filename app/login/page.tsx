@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Mail, Lock, ArrowLeft, AlertCircle, CheckCircle, User } from "lucide-react"
+import { Mail, Lock, ArrowLeft, AlertCircle, CheckCircle, User, Eye, EyeOff } from "lucide-react"
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -17,6 +17,7 @@ function LoginForm() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -205,12 +206,15 @@ function LoginForm() {
                   Create account
                 </button>
               ) : (
-                <Link
-                  href="/pricing"
-                  className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
-                >
-                  Create account
-                </Link>
+                <span className="flex-1 py-2 text-sm font-medium text-center text-slate-400">
+                  New here?{" "}
+                  <Link
+                    href="/pricing"
+                    className="font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    Get started →
+                  </Link>
+                </span>
               )
             ) : (
               <button
@@ -249,7 +253,12 @@ function LoginForm() {
           {success && (
             <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-2">
               <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-green-500">{success}</p>
+              <div>
+                <p className="text-sm text-green-500">{success}</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Don&apos;t see the email? Check your spam or junk folder.
+                </p>
+              </div>
             </div>
           )}
 
@@ -302,15 +311,25 @@ function LoginForm() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={mode === "signup" ? "At least 6 characters" : "Enter your password"}
-                  className="pl-10 bg-brand-navy/60 border-primary/20 text-slate-100 placeholder:text-slate-500 focus-visible:ring-primary focus-visible:border-primary"
+                  className="pl-10 pr-10 bg-brand-navy/60 border-primary/20 text-slate-100 placeholder:text-slate-500 focus-visible:ring-primary focus-visible:border-primary"
                   required
                   minLength={6}
                   disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors focus-visible:outline-none focus-visible:text-primary"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
               {mode === "signin" && (
                 <div className="mt-2 text-right">
