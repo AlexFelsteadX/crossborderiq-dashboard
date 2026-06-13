@@ -93,9 +93,7 @@ export function GlobalNav() {
     { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
     { href: "/methodology", label: "Methodology" },
     { href: "/faqs", label: "FAQs" },
-    { href: "/contact", label: "Contact" },
-    { href: "/privacy", label: "Privacy Policy" },
-    { href: "/terms", label: "Terms of Use" },
+    { href: "/contact", label: "Contact Us" },
   ]
 
   const allNavItems = [...mainNavItems, ...moreNavItems]
