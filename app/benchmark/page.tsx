@@ -52,7 +52,7 @@ export default async function BenchmarkPage() {
               <span className="text-[11px] font-medium text-primary uppercase tracking-wider">Free assessment</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 mb-3 text-balance">
-              Get your free Strategic Mobility Index™ score
+              Get your free Mobility Maturity Index™ score
             </h1>
             <p className="text-slate-300 mb-8 leading-relaxed">
               Answer 8 short questions to benchmark your Global Mobility function against the wider

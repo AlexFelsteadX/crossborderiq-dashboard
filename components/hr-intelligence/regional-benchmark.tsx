@@ -42,7 +42,7 @@ export function RegionalBenchmarking() {
       {/* Section Header */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          Regional Strategic Mobility Index
+          Regional Mobility Maturity Index
           <span className="text-xs font-medium text-primary">™</span>
         </h2>
         <p className="text-sm text-muted-foreground mt-1">

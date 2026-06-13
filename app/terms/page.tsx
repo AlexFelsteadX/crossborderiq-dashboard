@@ -51,7 +51,7 @@ You agree not to:
 
 ## 8. Intellectual property
 
-The Service, including all software, content, reports, benchmarks, branding, and the indices and trademarks used by CBIQ (including the Strategic Mobility Index™, AI Adoption Index™ and Future of Mobility Index™), is owned by us or our licensors and is protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable right to access and use the Service for your internal business purposes during your membership. You may not use our trademarks without permission.
+The Service, including all software, content, reports, benchmarks, branding, and the indices and trademarks used by CBIQ (including the Mobility Maturity Index™, AI Adoption Index™ and Future of Mobility Index™), is owned by us or our licensors and is protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable right to access and use the Service for your internal business purposes during your membership. You may not use our trademarks without permission.
 
 ## 9. Your data and our use of aggregated insights
 

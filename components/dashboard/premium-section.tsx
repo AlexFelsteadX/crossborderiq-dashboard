@@ -7,7 +7,7 @@ const premiumModules = [
   { title: "Regional Benchmarking", description: "Compare your mobility metrics against regional peers" },
   { title: "Industry Benchmarking", description: "Industry-specific intelligence and comparisons" },
   { title: "Company Size Benchmarking", description: "Benchmark against organizations of similar size" },
-  { title: "Strategic Mobility Index Breakdown", description: "Detailed pillar analysis and improvement roadmap" },
+  { title: "Mobility Maturity Index Breakdown", description: "Detailed pillar analysis and improvement roadmap" },
   { title: "AI Adoption Benchmarking", description: "Compare your AI maturity with industry leaders" },
   { title: "Future of Mobility Analysis", description: "Predictive insights and trend forecasting" },
 ]

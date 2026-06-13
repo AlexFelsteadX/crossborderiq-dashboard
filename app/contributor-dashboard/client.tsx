@@ -351,7 +351,7 @@ export function ContributorDashboardClient({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { title: "Global Workforce Deployment Report 2026", category: "Flagship Report", link: "/reports" },
-              { title: "Strategic Mobility Index™ Report", category: "Index Report", link: "/reports" },
+              { title: "Mobility Maturity Index™ Report", category: "Index Report", link: "/reports" },
               { title: "AI Adoption Intelligence Report", category: "Technology Report", link: "/reports" },
               { title: "Future of Mobility Report", category: "Trends Report", link: "/reports" },
               { title: "Executive Workforce Intelligence Briefings", category: "Quarterly Briefing", link: "/reports" },

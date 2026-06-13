@@ -399,7 +399,7 @@ export default async function HomePage() {
                   badge: "For Vendors"
                 },
                 {
-                  title: "Strategic Mobility Index",
+                  title: "Mobility Maturity Index",
                   description: "Composite benchmark measuring workforce mobility strategic maturity.",
                   icon: BarChart3,
                   href: "/workforce-intelligence",
@@ -506,7 +506,7 @@ export default async function HomePage() {
           <div className="max-w-[1400px] mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-2xl md:text-3xl font-bold text-slate-50 mb-3">
-                What Makes Up the Strategic Mobility Index<span className="text-primary text-sm align-top">™</span>
+                What Makes Up the Mobility Maturity Index<span className="text-primary text-sm align-top">™</span>
               </h2>
               <p className="text-slate-400 max-w-2xl mx-auto">
                 Four intelligence pillars combined into a single benchmark score.
