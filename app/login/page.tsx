@@ -206,12 +206,15 @@ function LoginForm() {
                   Create account
                 </button>
               ) : (
-                <Link
-                  href="/pricing"
-                  className="flex-1 py-2 text-sm font-medium rounded-md transition-colors text-center text-slate-400 hover:text-slate-100"
-                >
-                  Create account
-                </Link>
+                <span className="flex-1 py-2 text-sm font-medium text-center text-slate-400">
+                  New here?{" "}
+                  <Link
+                    href="/pricing"
+                    className="font-medium text-primary transition-colors hover:text-primary/80"
+                  >
+                    Get started →
+                  </Link>
+                </span>
               )
             ) : (
               <button
