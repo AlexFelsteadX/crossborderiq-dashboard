@@ -195,8 +195,13 @@ function FilterSelect({
 // BLOCK 3 — BREAKDOWN QUESTION CARD (segment vs overall)
 // =============================================================================
 
-function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
+function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered: boolean }) {
   const suppressed = q.confidence === "suppressed"
+
+  // The overall/benchmark comparison is only meaningful when a segment filter is
+  // active. With no filter the segment IS the whole population, so we show a single
+  // percentage and hide the "(all X%)" text, the benchmark marker, and its legend.
+  const showComparison = !suppressed && isFiltered
 
   // Per-row primary percentage (matches the figure each row already displays).
   const shownPct = (answer: GroupedQuestion["answers"][number]) =>
@@ -216,6 +221,10 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
   // sum to more than 115% (single-select questions sum to ~100%).
   const isMultiSelect =
     !isAgreementScale && q.answers.reduce((s, a) => s + shownPct(a), 0) > 115
+
+  // Single-response cards only: note when rounded percentages don't total exactly 100.
+  const roundedTotal = q.answers.reduce((s, a) => s + shownPct(a), 0)
+  const showRoundingNote = !isMultiSelect && roundedTotal !== 100
 
   // Agreement scale -> sort by numeric value descending (7 at top).
   // Otherwise -> existing count-sorted behaviour (segment, or overall when suppressed).
@@ -293,7 +302,7 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
                 <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">
                   {shown}%
-                  {!suppressed && (
+                  {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
                   )}
                 </span>
@@ -303,8 +312,8 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
                   className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
                   style={{ width: `${Math.min(shown, 100)}%` }}
                 />
-                {/* Faint overall marker (only meaningful on segment view) */}
-                {!suppressed && (
+                {/* Faint overall marker (only meaningful on a filtered segment view) */}
+                {showComparison && (
                   <span
                     className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
                     style={{ left: `${Math.min(overallDisplay, 100)}%` }}
@@ -318,9 +327,14 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
       </div>
 
       {suppressed && <FallbackNote className="mt-3" />}
-      {!suppressed && (
+      {showComparison && (
         <p className="text-[10px] text-slate-500 mt-3">
           Teal = your segment · marker = overall benchmark
+        </p>
+      )}
+      {showRoundingNote && (
+        <p className="text-[10px] text-slate-500 mt-3">
+          Percentages are rounded and may not total 100%.
         </p>
       )}
     </div>
@@ -333,11 +347,13 @@ function BreakdownSection({
   questions,
   isOpen,
   onToggle,
+  isFiltered,
 }: {
   sectionName: string
   questions: GroupedQuestion[]
   isOpen: boolean
   onToggle: () => void
+  isFiltered: boolean
 }) {
   return (
     <section
@@ -369,7 +385,7 @@ function BreakdownSection({
         <div className="px-5 pb-5 pt-1">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
-              <PremiumQuestionCard key={q.qCode} q={q} />
+              <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
             ))}
           </div>
         </div>
@@ -933,6 +949,7 @@ export function PremiumDashboardClient() {
                 onToggle={() =>
                   setOpenSection((prev) => (prev === sectionName ? null : sectionName))
                 }
+                isFiltered={isFiltered}
               />
             ) : null,
           )}
