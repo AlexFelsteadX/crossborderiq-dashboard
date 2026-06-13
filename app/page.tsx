@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
 
 export const metadata = {
   title: { absolute: "CBIQ | Global Workforce & Mobility Intelligence" },
@@ -697,20 +698,32 @@ export default async function HomePage() {
                 {
                   title: "Premium — 14 Days Free",
                   price: "Free",
-                  description: "Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards",
-                  features: ["All 7 Intelligence Pillars", "Continuously updated dashboards", "14 days of full Premium access"],
+                  description: "Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access.",
+                  features: [
+                    "All 7 intelligence pillars (60+ datasets)",
+                    "Year-on-Year trends across every metric",
+                    "Benchmarking filters by region, industry & company size",
+                    "Full Premium dashboard + report library",
+                  ],
+                  note: "14 days, once every 12 months.",
                   cta: "Contribute to the Survey",
                   href: "/contributor-dashboard",
                   highlight: false
                 },
                 {
                   title: "Global Workforce Intelligence",
-                  price: "£995",
+                  price: "£995 / $1,295",
                   priceNote: "Founding Member",
-                  description: "Everything in Contributor, plus advanced benchmarking",
-                  features: ["Everything in Contributor Access", "Year-on-Year Trends", "Region/Industry/Size Filters", "Branded PDF Export"],
+                  description: "The full Premium dashboard, continuously, plus members-only benefits.",
+                  features: [
+                    "Everything in the 14-day trial, continuously",
+                    "Custom benchmarking requests",
+                    "Live, not frozen: new data waves all year",
+                    "Annual analyst benchmarking briefing",
+                  ],
+                  note: "Continuous while subscribed.",
                   cta: "Become a Founding Member",
-                  href: "/pricing#global-workforce-intelligence",
+                  checkout: true,
                   highlight: true
                 },
                 {
@@ -766,13 +779,24 @@ export default async function HomePage() {
                       </li>
                     ))}
                   </ul>
-                  <Button 
-                    className={`w-full ${tier.highlight ? "bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" : "border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50"}`}
-                    variant={tier.highlight ? "default" : "outline"}
-                    asChild
-                  >
-                    <Link href={tier.href}>{tier.cta}</Link>
-                  </Button>
+                  {tier.note && (
+                    <p className="text-[11px] text-slate-500 mb-4 -mt-2">{tier.note}</p>
+                  )}
+                  {tier.checkout ? (
+                    <PremiumCheckoutButton
+                      className="w-full bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                    >
+                      {tier.cta}
+                    </PremiumCheckoutButton>
+                  ) : (
+                    <Button 
+                      className={`w-full ${tier.highlight ? "bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" : "border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50"}`}
+                      variant={tier.highlight ? "default" : "outline"}
+                      asChild
+                    >
+                      <Link href={tier.href ?? "/pricing"}>{tier.cta}</Link>
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
