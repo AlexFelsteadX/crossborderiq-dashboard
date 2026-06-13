@@ -212,6 +212,11 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
     Math.max(...numericValues) === 7
   const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
 
+  // Multi-select detection: NOT an agreement scale, and the shown percentages
+  // sum to more than 115% (single-select questions sum to ~100%).
+  const isMultiSelect =
+    !isAgreementScale && q.answers.reduce((s, a) => s + shownPct(a), 0) > 115
+
   // Agreement scale -> sort by numeric value descending (7 at top).
   // Otherwise -> existing count-sorted behaviour (segment, or overall when suppressed).
   const answers = isAgreementScale
@@ -249,6 +254,12 @@ function PremiumQuestionCard({ q }: { q: GroupedQuestion }) {
         </span>
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
+
+      {isMultiSelect && (
+        <p className="text-[11px] text-slate-500 mb-3 -mt-1">
+          Multiple answers allowed · percentages total more than 100%
+        </p>
+      )}
 
       {agreementSummary && (
         <div className="mb-4 grid grid-cols-3 gap-2">
