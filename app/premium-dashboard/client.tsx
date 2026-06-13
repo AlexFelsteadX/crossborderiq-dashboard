@@ -18,6 +18,10 @@ import { createClient } from "@/lib/supabase/client"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
 import { THEME_ORDER, themeForPillar, type WorkforceTheme } from "@/lib/workforce-themes"
 
+// Temporary master switch: hide every respondent-count / base-size display across
+// the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
+const SHOW_COUNTS = false
+
 // =============================================================================
 // TYPES (shapes returned by the five premium RPCs)
 // =============================================================================
@@ -131,7 +135,7 @@ const DEFAULT_FILTERS: Filters = {
 function LimitedChip({ base }: { base: number }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-      Limited sample (n={base})
+      Limited sample{SHOW_COUNTS && ` (n=${base})`}
     </span>
   )
 }
@@ -263,9 +267,11 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="text-[11px] text-slate-500">
-          {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-        </span>
+        {SHOW_COUNTS && (
+          <span className="text-[11px] text-slate-500">
+            {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
+          </span>
+        )}
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
 
@@ -310,7 +316,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                   {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
                   )}
-                  {!isAgreementScale && answer.segN < LOW_BASE && (
+                  {SHOW_COUNTS && !isAgreementScale && answer.segN < LOW_BASE && (
                     <span className="text-slate-500 font-normal ml-1.5">· n={answer.segN}</span>
                   )}
                 </span>
@@ -345,7 +351,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           Percentages are rounded and may not total 100%.
         </p>
       )}
-      {hasLowBaseCell && (
+      {SHOW_COUNTS && hasLowBaseCell && (
         <p className="text-[10px] text-slate-500 mt-3">
           n shown where a cell is based on fewer than 5 responses.
         </p>
@@ -471,9 +477,11 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-slate-500">
-          n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
-        </span>
+        {SHOW_COUNTS && (
+          <span className="text-[11px] text-slate-500">
+            n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
+          </span>
+        )}
         {row.confidence === "limited" && <LimitedChip base={row.base_2026} />}
       </div>
       {suppressed && <FallbackNote className="mt-2" />}
@@ -713,16 +721,20 @@ export function PremiumDashboardClient() {
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-300 inline-flex items-center gap-2">
-                {loadingMain ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                ) : null}
-                Showing{" "}
-                <strong className="text-primary">
-                  {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
-                </strong>{" "}
-                organisations
-              </span>
+              {SHOW_COUNTS ? (
+                <span className="text-sm text-slate-300 inline-flex items-center gap-2">
+                  {loadingMain ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  ) : null}
+                  Showing{" "}
+                  <strong className="text-primary">
+                    {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
+                  </strong>{" "}
+                  organisations
+                </span>
+              ) : (
+                loadingMain && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -816,9 +828,11 @@ export function PremiumDashboardClient() {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and AI maturity.
                 </p>
-                <p className="text-xs text-slate-400 mt-3">
-                  Based on {Math.round(mmi.base_n).toLocaleString()} organisations
-                </p>
+                {SHOW_COUNTS && (
+                  <p className="text-xs text-slate-400 mt-3">
+                    Based on {Math.round(mmi.base_n).toLocaleString()} organisations
+                  </p>
+                )}
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
               </div>
 
@@ -880,7 +894,7 @@ export function PremiumDashboardClient() {
                     {p.metric_label && (
                       <p className="text-[11px] text-slate-500 mt-1 leading-snug">{p.metric_label}</p>
                     )}
-                    <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>
+                    {SHOW_COUNTS && <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>}
                     {r.isLimited && (
                       <span className="mt-1 text-[10px] font-medium text-amber-400">Limited sample</span>
                     )}
@@ -912,7 +926,9 @@ export function PremiumDashboardClient() {
                           {remotePillar.metric_label}
                         </span>
                       )}
-                      <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
+                      {SHOW_COUNTS && (
+                        <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
+                      )}
                       {r.isFallback && <FallbackNote />}
                     </div>
                   </div>
