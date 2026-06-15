@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/hooks/use-auth"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
 import { THEME_ORDER, themeForPillar, type WorkforceTheme } from "@/lib/workforce-themes"
 
@@ -622,6 +623,9 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
 
 export function PremiumDashboardClient() {
   const supabase = useMemo(() => createClient(), [])
+  const { tier } = useAuth()
+  // Reflect the actual tier in the header badge (Vendor members also access this dashboard).
+  const tierLabel = tier === "vendor" ? "Vendor Member Access" : "Premium Member Access"
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
@@ -798,7 +802,7 @@ export function PremiumDashboardClient() {
               Global Workforce Intelligence<span className="text-primary">™</span> Premium Dashboard
             </h1>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
-              Premium Member Access
+              {tierLabel}
             </span>
           </div>
           <p className="text-slate-400">

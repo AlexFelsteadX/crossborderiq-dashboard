@@ -133,8 +133,40 @@ function QuestionCard({
   answers: { answer_option: string; pct: number }[]
   subtag?: string
 }) {
-  const sortedAnswers = [...answers].sort((a, b) => b.pct - a.pct)
-  
+  // Agreement-scale detection: every option is a single digit, >=4 distinct
+  // values, and the maximum numeric option is exactly 7.
+  const distinctOptions = Array.from(new Set(answers.map((a) => a.answer_option)))
+  const numericValues = distinctOptions.map((o) => Number(o))
+  const isAgreementScale =
+    distinctOptions.length >= 4 &&
+    distinctOptions.every((o) => /^[0-9]$/.test(o)) &&
+    Math.max(...numericValues) === 7
+  const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
+
+  // Agreement scale -> sort by numeric value descending (7 at top).
+  // Otherwise -> existing percentage-sorted behaviour.
+  const sortedAnswers = isAgreementScale
+    ? [...answers].sort((a, b) => Number(b.answer_option) - Number(a.answer_option))
+    : [...answers].sort((a, b) => b.pct - a.pct)
+
+  // Summary built from the same percentages each row displays (pct is already 0–100).
+  const agreementSummary = isAgreementScale
+    ? [
+        {
+          label: "Strongly agree (6–7)",
+          value: answers.filter((a) => Number(a.answer_option) >= 6).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+        {
+          label: "Agree side (5–7)",
+          value: answers.filter((a) => Number(a.answer_option) >= 5).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+        {
+          label: "Disagree (0–3)",
+          value: answers.filter((a) => Number(a.answer_option) <= 3).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+      ]
+    : null
+
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -146,14 +178,34 @@ function QuestionCard({
         )}
       </div>
       <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
+      {agreementSummary && (
+        <div className="mb-4 mt-2 grid grid-cols-3 gap-2">
+          {agreementSummary.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-lg border border-primary/15 bg-brand-navy-3/50 px-3 py-2"
+            >
+              <p className="text-base font-semibold text-slate-200">{s.value}%</p>
+              <p className="text-[11px] text-slate-500 leading-tight">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="space-y-2 mt-2">
         {sortedAnswers.map((answer, idx) => {
           // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
           const pctDisplay = Math.round(answer.pct)
+          // Anchor the agreement-scale endpoints.
+          let optionLabel = answer.answer_option
+          if (isAgreementScale) {
+            if (Number(answer.answer_option) === 7) optionLabel = `${answer.answer_option} · strongly agree`
+            else if (Number(answer.answer_option) === lowestValue)
+              optionLabel = `${answer.answer_option} · strongly disagree`
+          }
           return (
             <div key={idx}>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400 truncate pr-2">{answer.answer_option}</span>
+                <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
               </div>
               <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
@@ -286,6 +338,7 @@ function DemandColumn({
   segBaseN,
   barColor,
   loading,
+  isFiltered,
 }: {
   title: string
   subtitle: string
@@ -294,8 +347,12 @@ function DemandColumn({
   segBaseN: number
   barColor: string
   loading: boolean
+  isFiltered: boolean
 }) {
   const suppressed = confidence === "suppressed"
+  // The market benchmark only differs from the segment figure when a filter is active.
+  // With no filter the segment IS the whole market, so we hide the duplicated value/marker.
+  const showComparison = !suppressed && isFiltered
 
   return (
     <div className="space-y-4">
@@ -331,8 +388,8 @@ function DemandColumn({
                   <span className="text-sm text-slate-200 truncate pr-2">{row.label}</span>
                   <span className="text-sm font-semibold shrink-0" style={{ color: barColor }}>
                     {shown}%
-                    {!suppressed && (
-                      <span className="text-slate-500 font-normal ml-1.5 text-xs">(market {overallDisplay}%)</span>
+                    {showComparison && (
+                      <span className="text-slate-500 font-normal ml-1.5 text-xs">market: {overallDisplay}%</span>
                     )}
                   </span>
                 </div>
@@ -341,7 +398,7 @@ function DemandColumn({
                     className="h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(shown, 100)}%`, backgroundColor: barColor }}
                   />
-                  {!suppressed && (
+                  {showComparison && (
                     <span
                       className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
                       style={{ left: `${Math.min(overallDisplay, 100)}%` }}
@@ -565,14 +622,25 @@ export function VendorPremiumDashboardClient() {
   const [demandLoading, setDemandLoading] = useState(true)
 
   const resetFilters = () => {
-    setSelectedRegion(null)
-    setSelectedIndustry(null)
-    setSelectedSize(null)
-    setSelectedAssignee(null)
-    setSelectedTraveller(null)
-    setSelectedTech(null)
-    setSelectedAi(null)
+  setSelectedRegion(null)
+  setSelectedIndustry(null)
+  setSelectedSize(null)
+  setSelectedAssignee(null)
+  setSelectedTraveller(null)
+  setSelectedTech(null)
+  setSelectedAi(null)
   }
+
+  // True when at least one filter is set to something other than its default ("All").
+  // The "(market …)" comparison is only meaningful when the segment differs from the whole market.
+  const isFiltered =
+    selectedRegion !== null ||
+    selectedIndustry !== null ||
+    selectedSize !== null ||
+    selectedAssignee !== null ||
+    selectedTraveller !== null ||
+    selectedTech !== null ||
+    selectedAi !== null
 
   const regionOptions = [
     { value: null, label: "All" },
@@ -1019,7 +1087,7 @@ export function VendorPremiumDashboardClient() {
               </div>
             </div>
             <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
-              <Link href="/premium-dashboard">
+              <Link href="/premium-dashboard" target="_blank" rel="noopener noreferrer">
                 Open Premium Dashboard
                 <ExternalLink className="h-4 w-4" />
               </Link>
@@ -1293,6 +1361,7 @@ export function VendorPremiumDashboardClient() {
                   segBaseN={emergingDemand.segBaseN}
                   barColor="#2dd4bf"
                   loading={demandLoading}
+                  isFiltered={isFiltered}
                 />
 
                 {/* Co-headline B: Stated service interest (SI1, market-wide — not filtered) */}
@@ -1365,6 +1434,7 @@ export function VendorPremiumDashboardClient() {
                 segBaseN={establishedDemand.segBaseN}
                 barColor="var(--brand-teal)"
                 loading={demandLoading}
+                isFiltered={isFiltered}
               />
             </div>
 
@@ -1616,7 +1686,7 @@ export function VendorPremiumDashboardClient() {
                   <FileText className="h-8 w-8 text-primary mb-3" />
                   <h3 className="text-sm font-medium text-slate-200 mb-1">Global Workforce Deployment Report 2026</h3>
                   <p className="text-xs text-slate-400 mb-3">Full benchmark findings with vendor implications</p>
-                  <Button variant="outline" size="sm" className="w-full gap-2 border-primary/30 text-slate-200 hover:bg-primary/10" asChild>
+                  <Button size="sm" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
                     <Link href="/reports">
                       <Download className="h-4 w-4" />
                       Access Report
