@@ -10,7 +10,7 @@ import { PremiumUpgradeButton } from "./premium-cta"
 export const metadata = {
   title: "Global Workforce Intelligence",
   description:
-    "Benchmark your global mobility strategy, AI adoption and future-of-work readiness against peers by region, industry and company size. Powered by GME.",
+    "Benchmark your Global Mobility strategy, AI adoption and future-of-work readiness against peers by region, industry and company size. Powered by GME.",
 }
 
 interface StrategicMobilityIndex {
@@ -307,7 +307,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymised ·{" "}
+            Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>

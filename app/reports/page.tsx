@@ -43,7 +43,7 @@ const freeReports: ReportItem[] = [
     category: "Workforce Mobility",
     year: "2023",
     pages: 19,
-    description: "Cost reduction strategies, policy optimisation, relocation spend and mobility programme efficiency benchmarks.",
+    description: "Cost reduction strategies, policy optimization, relocation spend and mobility program efficiency benchmarks.",
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Cutting%20Costs%20report%20cover-QHs3UB0b5XihS9s5iV9RqDyr4BG2oF.png",
     pdfUrl: publicReportUrl("GME-Report-2023-Cutting-Cost-without-Cutting-Corners.pdf"),
     available: true,
@@ -53,7 +53,7 @@ const freeReports: ReportItem[] = [
     category: "Compliance & Risk",
     year: "2026",
     pages: 17,
-    description: "How organisations are responding to geopolitical disruption, employee safety, evacuation planning and crisis management in the MENA region.",
+    description: "How organizations are responding to geopolitical disruption, employee safety, evacuation planning and crisis management in the MENA region.",
     image: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Crisis%20response%20report%20cover-X4LQoo4TJV2R0nxOsdbdw4cIIuto8j.png",
     // Gated (members-only) report served from the private "reports-gated" bucket
     // via the /api/reports/[id]/download route, which enforces current_tier().
@@ -118,7 +118,7 @@ export default function ReportsPage() {
                   </div>
                   
                   <p className="text-sm text-slate-300 mb-4 leading-relaxed">
-                    Annual flagship benchmarking study covering workforce deployment, mobility strategy, talent alignment, international remote work, policy transformation and future workforce planning.
+                    Annual flagship benchmarking study covering workforce deployment, mobility strategy, talent alignment, International Remote Work, policy transformation and future workforce planning.
                   </p>
                   
                   {/* Key Findings */}
@@ -133,7 +133,7 @@ export default function ReportsPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="font-semibold text-primary">68%</span>
-                      <span className="text-slate-300">support international remote work</span>
+                      <span className="text-slate-300">support International Remote Work</span>
                     </li>
                   </ul>
 
@@ -160,7 +160,7 @@ export default function ReportsPage() {
           {/* Contributor Access Messaging */}
           <div className="mt-4 rounded-xl border border-primary/20 bg-brand-navy-2/60 p-5">
             <p className="text-sm text-slate-300 mb-3">
-              <span className="font-medium text-slate-100">Access available to organisations contributing data to CBIQ Intelligence Indices.</span>
+              <span className="font-medium text-slate-100">Access available to organizations contributing data to CBIQ Intelligence Indices.</span>
             </p>
             <p className="text-sm text-slate-300 mb-4">
               Complete the annual Workforce Deployment Survey and receive:

@@ -23,7 +23,7 @@ import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
 export const metadata = {
   title: { absolute: "CBIQ | Global Workforce & Mobility Intelligence" },
   description:
-    "CBIQ benchmarks your workforce strategy, AI adoption and mobility programme against 1,500+ HR, Talent and Global Mobility leaders. Powered by Global Mobility Executive (GME).",
+    "CBIQ benchmarks your workforce strategy, AI adoption and mobility program against 1,500+ HR, Talent and Global Mobility leaders. Powered by Global Mobility Executive (GME).",
 }
 
 // Format decimal pct values (e.g., 0.35) as whole percentages (e.g., 35%)
@@ -121,7 +121,7 @@ export default async function HomePage() {
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed text-pretty">
-                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your global mobility and workforce strategy — from AI adoption and employee experience to international remote work and the future of mobility — against over 1,500 global HR, Talent and Mobility leaders.
+                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy — from AI adoption and employee experience to International Remote Work and the future of mobility — against over 1,500 global HR, Talent and Mobility leaders.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -211,7 +211,7 @@ export default async function HomePage() {
                     href="/workforce-intelligence" 
                     className="flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
                   >
-                    <span>The industry average sits at {smiScore}%. See how your organisation compares</span>
+                    <span>The industry average sits at {smiScore}%. See how your organization compares</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </div>
@@ -258,10 +258,10 @@ export default async function HomePage() {
                       {[
                         { label: "Using AI tools", value: "40%", delta: "+10 pts" },
                         { label: "Talent–Mobility alignment", value: "70%", delta: "+5 pts" },
-                        { label: "Supporting international remote work", value: "55%", delta: "+5 pts" },
-                        { label: "Defined GM strategy", value: "35%", delta: "-5 pts", down: true },
+                        { label: "Supporting International Remote Work", value: "55%", delta: "+5 pts" },
+                        { label: "Defined Global Mobility strategy", value: "35%", delta: "-5 pts", down: true },
                         { label: "Assignment-management technology", value: "60%", delta: "+10 pts" },
-                        { label: "GM embedded in EVP", value: "20%", delta: "+5 pts" },
+                        { label: "Global Mobility embedded in EVP", value: "20%", delta: "+5 pts" },
                       ].map((m, i) => (
                         <div
                           key={i}
@@ -290,7 +290,7 @@ export default async function HomePage() {
                         {[
                           { label: "Using AI tools", delta: "+10 pts" },
                           { label: "Assignment-management technology", delta: "+10 pts" },
-                          { label: "Defined GM strategy", delta: "-5 pts", down: true },
+                          { label: "Defined Global Mobility strategy", delta: "-5 pts", down: true },
                         ].map((m, i) => (
                           <div key={i} className="flex flex-col gap-1">
                             <span className="text-[10px] text-slate-500 leading-tight">{m.label}</span>
@@ -328,7 +328,7 @@ export default async function HomePage() {
         <section className="border-y border-primary/10 bg-[#0c1a2c]">
           <div className="max-w-[1400px] mx-auto px-6 py-8">
             <p className="text-center text-xs font-medium uppercase tracking-widest text-slate-500 mb-6">
-              Trusted by leading organisations and contributors worldwide
+              Trusted by leading organizations and contributors worldwide
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -461,7 +461,7 @@ export default async function HomePage() {
                 {
                   title: "Global Workforce Intelligence™ Premium Dashboard",
                   description:
-                    "Benchmark your workforce strategy, AI adoption and programme against 1,500+ peers — by region, industry and company size.",
+                    "Benchmark your workforce strategy, AI adoption and program against 1,500+ peers — by region, industry and company size.",
                   src: "/images/dashboard-benchmark.png",
                   alt: "Premium benchmarking filters with a 2025–2026 breakdown and Operational Pressure Index showing top barriers to achieving priorities",
                 },
@@ -599,7 +599,7 @@ export default async function HomePage() {
             <div className="text-center mb-14">
               <h2 className="text-3xl md:text-4xl font-bold text-slate-50 mb-4">Intelligence Reports</h2>
               <p className="text-slate-400 max-w-2xl mx-auto">
-                Research reports and benchmark findings from the CBIQ intelligence programme.
+                Research reports and benchmark findings from the CBIQ intelligence program.
               </p>
             </div>
             <div className="flex justify-center mb-12">

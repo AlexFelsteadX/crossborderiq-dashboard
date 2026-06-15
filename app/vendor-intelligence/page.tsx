@@ -70,7 +70,7 @@ export default async function VendorIntelligencePage() {
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
             <TrendingUp className="h-5 w-5 text-primary mb-3" />
             <h3 className="font-semibold text-foreground text-sm mb-1">Market Demand</h3>
-            <p className="text-xs text-slate-400">See what services organisations are actively outsourcing and exploring.</p>
+            <p className="text-xs text-slate-400">See what services organizations are actively outsourcing and exploring.</p>
           </div>
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
             <BarChart3 className="h-5 w-5 text-primary mb-3" />
@@ -153,7 +153,7 @@ export default async function VendorIntelligencePage() {
               </div>
               <p className="text-sm text-slate-300 mb-6">
                 A composite index tracking where operational pressure, transformation activity, 
-                technology demand and investment priorities are converging — signalling where 
+                technology demand and investment priorities are converging — signaling where 
                 provider services are most needed.
               </p>
               
@@ -374,7 +374,7 @@ export default async function VendorIntelligencePage() {
             <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl mx-auto">
               As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
               Premium access for your corporate clients — extending independent, benchmarked workforce
-              intelligence to the organisations you work with most closely. It&apos;s a natural value-add to your
+              intelligence to the organizations you work with most closely. It&apos;s a natural value-add to your
               client relationships, a differentiator in competitive processes, and a way to keep your clients&apos;
               mobility strategy visible to you. Every client you bring onto the platform can contribute
               to the Global Workforce Deployment Survey, so each sponsorship makes the benchmarks you rely on

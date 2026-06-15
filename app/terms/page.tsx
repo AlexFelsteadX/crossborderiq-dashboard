@@ -12,11 +12,11 @@ const content = `# CBIQ — Terms of Service
 
 ## 1. About these terms
 
-These Terms of Service ("Terms") govern your access to and use of the CBIQ platform and website at cbiq.ai (the "Service"), operated by **GEM Events & Consultancy – FZCO** (trade licence no. 39377), DSO-IFZA, IFZA Properties, Dubai Silicon Oasis, Dubai, United Arab Emirates ("CBIQ", "we", "us"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
+These Terms of Service ("Terms") govern your access to and use of the CBIQ platform and website at cbiq.ai (the "Service"), operated by **GEM Events & Consultancy – FZCO** (trade license no. 39377), DSO-IFZA, IFZA Properties, Dubai Silicon Oasis, Dubai, United Arab Emirates ("CBIQ", "we", "us"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
 ## 2. Eligibility
 
-The Service is intended for business and professional use by individuals aged 18 or over acting in a professional capacity. By using the Service you confirm you are authorised to do so on behalf of your organisation where applicable.
+The Service is intended for business and professional use by individuals aged 18 or over acting in a professional capacity. By using the Service you confirm you are authorized to do so on behalf of your organization where applicable.
 
 ## 3. The Service
 
@@ -24,19 +24,19 @@ CBIQ provides workforce intelligence, benchmarking and research tools for HR, ta
 
 ## 4. Accounts
 
-You are responsible for the accuracy of your registration information, for keeping your login credentials confidential, and for all activity under your account. Accounts are for a single named user and may not be shared. Notify us promptly of any unauthorised use.
+You are responsible for the accuracy of your registration information, for keeping your login credentials confidential, and for all activity under your account. Accounts are for a single named user and may not be shared. Notify us promptly of any unauthorized use.
 
 ## 5. Memberships, pricing and billing
 
 - The Service offers free and paid membership tiers, described on our pricing page. Paid memberships (including Global Workforce Intelligence and Vendor Intelligence) are **annual subscriptions billed in advance**.
-- Payments are processed by **Stripe**. By subscribing, you authorise us (through Stripe) to charge your payment method the applicable fee.
-- Unless cancelled in accordance with our Refund & Cancellation Policy, subscriptions **renew automatically** at the end of each term at the then-current price.
+- Payments are processed by **Stripe**. By subscribing, you authorize us (through Stripe) to charge your payment method the applicable fee.
+- Unless canceled in accordance with our Refund & Cancellation Policy, subscriptions **renew automatically** at the end of each term at the then-current price.
 - We may change our prices; changes apply to renewals and new purchases, not to the current paid term. Prices shown are exclusive of any applicable taxes (including VAT), which will be added where required by law. GEM Events & Consultancy – FZCO is registered for UAE VAT under TRN 104433774700003; where VAT applies (for example, to customers in the UAE), it will be shown on your invoice.
 - "Founding Member" or promotional pricing applies on the terms stated at the time of purchase.
 
 ## 6. Contributor Access
 
-Where we offer complimentary access in exchange for contributing to the Global Workforce Deployment Survey or other research ("Contributor Access"), you agree that the information you submit may be used to create aggregated, anonymised benchmarks and intelligence as described in our Privacy Policy. Contributor Access is provided for the period stated at the time and may be renewed by further contribution.
+Where we offer complimentary access in exchange for contributing to the Global Workforce Deployment Survey or other research ("Contributor Access"), you agree that the information you submit may be used to create aggregated, anonymized benchmarks and intelligence as described in our Privacy Policy. Contributor Access is provided for the period stated at the time and may be renewed by further contribution.
 
 ## 7. Acceptable use
 
@@ -46,7 +46,7 @@ You agree not to:
 - scrape, harvest, or use automated means to extract data except as expressly permitted;
 - reverse engineer, copy, or create derivative works from the platform;
 - use the Service unlawfully, or to infringe the rights of others;
-- attempt to gain unauthorised access to the Service or its systems; or
+- attempt to gain unauthorized access to the Service or its systems; or
 - misrepresent information you submit to our research.
 
 ## 8. Intellectual property
@@ -55,7 +55,7 @@ The Service, including all software, content, reports, benchmarks, branding, and
 
 ## 9. Your data and our use of aggregated insights
 
-You retain ownership of the information you submit. By submitting data, you grant us a worldwide, royalty-free licence to use, process and combine it to operate the Service and to create **aggregated and anonymised** benchmarks, research and vendor intelligence. We will not publish your individual or organisation-identifying responses. Aggregated and anonymised insights derived from contributed data belong to us and may be used without restriction.
+You retain ownership of the information you submit. By submitting data, you grant us a worldwide, royalty-free license to use, process and combine it to operate the Service and to create **aggregated and anonymized** benchmarks, research and vendor intelligence. We will not publish your individual or organization-identifying responses. Aggregated and anonymized insights derived from contributed data belong to us and may be used without restriction.
 
 ## 10. Reports and downloads
 

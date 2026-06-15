@@ -90,7 +90,7 @@ export function BenchmarkAssessment({
 
       <form action={formAction} className="space-y-8">
         {/* SEGMENTATION */}
-        <Section step="Part 1" title="About your organisation">
+        <Section step="Part 1" title="About your organization">
           <SelectField name="industry" label="1. Industry sector" options={industries} required />
           <SelectField name="region" label="2. HQ region" options={regions} required />
           <SelectField name="employeeCount" label="3. Global employee count" options={employeeCounts} required />
@@ -102,7 +102,7 @@ export function BenchmarkAssessment({
           />
           <SelectField
             name="stAssignments"
-            label="5. Approximately how many short-term assignments and business travellers does your organization manage per year?"
+            label="5. Approximately how many short-term assignments and business travelers does your organization manage per year?"
             options={ST_ASSIGNMENT_OPTIONS}
             required
           />
@@ -125,7 +125,7 @@ export function BenchmarkAssessment({
 
           <fieldset>
             <legend className="text-sm font-medium text-slate-200 mb-3">
-              9. Is your Global Mobility function set up as a Centre of Excellence?
+              9. Is your Global Mobility function set up as a Center of Excellence?
             </legend>
             <div className="flex gap-3">
               {["Yes", "No"].map((opt) => (

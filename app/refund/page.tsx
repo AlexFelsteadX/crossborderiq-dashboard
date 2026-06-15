@@ -3,14 +3,14 @@ import { LegalPageLayout } from "@/components/legal-page-layout"
 
 export const metadata: Metadata = {
   title: "Refund & Cancellation Policy",
-  description: "How CBIQ subscriptions are billed, cancelled and refunded.",
+  description: "How CBIQ subscriptions are billed, canceled and refunded.",
 }
 
 const content = `# CBIQ — Refund & Cancellation Policy
 
 **Last updated: 8 June 2026**
 
-This policy explains how CBIQ paid memberships are billed, renewed, cancelled and refunded. It forms part of our Terms of Service.
+This policy explains how CBIQ paid memberships are billed, renewed, canceled and refunded. It forms part of our Terms of Service.
 
 ## 1. Subscriptions and billing
 
@@ -27,7 +27,7 @@ You can cancel at any time:
 - from your account area, via **Manage subscription**, which opens the secure Stripe customer portal; or
 - by emailing **crossborderiq@gemevents.co**.
 
-Cancelling stops the next automatic renewal. **Your access continues until the end of the term you have already paid for** — cancelling does not cut off access immediately.
+Canceling stops the next automatic renewal. **Your access continues until the end of the term you have already paid for** — canceling does not cut off access immediately.
 
 ## 4. Refunds
 

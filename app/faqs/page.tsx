@@ -10,23 +10,23 @@ import Link from "next/link"
 const faqs = [
   {
     question: "What is CBIQ?",
-    answer: "CBIQ (Cross-Border Workforce Intelligence) is the workforce intelligence platform from Global Mobility Executive (GME), providing benchmarking, market intelligence and strategic insights across Global Mobility, Immigration, Compliance, Risk and Workforce Strategy.\n\nOur intelligence products help organisations benchmark performance, understand market trends and make more informed workforce decisions.",
+    answer: "CBIQ (Cross-Border Workforce Intelligence) is the workforce intelligence platform from Global Mobility Executive (GME), providing benchmarking, market intelligence and strategic insights across Global Mobility, Immigration, Compliance, Risk and Workforce Strategy.\n\nOur intelligence products help organizations benchmark performance, understand market trends and make more informed workforce decisions.",
   },
   {
     question: "Who is behind CBIQ?",
-    answer: "CBIQ is powered by Global Mobility Executive (GME). It draws on GME's global community of HR, Mobility and Talent leaders, its industry events and its research programmes to turn collective insight into the peer benchmarks the industry has long lacked.",
+    answer: "CBIQ is powered by Global Mobility Executive (GME). It draws on GME's global community of HR, Mobility and Talent leaders, its industry events and its research programs to turn collective insight into the peer benchmarks the industry has long lacked.",
   },
   {
     question: "Where does the data come from?",
-    answer: "CBIQ intelligence is built from three primary sources:\n\n• 1,500+ HR, Mobility, Talent and Workforce leaders participating in Global Mobility Executive (GME) industry events annually\n• The annual Global Workforce Deployment Survey™\n• Ongoing intelligence surveys completed by CBIQ members throughout the year\n\nAll reporting is anonymised and presented in aggregate form.",
+    answer: "CBIQ intelligence is built from three primary sources:\n\n• 1,500+ HR, Mobility, Talent and Workforce leaders participating in Global Mobility Executive (GME) industry events annually\n• The annual Global Workforce Deployment Survey™\n• Ongoing intelligence surveys completed by CBIQ members throughout the year\n\nAll reporting is anonymized and presented in aggregate form.",
   },
   {
-    question: "How many organisations participate?",
-    answer: "CBIQ intelligence is informed by participants across 35+ countries and 4 global regions, representing organisations ranging from fewer than 250 employees to global enterprises employing more than 50,000 employees.",
+    question: "How many organizations participate?",
+    answer: "CBIQ intelligence is informed by participants across 35+ countries and 4 global regions, representing organizations ranging from fewer than 250 employees to global enterprises employing more than 50,000 employees.",
   },
   {
     question: "How often is intelligence updated?",
-    answer: "CBIQ continuously refreshes benchmark data throughout the year through event participation, member surveying and annual flagship research programmes.\n\nNew intelligence findings and reports are released regularly.",
+    answer: "CBIQ continuously refreshes benchmark data throughout the year through event participation, member surveying and annual flagship research programs.\n\nNew intelligence findings and reports are released regularly.",
   },
   {
     question: "How do I get free Premium access?",
@@ -49,8 +49,8 @@ const faqs = [
     answer: "• Full dashboard access\n• Regional benchmarking\n• Industry benchmarking\n• Workforce size benchmarking\n• Mobility Maturity Index™ analysis\n• AI Adoption benchmarking\n• Executive intelligence reports\n• Quarterly intelligence releases\n• Peer comparison capabilities",
   },
   {
-    question: "Can I benchmark my organisation?",
-    answer: "Yes.\n\nGlobal Workforce Intelligence™ members can benchmark against peer organisations using:\n\n• Region\n• Industry\n• Workforce Size\n\nBenchmarking is based on aggregated CBIQ intelligence data.",
+    question: "Can I benchmark my organization?",
+    answer: "Yes.\n\nGlobal Workforce Intelligence™ members can benchmark against peer organizations using:\n\n• Region\n• Industry\n• Workforce Size\n\nBenchmarking is based on aggregated CBIQ intelligence data.",
   },
   {
     question: "Why is Global Workforce Intelligence™ a paid membership?",
@@ -66,19 +66,19 @@ const faqs = [
   },
   {
     question: "Can vendors see participant names or company data?",
-    answer: "No.\n\nCBIQ does not disclose individual participant names, company names or organisation-level responses.\n\nVendor Intelligence™ is designed to provide aggregated market intelligence rather than lead lists.\n\nThe value comes from understanding where demand is emerging, what organisations are investing in, which challenges are increasing and how buying priorities are evolving across regions, industries and workforce segments.\n\nVendor Intelligence™ helps providers identify:\n\n• Regions experiencing the highest transformation activity\n• Areas attracting the greatest investment focus\n• Emerging compliance, immigration and workforce challenges\n• AI adoption priorities\n• Operational pressures influencing buying behaviour\n• Future workforce and mobility trends\n\nThis enables providers to focus sales, marketing, product development and go-to-market strategy where market opportunity is strongest, while protecting participant confidentiality and maintaining the integrity of the benchmark data.",
+    answer: "No.\n\nCBIQ does not disclose individual participant names, company names or organization-level responses.\n\nVendor Intelligence™ is designed to provide aggregated market intelligence rather than lead lists.\n\nThe value comes from understanding where demand is emerging, what organizations are investing in, which challenges are increasing and how buying priorities are evolving across regions, industries and workforce segments.\n\nVendor Intelligence™ helps providers identify:\n\n• Regions experiencing the highest transformation activity\n• Areas attracting the greatest investment focus\n• Emerging compliance, immigration and workforce challenges\n• AI adoption priorities\n• Operational pressures influencing buying behavior\n• Future workforce and mobility trends\n\nThis enables providers to focus sales, marketing, product development and go-to-market strategy where market opportunity is strongest, while protecting participant confidentiality and maintaining the integrity of the benchmark data.",
   },
   {
     question: "What do 'Emerging', 'Opening' and 'Saturated' mean?",
-    answer: "Each service is compared on two measures: demand — the share of buyers expressing interest in it — and provision — the share of organisations that report already having it in place.\n\n• Emerging: a service buyers are actively seeking that doesn't yet have an established provision benchmark — newer territory with little measured supply, so an early-mover opportunity.\n• Opening: demand is higher than current provision — more buyers want the service than organisations currently have it — a clear, measurable gap to move into.\n• Saturated: provision already meets or exceeds demand — the need is well-served, so it's more competitive to enter.",
+    answer: "Each service is compared on two measures: demand — the share of buyers expressing interest in it — and provision — the share of organizations that report already having it in place.\n\n• Emerging: a service buyers are actively seeking that doesn't yet have an established provision benchmark — newer territory with little measured supply, so an early-mover opportunity.\n• Opening: demand is higher than current provision — more buyers want the service than organizations currently have it — a clear, measurable gap to move into.\n• Saturated: provision already meets or exceeds demand — the need is well-served, so it's more competitive to enter.",
   },
   {
-    question: "Can anyone see my organisation's data?",
-    answer: "No.\n\nCBIQ only reports anonymised and aggregated benchmark findings.\n\nIndividual organisations and respondents are never identified in reports, dashboards or intelligence products.",
+    question: "Can anyone see my organization's data?",
+    answer: "No.\n\nCBIQ only reports anonymized and aggregated benchmark findings.\n\nIndividual organizations and respondents are never identified in reports, dashboards or intelligence products.",
   },
   {
     question: "How is participant confidentiality protected?",
-    answer: "All responses are anonymised before analysis.\n\nCBIQ does not sell, share or disclose individual participant data.\n\nOnly aggregated benchmark results are published.",
+    answer: "All responses are anonymized before analysis.\n\nCBIQ does not sell, share or disclose individual participant data.\n\nOnly aggregated benchmark results are published.",
   },
   {
     question: "How do I get access?",
@@ -169,7 +169,7 @@ export default function FAQsPage() {
         <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]">
           <h2 className="text-xl font-semibold text-slate-100 mb-3">Ready to Unlock Workforce Intelligence?</h2>
           <p className="text-sm text-slate-400 mb-6 max-w-xl mx-auto">
-            Join the organisations helping shape the future of workforce intelligence.
+            Join the organizations helping shape the future of workforce intelligence.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button className="bg-primary hover:bg-primary/90" asChild>
