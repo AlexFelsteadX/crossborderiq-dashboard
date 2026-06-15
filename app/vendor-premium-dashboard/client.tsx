@@ -582,9 +582,38 @@ function WhitespacePanel({
       <p className="text-sm text-slate-400 mb-1">
         What the market wants vs what this segment already outsources — your biggest openings first.
       </p>
-      <p className="text-xs text-slate-500 mb-5 italic">
+      <p className="text-xs text-slate-500 mb-4 italic">
         Demand is market-wide; &apos;already outsources&apos; reflects your selected segment.
       </p>
+
+      {/* Tag key / legend */}
+      <div className="rounded-lg border border-primary/15 bg-brand-navy-2/40 px-4 py-3 mb-5 space-y-1.5">
+        {(
+          [
+            {
+              tag: "Emerging" as WhitespaceTag,
+              def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
+            },
+            {
+              tag: "Opening" as WhitespaceTag,
+              def: "more buyers want this than organisations currently provide it. A measurable demand gap to move into.",
+            },
+            {
+              tag: "Saturated" as WhitespaceTag,
+              def: "provision already matches or exceeds demand. Well-served and more competitive.",
+            },
+          ]
+        ).map(({ tag, def }) => (
+          <p key={tag} className="text-[11px] text-slate-500 leading-relaxed">
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle mr-2 ${WHITESPACE_TAG_STYLES[tag]}`}
+            >
+              {tag}
+            </span>
+            {def}
+          </p>
+        ))}
+      </div>
 
       {loading ? (
         <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
@@ -806,7 +835,7 @@ export function VendorPremiumDashboardClient() {
   const travellerOptions = [
     { value: null, label: "All" },
     { value: "501–1,000", label: "501–1,000" },
-    { value: "101–500", label: "101–500" },
+    { value: "101–500", label: "101��500" },
     { value: "1–100", label: "1–100" },
   ]
 

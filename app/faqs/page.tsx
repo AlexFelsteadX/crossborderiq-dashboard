@@ -69,6 +69,10 @@ const faqs = [
     answer: "No.\n\nCBIQ does not disclose individual participant names, company names or organisation-level responses.\n\nVendor Intelligence™ is designed to provide aggregated market intelligence rather than lead lists.\n\nThe value comes from understanding where demand is emerging, what organisations are investing in, which challenges are increasing and how buying priorities are evolving across regions, industries and workforce segments.\n\nVendor Intelligence™ helps providers identify:\n\n• Regions experiencing the highest transformation activity\n• Areas attracting the greatest investment focus\n• Emerging compliance, immigration and workforce challenges\n• AI adoption priorities\n• Operational pressures influencing buying behaviour\n• Future workforce and mobility trends\n\nThis enables providers to focus sales, marketing, product development and go-to-market strategy where market opportunity is strongest, while protecting participant confidentiality and maintaining the integrity of the benchmark data.",
   },
   {
+    question: "What do 'Emerging', 'Opening' and 'Saturated' mean?",
+    answer: "Each service is compared on two measures: demand — the share of buyers expressing interest in it — and provision — the share of organisations that report already having it in place.\n\n• Emerging: a service buyers are actively seeking that doesn't yet have an established provision benchmark — newer territory with little measured supply, so an early-mover opportunity.\n• Opening: demand is higher than current provision — more buyers want the service than organisations currently have it — a clear, measurable gap to move into.\n• Saturated: provision already meets or exceeds demand — the need is well-served, so it's more competitive to enter.",
+  },
+  {
     question: "Can anyone see my organisation's data?",
     answer: "No.\n\nCBIQ only reports anonymised and aggregated benchmark findings.\n\nIndividual organisations and respondents are never identified in reports, dashboards or intelligence products.",
   },
