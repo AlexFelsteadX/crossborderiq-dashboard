@@ -1197,17 +1197,36 @@ export function VendorPremiumDashboardClient() {
     }
   }, [groupedByPillar, hasInitializedAccordion])
 
-  // Scroll the newly-opened pillar's header to just below the sticky nav, after
-  // its content has rendered. Only runs when a pillar was opened (not closed).
+  // Scroll the newly-opened pillar's header to just below the sticky nav.
+  // Only runs when a pillar was OPENED (not collapsed). We wait for the
+  // previously-open section to collapse and the layout to reflow before
+  // measuring, otherwise the target is stale and the scroll overshoots once
+  // the document height shrinks.
   useEffect(() => {
     if (!activePillar || pillarToScrollRef.current !== activePillar) return
-    const el = pillarRefs.current[activePillar]
-    if (!el) return
-    const id = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" })
-    })
+    const targetPillar = activePillar
+    // Consume the request now so re-renders during the wait don't re-trigger.
     pillarToScrollRef.current = null
-    return () => cancelAnimationFrame(id)
+
+    let innerRaf = 0
+    // Two nested rAF: first lets React commit the collapse, second fires after
+    // the browser has reflowed with the old section's height removed.
+    const outerRaf = requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => {
+        const el = pillarRefs.current[targetPillar]
+        if (!el) return
+        // Measure the now-open header fresh, after reflow.
+        const navEl = document.querySelector("header.sticky") as HTMLElement | null
+        const navHeight = navEl?.offsetHeight ?? 64
+        const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 8
+        window.scrollTo({ top, behavior: "smooth" })
+      })
+    })
+
+    return () => {
+      cancelAnimationFrame(outerRaf)
+      cancelAnimationFrame(innerRaf)
+    }
   }, [activePillar])
 
   // ---------------------------------------------------------------------------
