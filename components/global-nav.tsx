@@ -11,6 +11,7 @@ import { useSiteData } from "@/lib/site-data-context"
 export function GlobalNav() {
   const pathname = usePathname()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [dashboardOpen, setDashboardOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -62,9 +63,8 @@ export function GlobalNav() {
     // Render guest/default nav until auth + tier resolve (avoids flicker)
     mainNavItems = guestNavItems
   } else if (tier === "vendor") {
-    // Replace both intelligence links with a single Dashboard link
+    // Dashboard becomes a dropdown (rendered separately); keep Reports + Pricing here.
     mainNavItems = [
-      { href: dashboardHref, label: "Dashboard", highlight: true },
       { href: "/reports", label: "Reports" },
       { href: "/pricing", label: "Pricing" },
     ]
@@ -91,8 +91,9 @@ export function GlobalNav() {
   // - free / contributor / guest: unchanged from before
   let dashboardMoreItems: NavItem[]
   if (tier === "vendor") {
+    // Premium Dashboard now lives in the Dashboard dropdown, so it's removed here
+    // to avoid duplication. The rest of More is unchanged.
     dashboardMoreItems = [
-      { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
       { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
     ]
   } else if (tier === "premium") {
@@ -117,7 +118,20 @@ export function GlobalNav() {
     { href: "/contact", label: "Contact Us" },
   ]
 
-  const allNavItems = [...mainNavItems, ...moreNavItems]
+  // Vendor-only "Dashboard" dropdown links. Empty for every other tier, so the
+  // dropdown only renders for vendors and nothing else changes.
+  const vendorDashboardItems: NavItem[] =
+    tier === "vendor"
+      ? [
+          { href: "/vendor-premium-dashboard", label: "Vendor Dashboard" },
+          { href: "/premium-dashboard", label: "Premium Dashboard" },
+        ]
+      : []
+  const dashboardDropdownActive = vendorDashboardItems.some((item) => pathname === item.href)
+
+  // Mobile flattens everything; surface the vendor dashboard links up front so
+  // they're reachable just like the "More" items.
+  const allNavItems = [...vendorDashboardItems, ...mainNavItems, ...moreNavItems]
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -138,6 +152,42 @@ export function GlobalNav() {
           
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 text-sm">
+            {/* Vendor-only Dashboard dropdown (same pattern as the More menu) */}
+            {vendorDashboardItems.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setDashboardOpen(!dashboardOpen)}
+                  onBlur={() => setTimeout(() => setDashboardOpen(false), 150)}
+                  className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1 font-semibold ${
+                    dashboardDropdownActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-primary/15 text-primary hover:bg-primary/25"
+                  }`}
+                >
+                  Dashboard
+                  <ChevronDown className={`h-4 w-4 transition-transform ${dashboardOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {dashboardOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-56 rounded-lg border border-border bg-card/95 backdrop-blur-md shadow-xl py-2 z-50">
+                    {vendorDashboardItems.map((item) => (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          pathname === item.href
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-card"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {mainNavItems.map((item) => (
               <Link
                 key={item.label}
