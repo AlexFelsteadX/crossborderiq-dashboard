@@ -1926,17 +1926,54 @@ export function VendorPremiumDashboardClient() {
                 Get exclusive executive access, custom briefings, bespoke events and direct engagement with senior HR, Mobility and Workforce leaders shaping the industry.
               </p>
               <ul className="space-y-2 text-sm text-slate-300 mb-6">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  1 Bespoke Executive Event
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Market Opportunity Score&trade; — composite demand signal across operational pressure, transformation, AI and technology intent
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  2 Virtual Executive Roundtables
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Established vs Emerging Service Demand — what organisations outsource today and what they&apos;re actively exploring
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Quarterly Executive Intelligence Reviews
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Segment all intelligence by Region, Industry and Company size
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Full Global Workforce Intelligence dashboard included
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Bi-Annual Executive Summary
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Includes 10 sponsored Client Intelligence Passes
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Full report library — including members-only reports
+                </li>
+              </ul>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-3">
+                Plus, exclusively for partners:
+              </p>
+              <ul className="space-y-2 text-sm text-slate-300 mb-6">
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  2 Bespoke Virtual Executive Events
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                  Strategic Partner Recognition
                 </li>
               </ul>
               <Button asChild className="bg-primary hover:bg-primary/90 text-white font-medium gap-2">
