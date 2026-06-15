@@ -331,8 +331,8 @@ function QuestionCard({
           }
           return (
             <div key={idx}>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
+              <div className="flex items-start justify-between gap-2 text-xs mb-1">
+                <span className="text-slate-400 break-words flex-1 min-w-0">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
               </div>
               <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
