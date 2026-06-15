@@ -338,6 +338,7 @@ function DemandColumn({
   segBaseN,
   barColor,
   loading,
+  isFiltered,
 }: {
   title: string
   subtitle: string
@@ -346,8 +347,12 @@ function DemandColumn({
   segBaseN: number
   barColor: string
   loading: boolean
+  isFiltered: boolean
 }) {
   const suppressed = confidence === "suppressed"
+  // The market benchmark only differs from the segment figure when a filter is active.
+  // With no filter the segment IS the whole market, so we hide the duplicated value/marker.
+  const showComparison = !suppressed && isFiltered
 
   return (
     <div className="space-y-4">
@@ -383,8 +388,8 @@ function DemandColumn({
                   <span className="text-sm text-slate-200 truncate pr-2">{row.label}</span>
                   <span className="text-sm font-semibold shrink-0" style={{ color: barColor }}>
                     {shown}%
-                    {!suppressed && (
-                      <span className="text-slate-500 font-normal ml-1.5 text-xs">(market {overallDisplay}%)</span>
+                    {showComparison && (
+                      <span className="text-slate-500 font-normal ml-1.5 text-xs">market: {overallDisplay}%</span>
                     )}
                   </span>
                 </div>
@@ -393,7 +398,7 @@ function DemandColumn({
                     className="h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(shown, 100)}%`, backgroundColor: barColor }}
                   />
-                  {!suppressed && (
+                  {showComparison && (
                     <span
                       className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
                       style={{ left: `${Math.min(overallDisplay, 100)}%` }}
@@ -617,14 +622,25 @@ export function VendorPremiumDashboardClient() {
   const [demandLoading, setDemandLoading] = useState(true)
 
   const resetFilters = () => {
-    setSelectedRegion(null)
-    setSelectedIndustry(null)
-    setSelectedSize(null)
-    setSelectedAssignee(null)
-    setSelectedTraveller(null)
-    setSelectedTech(null)
-    setSelectedAi(null)
+  setSelectedRegion(null)
+  setSelectedIndustry(null)
+  setSelectedSize(null)
+  setSelectedAssignee(null)
+  setSelectedTraveller(null)
+  setSelectedTech(null)
+  setSelectedAi(null)
   }
+
+  // True when at least one filter is set to something other than its default ("All").
+  // The "(market …)" comparison is only meaningful when the segment differs from the whole market.
+  const isFiltered =
+    selectedRegion !== null ||
+    selectedIndustry !== null ||
+    selectedSize !== null ||
+    selectedAssignee !== null ||
+    selectedTraveller !== null ||
+    selectedTech !== null ||
+    selectedAi !== null
 
   const regionOptions = [
     { value: null, label: "All" },
@@ -1345,6 +1361,7 @@ export function VendorPremiumDashboardClient() {
                   segBaseN={emergingDemand.segBaseN}
                   barColor="#2dd4bf"
                   loading={demandLoading}
+                  isFiltered={isFiltered}
                 />
 
                 {/* Co-headline B: Stated service interest (SI1, market-wide — not filtered) */}
@@ -1417,6 +1434,7 @@ export function VendorPremiumDashboardClient() {
                 segBaseN={establishedDemand.segBaseN}
                 barColor="var(--brand-teal)"
                 loading={demandLoading}
+                isFiltered={isFiltered}
               />
             </div>
 
