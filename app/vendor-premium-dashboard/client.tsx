@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -735,20 +735,11 @@ export function VendorPremiumDashboardClient() {
   // Single-open accordion for the top-level commercial-breakdown pillars.
   // null = none open. Opening a pillar collapses whichever was previously open.
   const [activePillar, setActivePillar] = useState<string | null>(null)
-  // Refs to each pillar's header, so we can scroll the newly-opened one to the top.
-  const pillarRefs = useRef<Record<string, HTMLDivElement | null>>({})
-  // Tracks the most recent OPEN action so we only scroll on open, never on close.
-  const pillarToScrollRef = useRef<string | null>(null)
   // Accordion state for the "Earlier research" studies (collapsed by default)
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
   
   const togglePillar = (pillarName: string) => {
-    setActivePillar(prev => {
-      const willOpen = prev !== pillarName
-      // Only request a scroll when this action OPENS a section.
-      pillarToScrollRef.current = willOpen ? pillarName : null
-      return willOpen ? pillarName : null
-    })
+    setActivePillar(prev => (prev === pillarName ? null : pillarName))
   }
 
   const toggleStudy = (studyKey: string) => {
@@ -1190,44 +1181,11 @@ export function VendorPremiumDashboardClient() {
   
   useEffect(() => {
     if (groupedByPillar.length > 0 && !hasInitializedAccordion) {
-      // Open the first pillar by default, but do NOT scroll on initial load.
+      // Open the first pillar by default.
       setActivePillar(groupedByPillar[0][0])
-      pillarToScrollRef.current = null
       setHasInitializedAccordion(true)
     }
   }, [groupedByPillar, hasInitializedAccordion])
-
-  // Scroll the newly-opened pillar's header to just below the sticky nav.
-  // Only runs when a pillar was OPENED (not collapsed). We wait for the
-  // previously-open section to collapse and the layout to reflow before
-  // measuring, otherwise the target is stale and the scroll overshoots once
-  // the document height shrinks.
-  useEffect(() => {
-    if (!activePillar || pillarToScrollRef.current !== activePillar) return
-    const targetPillar = activePillar
-    // Consume the request now so re-renders during the wait don't re-trigger.
-    pillarToScrollRef.current = null
-
-    let innerRaf = 0
-    // Two nested rAF: first lets React commit the collapse, second fires after
-    // the browser has reflowed with the old section's height removed.
-    const outerRaf = requestAnimationFrame(() => {
-      innerRaf = requestAnimationFrame(() => {
-        const el = pillarRefs.current[targetPillar]
-        if (!el) return
-        // Measure the now-open header fresh, after reflow.
-        const navEl = document.querySelector("header.sticky") as HTMLElement | null
-        const navHeight = navEl?.offsetHeight ?? 64
-        const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 8
-        window.scrollTo({ top, behavior: "smooth" })
-      })
-    })
-
-    return () => {
-      cancelAnimationFrame(outerRaf)
-      cancelAnimationFrame(innerRaf)
-    }
-  }, [activePillar])
 
   // ---------------------------------------------------------------------------
   // RENDER
@@ -1755,8 +1713,7 @@ export function VendorPremiumDashboardClient() {
                       return (
                         <div
                           key={pillarName}
-                          ref={(el) => { pillarRefs.current[pillarName] = el }}
-                          className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                          className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
                         >
                           {/* Accordion Header */}
                           <button
