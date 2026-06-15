@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -703,20 +703,22 @@ export function VendorPremiumDashboardClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Accordion state for commercial breakdowns
-  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set())
+  // Single-open accordion for the top-level commercial-breakdown pillars.
+  // null = none open. Opening a pillar collapses whichever was previously open.
+  const [activePillar, setActivePillar] = useState<string | null>(null)
+  // Refs to each pillar's header, so we can scroll the newly-opened one to the top.
+  const pillarRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // Tracks the most recent OPEN action so we only scroll on open, never on close.
+  const pillarToScrollRef = useRef<string | null>(null)
   // Accordion state for the "Earlier research" studies (collapsed by default)
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
   
   const togglePillar = (pillarName: string) => {
-    setExpandedPillars(prev => {
-      const next = new Set(prev)
-      if (next.has(pillarName)) {
-        next.delete(pillarName)
-      } else {
-        next.add(pillarName)
-      }
-      return next
+    setActivePillar(prev => {
+      const willOpen = prev !== pillarName
+      // Only request a scroll when this action OPENS a section.
+      pillarToScrollRef.current = willOpen ? pillarName : null
+      return willOpen ? pillarName : null
     })
   }
 
@@ -1159,10 +1161,25 @@ export function VendorPremiumDashboardClient() {
   
   useEffect(() => {
     if (groupedByPillar.length > 0 && !hasInitializedAccordion) {
-      setExpandedPillars(new Set([groupedByPillar[0][0]]))
+      // Open the first pillar by default, but do NOT scroll on initial load.
+      setActivePillar(groupedByPillar[0][0])
+      pillarToScrollRef.current = null
       setHasInitializedAccordion(true)
     }
   }, [groupedByPillar, hasInitializedAccordion])
+
+  // Scroll the newly-opened pillar's header to just below the sticky nav, after
+  // its content has rendered. Only runs when a pillar was opened (not closed).
+  useEffect(() => {
+    if (!activePillar || pillarToScrollRef.current !== activePillar) return
+    const el = pillarRefs.current[activePillar]
+    if (!el) return
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+    pillarToScrollRef.current = null
+    return () => cancelAnimationFrame(id)
+  }, [activePillar])
 
   // ---------------------------------------------------------------------------
   // RENDER
@@ -1685,10 +1702,14 @@ export function VendorPremiumDashboardClient() {
                       // Skip pillar if no visible questions remain
                       if (visibleQuestions.length === 0) return null
                       
-                      const isExpanded = expandedPillars.has(pillarName)
+                      const isExpanded = activePillar === pillarName
                       
                       return (
-                        <div key={pillarName} className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                        <div
+                          key={pillarName}
+                          ref={(el) => { pillarRefs.current[pillarName] = el }}
+                          className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                        >
                           {/* Accordion Header */}
                           <button
                             onClick={() => togglePillar(pillarName)}
