@@ -192,7 +192,7 @@ export default function PricingPage() {
           <div id="corporate-access" className="mb-20 scroll-mt-24">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-semibold text-slate-100 mb-3">Corporate Access</h2>
-              <p className="text-slate-300">Choose the level of intelligence access that best suits your organisation.</p>
+              <p className="text-slate-300">Choose the level of intelligence access that best suits your organization.</p>
             </div>
 
             {/* Value Anchor - prominent at top of corporate plans */}
@@ -485,7 +485,7 @@ export default function PricingPage() {
                 <ul className="space-y-3 mb-6">
                   {[
                     "Market Opportunity Score™ — composite demand signal across operational pressure, transformation, AI and technology intent",
-                    "Established vs Emerging Service Demand — what organisations outsource today and what they're actively exploring",
+                    "Established vs Emerging Service Demand — what organizations outsource today and what they're actively exploring",
                     "Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity",
                     "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
                     "Segment all intelligence by Region, Industry and Company size",
@@ -553,7 +553,7 @@ export default function PricingPage() {
                 <ul className="space-y-3 mb-6">
                   {[
                     "Market Opportunity Score™ — composite demand signal across operational pressure, transformation, AI and technology intent",
-                    "Established vs Emerging Service Demand — what organisations outsource today and what they're actively exploring",
+                    "Established vs Emerging Service Demand — what organizations outsource today and what they're actively exploring",
                     "Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity",
                     "Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand",
                     "Segment all intelligence by Region, Industry and Company size",

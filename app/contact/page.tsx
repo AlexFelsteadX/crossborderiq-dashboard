@@ -33,7 +33,7 @@ export default function ContactPage() {
             </div>
             <h3 className="text-lg font-medium text-slate-100 mb-2">Email Us</h3>
             <p className="text-sm text-slate-400 mb-4">
-              For general enquiries and membership questions.
+              For general inquiries and membership questions.
             </p>
             <a 
               href="mailto:crossborderiq@gemevents.co"

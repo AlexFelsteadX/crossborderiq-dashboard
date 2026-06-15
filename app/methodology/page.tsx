@@ -62,7 +62,7 @@ export default function MethodologyPage() {
               </div>
               <h3 className="text-base font-semibold text-slate-100 mb-2">CBIQ Member Intelligence</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Continuous pulse surveys and benchmarking across CBIQ member organisations between annual waves.
+                Continuous pulse surveys and benchmarking across CBIQ member organizations between annual waves.
               </p>
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function MethodologyPage() {
             </div>
           </div>
           <p className="text-sm text-slate-400 text-center max-w-2xl mx-auto">
-            Participants span Global Mobility, HR, Talent and Workforce Strategy leaders, alongside operational decision-makers, across organisations of every size.
+            Participants span Global Mobility, HR, Talent and Workforce Strategy leaders, alongside operational decision-makers, across organizations of every size.
           </p>
         </section>
 
