@@ -133,8 +133,40 @@ function QuestionCard({
   answers: { answer_option: string; pct: number }[]
   subtag?: string
 }) {
-  const sortedAnswers = [...answers].sort((a, b) => b.pct - a.pct)
-  
+  // Agreement-scale detection: every option is a single digit, >=4 distinct
+  // values, and the maximum numeric option is exactly 7.
+  const distinctOptions = Array.from(new Set(answers.map((a) => a.answer_option)))
+  const numericValues = distinctOptions.map((o) => Number(o))
+  const isAgreementScale =
+    distinctOptions.length >= 4 &&
+    distinctOptions.every((o) => /^[0-9]$/.test(o)) &&
+    Math.max(...numericValues) === 7
+  const lowestValue = isAgreementScale ? Math.min(...numericValues) : null
+
+  // Agreement scale -> sort by numeric value descending (7 at top).
+  // Otherwise -> existing percentage-sorted behaviour.
+  const sortedAnswers = isAgreementScale
+    ? [...answers].sort((a, b) => Number(b.answer_option) - Number(a.answer_option))
+    : [...answers].sort((a, b) => b.pct - a.pct)
+
+  // Summary built from the same percentages each row displays (pct is already 0–100).
+  const agreementSummary = isAgreementScale
+    ? [
+        {
+          label: "Strongly agree (6–7)",
+          value: answers.filter((a) => Number(a.answer_option) >= 6).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+        {
+          label: "Agree side (5–7)",
+          value: answers.filter((a) => Number(a.answer_option) >= 5).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+        {
+          label: "Disagree (0–3)",
+          value: answers.filter((a) => Number(a.answer_option) <= 3).reduce((s, a) => s + Math.round(a.pct), 0),
+        },
+      ]
+    : null
+
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -146,14 +178,34 @@ function QuestionCard({
         )}
       </div>
       <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
+      {agreementSummary && (
+        <div className="mb-4 mt-2 grid grid-cols-3 gap-2">
+          {agreementSummary.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-lg border border-primary/15 bg-brand-navy-3/50 px-3 py-2"
+            >
+              <p className="text-base font-semibold text-slate-200">{s.value}%</p>
+              <p className="text-[11px] text-slate-500 leading-tight">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="space-y-2 mt-2">
         {sortedAnswers.map((answer, idx) => {
           // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
           const pctDisplay = Math.round(answer.pct)
+          // Anchor the agreement-scale endpoints.
+          let optionLabel = answer.answer_option
+          if (isAgreementScale) {
+            if (Number(answer.answer_option) === 7) optionLabel = `${answer.answer_option} · strongly agree`
+            else if (Number(answer.answer_option) === lowestValue)
+              optionLabel = `${answer.answer_option} · strongly disagree`
+          }
           return (
             <div key={idx}>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400 truncate pr-2">{answer.answer_option}</span>
+                <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
               </div>
               <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
