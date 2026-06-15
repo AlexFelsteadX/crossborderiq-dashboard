@@ -1087,7 +1087,7 @@ export function VendorPremiumDashboardClient() {
               </div>
             </div>
             <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
-              <Link href="/premium-dashboard">
+              <Link href="/premium-dashboard" target="_blank" rel="noopener noreferrer">
                 Open Premium Dashboard
                 <ExternalLink className="h-4 w-4" />
               </Link>
@@ -1686,7 +1686,7 @@ export function VendorPremiumDashboardClient() {
                   <FileText className="h-8 w-8 text-primary mb-3" />
                   <h3 className="text-sm font-medium text-slate-200 mb-1">Global Workforce Deployment Report 2026</h3>
                   <p className="text-xs text-slate-400 mb-3">Full benchmark findings with vendor implications</p>
-                  <Button variant="outline" size="sm" className="w-full gap-2 border-primary/30 text-slate-200 hover:bg-primary/10" asChild>
+                  <Button size="sm" className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
                     <Link href="/reports">
                       <Download className="h-4 w-4" />
                       Access Report
