@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, ExternalLink, Filter, ChevronDown, RotateCcw
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -331,8 +331,8 @@ function QuestionCard({
           }
           return (
             <div key={idx}>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
+              <div className="flex items-start justify-between gap-2 text-xs mb-1">
+                <span className="text-slate-400 break-words flex-1 min-w-0">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
               </div>
               <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
@@ -703,20 +703,22 @@ export function VendorPremiumDashboardClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Accordion state for commercial breakdowns
-  const [expandedPillars, setExpandedPillars] = useState<Set<string>>(new Set())
+  // Single-open accordion for the top-level commercial-breakdown pillars.
+  // null = none open. Opening a pillar collapses whichever was previously open.
+  const [activePillar, setActivePillar] = useState<string | null>(null)
+  // Refs to each pillar's header, so we can scroll the newly-opened one to the top.
+  const pillarRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // Tracks the most recent OPEN action so we only scroll on open, never on close.
+  const pillarToScrollRef = useRef<string | null>(null)
   // Accordion state for the "Earlier research" studies (collapsed by default)
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
   
   const togglePillar = (pillarName: string) => {
-    setExpandedPillars(prev => {
-      const next = new Set(prev)
-      if (next.has(pillarName)) {
-        next.delete(pillarName)
-      } else {
-        next.add(pillarName)
-      }
-      return next
+    setActivePillar(prev => {
+      const willOpen = prev !== pillarName
+      // Only request a scroll when this action OPENS a section.
+      pillarToScrollRef.current = willOpen ? pillarName : null
+      return willOpen ? pillarName : null
     })
   }
 
@@ -1159,10 +1161,25 @@ export function VendorPremiumDashboardClient() {
   
   useEffect(() => {
     if (groupedByPillar.length > 0 && !hasInitializedAccordion) {
-      setExpandedPillars(new Set([groupedByPillar[0][0]]))
+      // Open the first pillar by default, but do NOT scroll on initial load.
+      setActivePillar(groupedByPillar[0][0])
+      pillarToScrollRef.current = null
       setHasInitializedAccordion(true)
     }
   }, [groupedByPillar, hasInitializedAccordion])
+
+  // Scroll the newly-opened pillar's header to just below the sticky nav, after
+  // its content has rendered. Only runs when a pillar was opened (not closed).
+  useEffect(() => {
+    if (!activePillar || pillarToScrollRef.current !== activePillar) return
+    const el = pillarRefs.current[activePillar]
+    if (!el) return
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+    pillarToScrollRef.current = null
+    return () => cancelAnimationFrame(id)
+  }, [activePillar])
 
   // ---------------------------------------------------------------------------
   // RENDER
@@ -1216,7 +1233,7 @@ export function VendorPremiumDashboardClient() {
             <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
               <Link href="/premium-dashboard" target="_blank" rel="noopener noreferrer">
                 Open Premium Dashboard
-                <ExternalLink className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -1475,7 +1492,7 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">Where demand is heading</h2>
               </div>
               <p className="text-sm text-slate-400 mb-6">
-                Forward-looking signals — what this segment is investing in next, alongside the services buyers are actively seeking.
+                Forward-looking signals — what this segment is investing in next, alongside what service buyers are actively seeking.
               </p>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1685,10 +1702,14 @@ export function VendorPremiumDashboardClient() {
                       // Skip pillar if no visible questions remain
                       if (visibleQuestions.length === 0) return null
                       
-                      const isExpanded = expandedPillars.has(pillarName)
+                      const isExpanded = activePillar === pillarName
                       
                       return (
-                        <div key={pillarName} className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                        <div
+                          key={pillarName}
+                          ref={(el) => { pillarRefs.current[pillarName] = el }}
+                          className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                        >
                           {/* Accordion Header */}
                           <button
                             onClick={() => togglePillar(pillarName)}
