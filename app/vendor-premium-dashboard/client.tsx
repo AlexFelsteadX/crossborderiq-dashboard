@@ -167,6 +167,133 @@ function QuestionCard({
       ]
     : null
 
+  // Direction-matrix detection: every option is "<move type>: <direction>" split on
+  // the LAST ": ", the suffix is one of the four directions, and there are >=2 move types.
+  const DIRECTION_ORDER = ["Increase", "Remain the same", "Decrease", "Not applicable"] as const
+  const DIRECTION_COLORS: Record<(typeof DIRECTION_ORDER)[number], string> = {
+    Increase: "#1D9E75",
+    "Remain the same": "#888780",
+    Decrease: "#D85A30",
+    "Not applicable": "#D3D1C7",
+  }
+  const canonDirection = (suffix: string): (typeof DIRECTION_ORDER)[number] | null => {
+    switch (suffix.trim().toLowerCase()) {
+      case "increase":
+        return "Increase"
+      case "remain the same":
+        return "Remain the same"
+      case "decrease":
+        return "Decrease"
+      case "not applicable":
+        return "Not applicable"
+      default:
+        return null
+    }
+  }
+  const splitMatrixOption = (option: string) => {
+    const idx = option.lastIndexOf(": ")
+    if (idx === -1) return null
+    const dir = canonDirection(option.slice(idx + 2))
+    if (!dir) return null
+    return { prefix: option.slice(0, idx).trim(), direction: dir }
+  }
+  const parsedMatrix = answers.map((a) => ({ a, parts: splitMatrixOption(a.answer_option) }))
+  const isDirectionMatrix =
+    !isAgreementScale &&
+    parsedMatrix.length > 0 &&
+    parsedMatrix.every((p) => p.parts !== null) &&
+    new Set(parsedMatrix.map((p) => p.parts!.prefix)).size >= 2
+
+  // Build one stacked row per move type (only when it's a direction matrix).
+  const matrixRows = isDirectionMatrix
+    ? (() => {
+        const groups = new Map<string, Record<(typeof DIRECTION_ORDER)[number], number>>()
+        const order: string[] = []
+        for (const { a, parts } of parsedMatrix) {
+          if (!parts) continue
+          if (!groups.has(parts.prefix)) {
+            groups.set(parts.prefix, {
+              Increase: 0,
+              "Remain the same": 0,
+              Decrease: 0,
+              "Not applicable": 0,
+            })
+            order.push(parts.prefix)
+          }
+          // pct is already a whole number (0–100).
+          groups.get(parts.prefix)![parts.direction] += a.pct
+        }
+        return order
+          .map((prefix) => {
+            const sums = groups.get(prefix)!
+            const total =
+              sums.Increase + sums["Remain the same"] + sums.Decrease + sums["Not applicable"]
+            // Normalise within the move type so its four segments fill 100%.
+            const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0)
+            const segments = DIRECTION_ORDER.map((dir) => ({ dir, width: pct(sums[dir]) }))
+            const net = Math.round(pct(sums.Increase) - pct(sums.Decrease))
+            return { prefix, segments, net }
+          })
+          .sort((a, b) => b.net - a.net)
+      })()
+    : null
+
+  if (isDirectionMatrix && matrixRows) {
+    const netLabel = (net: number) =>
+      net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
+    return (
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <p className="text-sm text-slate-200">{questionLabel}</p>
+          {subtag && (
+            <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+              {subtag}
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-500 mb-3">{caption}</p>
+
+        {/* Direction legend */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
+          {DIRECTION_ORDER.map((dir) => (
+            <span key={dir} className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: DIRECTION_COLORS[dir] }}
+              />
+              {dir}
+            </span>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          {matrixRows.map((row) => (
+            <div key={row.prefix} className="grid grid-cols-[9rem_1fr_4rem] items-center gap-3">
+              <span className="text-xs text-slate-300 truncate" title={row.prefix}>
+                {row.prefix}
+              </span>
+              <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
+                {row.segments
+                  .filter((s) => s.width > 0)
+                  .map((s) => (
+                    <div
+                      key={s.dir}
+                      className="h-full"
+                      style={{ width: `${s.width}%`, backgroundColor: DIRECTION_COLORS[s.dir] }}
+                      title={`${s.dir} ${Math.round(s.width)}%`}
+                    />
+                  ))}
+              </div>
+              <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
+                {netLabel(row.net)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
       <div className="mb-3 flex items-start justify-between gap-2">
