@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, ExternalLink, Filter, ChevronDown, RotateCcw
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -1216,7 +1216,7 @@ export function VendorPremiumDashboardClient() {
             <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
               <Link href="/premium-dashboard" target="_blank" rel="noopener noreferrer">
                 Open Premium Dashboard
-                <ExternalLink className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -1475,7 +1475,7 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">Where demand is heading</h2>
               </div>
               <p className="text-sm text-slate-400 mb-6">
-                Forward-looking signals — what this segment is investing in next, alongside the services buyers are actively seeking.
+                Forward-looking signals — what this segment is investing in next, alongside what service buyers are actively seeking.
               </p>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
