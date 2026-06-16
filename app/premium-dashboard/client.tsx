@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
+import { TrialBanner } from "@/components/trial-banner"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
@@ -793,6 +794,8 @@ export function PremiumDashboardClient() {
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
 
       <GlobalNav />
+
+      <TrialBanner />
 
       <main className="max-w-[1400px] mx-auto px-6 py-10">
         {/* Header */}
