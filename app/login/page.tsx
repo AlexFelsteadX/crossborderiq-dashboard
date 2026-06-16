@@ -118,6 +118,38 @@ function LoginForm() {
     setLoading(false)
   }
 
+  // Passwordless sign-in: users who claimed a trial via a magic link never set a
+  // password, so they need a link-based way back in. Login only (shouldCreateUser:
+  // false) and routed through the standard /auth/callback so tier-based redirect applies.
+  const handleMagicLink = async () => {
+    setError(null)
+    setSuccess(null)
+
+    if (!email) {
+      setError("Please enter your email address first.")
+      return
+    }
+
+    setLoading(true)
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      setError(getErrorMessage(error.message))
+    } else {
+      // Neutral message — never reveal whether an account exists for this email.
+      setSuccess("If an account exists for that email, we've sent a sign-in link.")
+    }
+
+    setLoading(false)
+  }
+
   const getErrorMessage = (message: string): string => {
     if (message.includes("Invalid login credentials")) {
       return "Invalid email or password. Please check your credentials and try again."
@@ -353,6 +385,29 @@ function LoginForm() {
                 : (mode === "signin" ? "Sign in" : "Create account")
               }
             </Button>
+
+            {mode === "signin" && (
+              <>
+                <div className="flex items-center gap-3 py-1">
+                  <span className="h-px flex-1 bg-primary/15" />
+                  <span className="text-xs text-slate-500">or</span>
+                  <span className="h-px flex-1 bg-primary/15" />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMagicLink}
+                  disabled={loading}
+                  className="w-full border-primary/30 bg-transparent text-slate-200 hover:bg-primary/10 hover:text-slate-100"
+                >
+                  <Mail className="h-4 w-4" />
+                  Email me a sign-in link instead
+                </Button>
+                <p className="text-center text-xs text-slate-500">
+                  No password needed — useful if you joined via an email link.
+                </p>
+              </>
+            )}
           </form>
 
           <p className="mt-6 text-center text-xs text-slate-500">
