@@ -3,7 +3,7 @@ import { type EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
+  const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
   const next = searchParams.get('next') ?? '/'
@@ -13,10 +13,16 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash })
 
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url))
+      // Resolve `next` against the request origin and only allow same-origin
+      // redirects to avoid open-redirect vulnerabilities.
+      const redirectUrl = new URL(next, origin)
+      if (redirectUrl.origin === origin) {
+        return NextResponse.redirect(redirectUrl.toString())
+      }
+      return NextResponse.redirect(`${origin}/`)
     }
   }
 
-  // If there's an error or missing params, redirect to login with error
-  return NextResponse.redirect(new URL('/login?error=auth_callback_error', request.url))
+  // Missing params or verification error — send the user to login.
+  return NextResponse.redirect(`${origin}/login`)
 }
