@@ -818,16 +818,21 @@ export function VendorPremiumDashboardClient() {
 
   const assigneeOptions = [
     { value: null, label: "All" },
-    { value: "101–500", label: "101–500" },
-    { value: "51–100", label: "51–100" },
     { value: "1–50", label: "1–50" },
+    { value: "51–100", label: "51–100" },
+    { value: "101–500", label: "101–500" },
+    { value: "501–1,000", label: "501–1,000" },
+    { value: "More than 1,000", label: "More than 1,000" },
   ]
 
   const travellerOptions = [
     { value: null, label: "All" },
-    { value: "501–1,000", label: "501–1,000" },
-    { value: "101–500", label: "101��500" },
     { value: "1–100", label: "1–100" },
+    { value: "101–500", label: "101–500" },
+    { value: "501–1,000", label: "501–1,000" },
+    { value: "1,001–5,000", label: "1,001–5,000" },
+    { value: "5,001–10,000", label: "5,001–10,000" },
+    { value: "More than 10,000", label: "More than 10,000" },
   ]
 
   const techOptions = [
