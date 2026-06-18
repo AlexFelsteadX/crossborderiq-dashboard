@@ -46,7 +46,7 @@ export function GlobalNav() {
       ? "/vendor-premium-dashboard"
       : tier === "premium"
         ? "/premium-dashboard"
-        : "/contributor-dashboard" // free + contributor
+        : "/workforce-intelligence" // free
 
   type NavItem = { href: string; label: string; highlight?: boolean }
 
@@ -77,7 +77,7 @@ export function GlobalNav() {
       { href: "/pricing", label: "Pricing" },
     ]
   } else {
-    // free + contributor: add a prominent Dashboard link, keep marketing/upsell links
+    // free: add a prominent Dashboard link, keep marketing/upsell links
     mainNavItems = [
       { href: dashboardHref, label: "Dashboard", highlight: true },
       ...guestNavItems,
@@ -88,7 +88,7 @@ export function GlobalNav() {
   // Tier-aware dashboard links in the More dropdown (uses the same `tier` from useAuth):
   // - vendor: Premium + Vendor Premium dashboards (no Contributor Dashboard)
   // - premium: Premium dashboard only
-  // - free / contributor / guest: unchanged from before
+  // - free / guest: premium + vendor dashboards only (Contributor Dashboard retired)
   let dashboardMoreItems: NavItem[]
   if (tier === "vendor") {
     // Premium Dashboard now lives in the Dashboard dropdown, so it's removed here
@@ -101,11 +101,9 @@ export function GlobalNav() {
       { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
     ]
   } else {
-    // free + contributor + guest: keep exactly as before.
-    // Contributor Dashboard is only useful to logged-in users (guests dead-end at the login wall),
-    // so only show it when authenticated.
+    // free + guest: surface the premium/vendor dashboards as upsell entry points.
+    // The retired Contributor Dashboard is intentionally not linked here.
     dashboardMoreItems = [
-      ...(user ? [{ href: "/contributor-dashboard", label: "Contributor Dashboard" }] : []),
       { href: "/premium-dashboard", label: "Global Workforce Intelligence™ Premium Dashboard" },
       { href: "/vendor-premium-dashboard", label: "Vendor Premium Dashboard" },
     ]
