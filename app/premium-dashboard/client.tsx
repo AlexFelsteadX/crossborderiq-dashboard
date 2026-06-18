@@ -117,8 +117,8 @@ const INDUSTRY_OPTIONS = [
 ]
 const REGION_OPTIONS = ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC)"]
 const SIZE_OPTIONS = ["5,000+", "1,000–4,999"]
-const ASSIGNEE_OPTIONS = ["101–500", "51–100", "1–50"]
-const TRAVELLER_OPTIONS = ["501–1,000", "101–500", "1–100"]
+const ASSIGNEE_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
+const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
 
 const DEFAULT_FILTERS: Filters = {
   industry: null,
