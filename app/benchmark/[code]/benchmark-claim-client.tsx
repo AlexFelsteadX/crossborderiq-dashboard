@@ -60,7 +60,7 @@ export function BenchmarkClaimClient({
         email: trimmedEmail,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/claim/activate`,
+          emailRedirectTo: `${window.location.origin}/claim/activate`,
         },
       })
 
