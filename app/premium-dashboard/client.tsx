@@ -115,8 +115,16 @@ const INDUSTRY_OPTIONS = [
   "Healthcare & Life Sciences",
   "Energy & Utilities",
 ]
-const REGION_OPTIONS = ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC)"]
-const SIZE_OPTIONS = ["5,000+", "1,000–4,999"]
+const REGION_OPTIONS = ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC & Australia)"]
+const SIZE_OPTIONS = [
+  "Fewer than 250",
+  "250 – 999",
+  "1,000 – 4,999",
+  "5,000 – 9,999",
+  "10,000 – 24,999",
+  "25,000 – 49,999",
+  "50,000+",
+]
 const ASSIGNEE_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
 const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
 
