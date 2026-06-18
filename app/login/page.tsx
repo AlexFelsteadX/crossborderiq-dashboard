@@ -86,9 +86,9 @@ function LoginForm() {
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-bold text-slate-100 mb-2">Welcome to CBIQ</h1>
+                <h1 className="text-2xl font-bold text-slate-100 mb-2">Get access to CBIQ</h1>
                 <p className="text-sm text-slate-400">
-                  Enter your email and we&apos;ll send you a secure sign in link — no password needed.
+                  Enter your email and we&apos;ll send you a secure sign-in link.
                 </p>
               </>
             )}
