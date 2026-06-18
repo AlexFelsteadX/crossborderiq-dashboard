@@ -796,7 +796,7 @@ export function VendorPremiumDashboardClient() {
     { value: "Americas", label: "Americas" },
     { value: "Europe", label: "Europe" },
     { value: "Middle East", label: "Middle East" },
-    { value: "Asia-Pacific (APAC)", label: "Asia-Pacific (APAC)" },
+    { value: "Asia-Pacific (APAC & Australia)", label: "Asia-Pacific (APAC & Australia)" },
   ]
 
   const industryOptions = [
@@ -812,8 +812,13 @@ export function VendorPremiumDashboardClient() {
 
   const sizeOptions = [
     { value: null, label: "All" },
-    { value: "5,000+", label: "5,000+" },
-    { value: "1,000–4,999", label: "1,000–4,999" },
+    { value: "Fewer than 250", label: "Fewer than 250" },
+    { value: "250 – 999", label: "250 – 999" },
+    { value: "1,000 – 4,999", label: "1,000 – 4,999" },
+    { value: "5,000 – 9,999", label: "5,000 – 9,999" },
+    { value: "10,000 – 24,999", label: "10,000 – 24,999" },
+    { value: "25,000 – 49,999", label: "25,000 – 49,999" },
+    { value: "50,000+", label: "50,000+" },
   ]
 
   const assigneeOptions = [
