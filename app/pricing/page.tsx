@@ -224,7 +224,7 @@ export default function PricingPage() {
                 </div>
                 <ul className="space-y-3 mb-6">
                   {[
-                    "All 7 intelligence pillars — 60+ question-level datasets, not just headline statistics",
+                    "Every intelligence pillar — 60+ question-level datasets, not just headline statistics",
                     "Year-on-Year trends across every metric",
                     "Benchmarking filters by region, industry, company size & assignee population size (long & short-term)",
                     "Branded PDF export — board-ready benchmarks",
@@ -247,7 +247,7 @@ export default function PricingPage() {
                 </a>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-                    <Link href="/contributor-dashboard">Contribute to the Survey</Link>
+                    <Link href="/survey">Contribute to the Survey</Link>
                   </Button>
                 </div>
               </div>
