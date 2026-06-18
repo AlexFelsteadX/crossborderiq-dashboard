@@ -330,7 +330,7 @@ export function GlobalNav() {
                   </a>
                   <Link href="/login?mode=signin">
                     <Button className="bg-primary hover:bg-primary/90 text-sm cursor-pointer">
-                      Log in
+                      Get Access
                     </Button>
                   </Link>
                 </div>
@@ -433,7 +433,7 @@ export function GlobalNav() {
                   className="block w-full"
                 >
                   <Button className="w-full bg-primary hover:bg-primary/90 text-sm cursor-pointer">
-                    Log in
+                    Get Access
                   </Button>
                 </Link>
               )}
