@@ -968,7 +968,7 @@ export function PremiumDashboardClient() {
                   {mmi.confidence === "limited" && <LimitedChip base={mmi.base_n} />}
                 </div>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
-                  Composite of strategy, alignment, future-readiness and AI maturity.
+                  Composite of strategy, alignment, future-readiness and technology & AI maturity.
                 </p>
                 {SHOW_COUNTS && (
                   <p className="text-xs text-slate-400 mt-3">
