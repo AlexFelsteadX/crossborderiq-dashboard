@@ -35,7 +35,7 @@ interface MmiRow {
   defined_strategy: number
   aligned: number
   future: number
-  ai_maturity: number
+  tech_ai_maturity: number
   base_n: number
   confidence: Confidence
   overall_index: number
@@ -782,7 +782,7 @@ export function PremiumDashboardClient() {
         { label: "Defined strategy", pct: mmi.defined_strategy },
         { label: "Aligned to business", pct: mmi.aligned },
         { label: "Future readiness", pct: mmi.future },
-        { label: "Technology & AI maturity", pct: mmi.ai_maturity },
+        { label: "Technology & AI maturity", pct: mmi.tech_ai_maturity },
       ]
     : []
 
