@@ -782,7 +782,7 @@ export function PremiumDashboardClient() {
         { label: "Defined strategy", pct: mmi.defined_strategy },
         { label: "Aligned to business", pct: mmi.aligned },
         { label: "Future readiness", pct: mmi.future },
-        { label: "AI maturity", pct: mmi.ai_maturity },
+        { label: "Technology & AI maturity", pct: mmi.ai_maturity },
       ]
     : []
 
