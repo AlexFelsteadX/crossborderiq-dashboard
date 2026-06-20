@@ -6,7 +6,7 @@ import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
 import { CircularGauge } from "@/components/dashboard-ui"
 import { createClient } from "@/lib/supabase/client"
-import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2 } from "lucide-react"
+import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2, X } from "lucide-react"
 
 /*
   CBIQ — Mobility Maturity Scorecard
@@ -328,6 +328,7 @@ function Result({ segment, answers, onRestart }) {
   const [prog, setProg] = useState(0)
   const [cohort, setCohort] = useState({ loading: true, error: false, row: null, usedOverall: false })
   const [unlocked, setUnlocked] = useState(false)
+  const [showShare, setShowShare] = useState(false)
   const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   // Pull the peer cohort from Supabase when the result screen mounts.
@@ -473,13 +474,118 @@ function Result({ segment, answers, onRestart }) {
       <div className="flex gap-3.5 justify-center mt-5">
         <button onClick={onRestart} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Retake</button>
         <span className="text-border">·</span>
-        <button className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={() => setShowShare(true)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <Share2 size={14} /> Share your score
         </button>
       </div>
       <p className="text-center text-xs text-muted-foreground mt-4.5">
         Prototype with sample benchmark data. Live scores draw on the GWD survey.
       </p>
+
+      {showShare && (
+        <ShareCardModal
+          score={r.score}
+          archetype={a.name}
+          pct={pct}
+          hasPct={hasPct}
+          industry={segment.industry}
+          usedOverall={cohort.usedOverall}
+          onClose={() => setShowShare(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// LinkedIn-ready share card. Visual only for now — no download/share actions.
+// Rendered at a fixed 1080×1080 and scaled to fit the viewport so it stays
+// faithful to the eventual exported asset.
+function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, onClose }) {
+  const [scale, setScale] = useState(0.4)
+  useEffect(() => {
+    const fit = () => {
+      const avail = Math.min(window.innerWidth - 48, window.innerHeight - 120, 560)
+      setScale(avail / 1080)
+    }
+    fit()
+    window.addEventListener("resize", fit)
+    return () => window.removeEventListener("resize", fit)
+  }, [])
+
+  const sector = !usedOverall && industry ? ` in ${industry}` : ""
+  const peerLine = hasPct
+    ? `Higher than ${pct}% of Global Mobility and HR leaders${sector}`
+    : `Benchmarked against Global Mobility and HR leaders${sector}`
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center bg-background/80 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Shareable result card"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full bg-brand-navy-2 border border-border text-slate-300 hover:text-white transition-colors"
+      >
+        <X size={18} />
+      </button>
+
+      {/* Scaling wrapper keeps the fixed-1080 card centered and responsive. */}
+      <div style={{ width: 1080 * scale, height: 1080 * scale }} onClick={(e) => e.stopPropagation()}>
+        <div
+          className="bg-brand-navy text-white flex flex-col items-center text-center overflow-hidden"
+          style={{ width: 1080, height: 1080, transform: `scale(${scale})`, transformOrigin: "top left", padding: 84 }}
+        >
+          {/* CBIQ logo */}
+          <img src="/cbiq-lockup-transparent.png" alt="CBIQ" style={{ height: 92 }} className="object-contain" />
+
+          {/* label */}
+          <div className="font-mono uppercase text-brand-teal" style={{ fontSize: 26, letterSpacing: 6, marginTop: 56 }}>
+            Mobility Maturity Index
+          </div>
+
+          {/* score gauge */}
+          <div style={{ marginTop: 44 }}>
+            <CircularGauge value={score} max={100} size={380} stroke={28} label={String(score)} sublabel="/100" />
+          </div>
+
+          {/* archetype pill */}
+          <span
+            className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 font-medium text-primary"
+            style={{ fontSize: 34, paddingLeft: 32, paddingRight: 32, paddingTop: 12, paddingBottom: 12, marginTop: 40 }}
+          >
+            {archetype}
+          </span>
+
+          {/* peer line */}
+          <p className="text-slate-200 leading-snug text-balance" style={{ fontSize: 36, marginTop: 44, maxWidth: 820 }}>
+            {peerLine}
+          </p>
+
+          {/* spacer pushes CTA + footer to the bottom */}
+          <div style={{ flex: 1 }} />
+
+          {/* CTA */}
+          <div
+            className="rounded-2xl border border-primary/30 bg-primary/5 text-slate-300 leading-snug"
+            style={{ fontSize: 30, padding: "28px 40px", maxWidth: 900 }}
+          >
+            Take the free 3-minute benchmark at{" "}
+            <span className="font-bold text-brand-teal">cbiq.ai/mobility-maturity-scorecard</span>
+          </div>
+
+          {/* powered-by footer */}
+          <div className="flex items-center justify-center gap-4" style={{ marginTop: 52 }}>
+            <img src="/gme-white.png" alt="" aria-hidden="true" style={{ height: 64 }} className="object-contain opacity-90" />
+            <span className="font-mono uppercase text-slate-400" style={{ fontSize: 22, letterSpacing: 3 }}>
+              Powered by Global Mobility Executive
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
