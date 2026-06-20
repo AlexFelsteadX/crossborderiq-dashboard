@@ -34,7 +34,7 @@ const SIZES = ["Fewer than 250", "250 – 999", "1,000 – 4,999", "5,000 – 9,
 // filters of the same names (excluding the "All" default). Collected for the
 // benchmark; not used in scoring or the cohort call.
 const LONGTERM_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
-const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
+const TRAVELLER_OPTIONS = ["None", "1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
 
 // ----------------------------- questions ----------------------------
 const AGREE = ["Strongly disagree", "Disagree", "Slightly disagree", "Neutral",
