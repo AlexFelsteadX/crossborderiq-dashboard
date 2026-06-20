@@ -382,8 +382,8 @@ function Result({ segment, answers, onRestart }) {
     ? Math.max(1, Math.min(99, Math.round(cdf((r.score - row.mmi) / row.mmi_sd) * 100)))
     : null
   const cohortLabel = cohort.usedOverall
-    ? "leaders in the CBIQ benchmark"
-    : `${segment.industry || "your"} leaders in the CBIQ benchmark`
+    ? "Global Mobility and HR leaders in the CBIQ benchmark"
+    : `Global Mobility and HR leaders in the ${segment.industry || "your"} sector in the CBIQ benchmark`
 
   // Reveal immediately on a valid email; fire the trusted write in the background.
   // We never block the un-blur on the server response.
