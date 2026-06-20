@@ -5,6 +5,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
 import { CircularGauge } from "@/components/dashboard-ui"
+import { createClient } from "@/lib/supabase/client"
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2 } from "lucide-react"
 
 /*
@@ -20,19 +21,12 @@ import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2
   >>> and the email capture posts to the same survey-to-trial path you already run.
 */
 
-// --------------------------- MOCK benchmark -------------------------
-// Per-industry cohort mean MMI (replace with get_premium_mmi(industry)).
-const COHORT_MEAN = {
-  "Technology & IT": 56, "Financial Services": 54, "Professional Services": 50,
-  "Healthcare & Life Sciences": 49, "Energy & Utilities": 46, "Manufacturing & Industrial": 44,
-  "Media & Entertainment": 45, "Retail & Consumer": 43, Other: 47,
-}
-const COHORT_SD = 16            // spread used for the percentile estimate
-const OVERALL_MEAN = 48         // matches the live homepage MMI headline
-// Per-leg cohort averages (replace with get_premium_breakdown_core legs).
-const LEG_PEER = { strategy: 51, alignment: 48, future: 44, techai: 50 }
-
-const INDUSTRIES = Object.keys(COHORT_MEAN)
+// --------------------------- benchmark cohort -----------------------
+// Cohort figures come live from the public Supabase RPC get_scorecard_cohort(...).
+// These industry strings match the benchmark's industry_group values exactly.
+const INDUSTRIES = ["Technology & IT", "Financial Services", "Professional Services",
+  "Healthcare & Life Sciences", "Energy & Utilities", "Manufacturing & Industrial",
+  "Media & Entertainment", "Retail & Consumer", "Other"]
 const REGIONS = ["Americas", "Europe", "Middle East", "Africa", "Asia-Pacific (APAC & Australia)"]
 const SIZES = ["Fewer than 250", "250 – 999", "1,000 – 4,999", "5,000 – 9,999",
   "10,000 – 24,999", "25,000 – 49,999", "50,000+"]
@@ -69,20 +63,23 @@ const CHOICE_Q = [
 const TOTAL_STEPS = 1 + SCALE_Q.length + CHOICE_Q.length // segment + 5
 
 // ----------------------------- scoring ------------------------------
-const scaleToScore = (v) => Math.round(((v - 1) / 6) * 100) // 1..7 -> 0..100
+// Binary scoring mirrors the benchmark exactly so the taker's score is
+// directly comparable to the cohort returned by get_scorecard_cohort.
+const E10_YES = ["In production across workflows", "Piloting in selected areas"]
+const E16_YES = ["A dedicated mobility / assignment platform", "Partial — some tasks are tech-supported"]
 
-function computeResult(answers, industry) {
-  const strategy = scaleToScore(answers.Q19)
-  const alignment = scaleToScore(answers.Q20)
-  const future = scaleToScore(answers.Q22)
-  const techai = Math.round((answers.E10 + answers.E16) / 2)
+function computeResult(answers) {
+  // 1..7 scale: top-2 box (6 or 7) counts as 100, else 0.
+  const strategy = answers.Q19 === 6 || answers.Q19 === 7 ? 100 : 0
+  const alignment = answers.Q20 === 6 || answers.Q20 === 7 ? 100 : 0
+  const future = answers.Q22 === 6 || answers.Q22 === 7 ? 100 : 0
+  // techai = (E10 flag + E16 flag) / 2 * 100 -> 0, 50, or 100.
+  const e10 = E10_YES.includes(answers.E10) ? 1 : 0
+  const e16 = E16_YES.includes(answers.E16) ? 1 : 0
+  const techai = ((e10 + e16) / 2) * 100
   const legs = { strategy, alignment, future, techai }
   const score = Math.round((strategy + alignment + future + techai) / 4)
-  const mean = COHORT_MEAN[industry] ?? OVERALL_MEAN
-  // normal-CDF percentile estimate vs the cohort
-  const z = (score - mean) / COHORT_SD
-  const pct = Math.max(1, Math.min(99, Math.round(cdf(z) * 100)))
-  return { score, legs, mean, pct }
+  return { score, legs }
 }
 function cdf(z) { // Abramowitz-Stegun approximation
   const t = 1 / (1 + 0.2316419 * Math.abs(z))
@@ -251,7 +248,7 @@ function Questions({ step, answers, setAnswers, onBack, onNext }) {
       ) : (
         <div className="grid gap-2.5">
           {q.options.map((o) => (
-            <OptionRow key={o.t} active={current === o.v} onClick={() => pick(o.v)}>{o.t}</OptionRow>
+            <OptionRow key={o.t} active={current === o.t} onClick={() => pick(o.t)}>{o.t}</OptionRow>
           ))}
         </div>
       )}
@@ -318,10 +315,41 @@ function OptionRow({ active, onClick, children }) {
 
 // ----------------------------- result -------------------------------
 function Result({ segment, answers, onRestart }) {
-  const r = computeResult(answers, segment.industry)
+  const r = computeResult(answers)
   const a = archetype(r.score)
   const [prog, setProg] = useState(0)
+  const [cohort, setCohort] = useState({ loading: true, error: false, row: null, usedOverall: false })
   const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+  // Pull the peer cohort from Supabase when the result screen mounts.
+  // v1: industry only; region/size left null. Score is computed locally and
+  // renders immediately — only the peer line and breakdown wait on this.
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
+    const call = (p) => supabase.rpc("get_scorecard_cohort", p)
+    async function load() {
+      try {
+        const first = await call({ p_industry: segment.industry || null, p_region: null, p_size: null })
+        if (first.error) throw first.error
+        let row = Array.isArray(first.data) ? first.data[0] : first.data
+        let usedOverall = false
+        // Thin-base guard: under 20 responses, fall back to the overall cohort.
+        if (row && typeof row.base_n === "number" && row.base_n < 20) {
+          const overall = await call({ p_industry: null, p_region: null, p_size: null })
+          if (!overall.error) {
+            const orow = Array.isArray(overall.data) ? overall.data[0] : overall.data
+            if (orow) { row = orow; usedOverall = true }
+          }
+        }
+        if (!cancelled) setCohort({ loading: false, error: !row, row: row || null, usedOverall })
+      } catch {
+        if (!cancelled) setCohort({ loading: false, error: true, row: null, usedOverall: false })
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [segment.industry])
 
   useEffect(() => {
     if (reduce) { setProg(1); return }
@@ -339,6 +367,16 @@ function Result({ segment, answers, onRestart }) {
 
   const shown = Math.round(r.score * prog)
 
+  // Percentile vs the cohort, using the existing CDF helper. Needs a non-zero SD.
+  const row = cohort.row
+  const hasPct = !!row && typeof row.mmi_sd === "number" && row.mmi_sd > 0
+  const pct = hasPct
+    ? Math.max(1, Math.min(99, Math.round(cdf((r.score - row.mmi) / row.mmi_sd) * 100)))
+    : null
+  const cohortLabel = cohort.usedOverall
+    ? "leaders in the CBIQ benchmark"
+    : `${segment.industry || "your"} leaders in the CBIQ benchmark`
+
   return (
     <div>
       <div className="font-mono text-xs uppercase tracking-[0.12em] text-brand-teal mb-1">
@@ -355,17 +393,40 @@ function Result({ segment, answers, onRestart }) {
         </div>
       </div>
 
-      {/* the ONE free peer line */}
-      <div className="bg-brand-navy-2 border border-primary/15 rounded-xl px-5 py-4.5 mb-4 flex gap-3.5 items-center">
-        <div className="tnum font-mono text-3xl font-extrabold text-brand-teal min-w-16">{r.pct}%</div>
-        <div className="text-sm leading-snug text-foreground">
-          You scored higher than <strong>{r.pct}% of {segment.industry || "your"} leaders</strong> in the CBIQ benchmark.
-          Your cohort averages <span className="tnum font-mono font-bold">{r.mean}</span>.
+      {/* the ONE free peer line — driven by the live cohort */}
+      {cohort.loading ? (
+        <div className="bg-brand-navy-2 border border-primary/15 rounded-xl px-5 py-4.5 mb-4 flex gap-3.5 items-center animate-pulse">
+          <div className="h-8 w-14 rounded bg-white/10" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-full rounded bg-white/10" />
+            <div className="h-3 w-2/3 rounded bg-white/10" />
+          </div>
         </div>
-      </div>
+      ) : !cohort.error && row ? (
+        <div className="bg-brand-navy-2 border border-primary/15 rounded-xl px-5 py-4.5 mb-4 flex gap-3.5 items-center">
+          {hasPct && <div className="tnum font-mono text-3xl font-extrabold text-brand-teal min-w-16">{pct}%</div>}
+          <div className="text-sm leading-snug text-foreground">
+            {hasPct ? (
+              <>
+                You scored higher than <strong>{pct}% of {cohortLabel}</strong>.{" "}
+                Your cohort averages <span className="tnum font-mono font-bold">{Math.round(row.mmi)}</span>.
+              </>
+            ) : (
+              <>Your cohort averages <span className="tnum font-mono font-bold">{Math.round(row.mmi)}</span>.</>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {/* gated depth */}
-      <LockedBreakdown legs={r.legs} />
+      {cohort.loading ? (
+        <div className="border border-primary/20 bg-brand-navy-2 rounded-xl mb-4 h-[188px] animate-pulse" />
+      ) : !cohort.error && row ? (
+        <LockedBreakdown
+          legs={r.legs}
+          peers={{ strategy: row.strategy, alignment: row.alignment, future: row.future, techai: row.techai }}
+        />
+      ) : null}
 
       {/* CTA */}
       <TrialCTA />
@@ -384,7 +445,7 @@ function Result({ segment, answers, onRestart }) {
   )
 }
 
-function LockedBreakdown({ legs }) {
+function LockedBreakdown({ legs, peers }) {
   const rows = [
     ["strategy", "Defined strategy"], ["alignment", "Strategic alignment"],
     ["future", "Future-readiness"], ["techai", "Technology & AI"],
@@ -398,7 +459,7 @@ function LockedBreakdown({ legs }) {
             <div key={k}>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-slate-400">{l}</span>
-                <span className="text-slate-200 font-medium tnum">{legs[k]}% <span className="text-slate-500 font-normal">vs {LEG_PEER[k]}</span></span>
+                <span className="text-slate-200 font-medium tnum">{legs[k]}% <span className="text-slate-500 font-normal">vs {Math.round(peers[k])}</span></span>
               </div>
               <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
                 <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(Math.max(legs[k], 0), 100)}%` }} />
