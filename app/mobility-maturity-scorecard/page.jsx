@@ -483,6 +483,14 @@ function Result({ segment, answers, onRestart }) {
   )
 }
 
+// Map a binary/half leg value to a human standing word + brand-appropriate styling.
+// 100 = Strong (positive/teal), 50 = Partly there (neutral), 0 = Developing (muted).
+function standing(v) {
+  if (v >= 100) return { label: "Strong", cls: "border-primary/30 bg-primary/10 text-primary" }
+  if (v >= 50) return { label: "Partly there", cls: "border-slate-500/30 bg-slate-500/10 text-slate-200" }
+  return { label: "Developing", cls: "border-slate-600/30 bg-slate-600/10 text-slate-400" }
+}
+
 function LockedBreakdown({ legs, peers, unlocked }) {
   const rows = [
     ["strategy", "Defined strategy"], ["alignment", "Strategic alignment"],
@@ -493,17 +501,24 @@ function LockedBreakdown({ legs, peers, unlocked }) {
       <div className={`px-5 py-5 ${unlocked ? "" : "blur-[5px] pointer-events-none select-none"}`}>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3.5">Your full breakdown</p>
         <div className="space-y-2.5">
-          {rows.map(([k, l]) => (
-            <div key={k}>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400">{l}</span>
-                <span className="text-slate-200 font-medium tnum">{legs[k]}% <span className="text-slate-500 font-normal">vs {Math.round(peers[k])}</span></span>
+          {rows.map(([k, l]) => {
+            const peerPct = Math.round(peers[k])
+            const s = standing(legs[k])
+            return (
+              <div key={k}>
+                <div className="flex justify-between items-center gap-3 text-xs mb-1">
+                  <span className="text-slate-400">
+                    {l} <span className="text-slate-600">—</span>{" "}
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.cls}`}>{s.label}</span>
+                  </span>
+                  <span className="text-slate-500 font-normal tnum whitespace-nowrap">{peerPct}% of peers strong</span>
+                </div>
+                <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(Math.max(peerPct, 0), 100)}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(Math.max(legs[k], 0), 100)}%` }} />
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
       {!unlocked && (
