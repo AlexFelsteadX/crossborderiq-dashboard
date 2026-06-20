@@ -326,6 +326,7 @@ function Result({ segment, answers, onRestart }) {
   const a = archetype(r.score)
   const [prog, setProg] = useState(0)
   const [cohort, setCohort] = useState({ loading: true, error: false, row: null, usedOverall: false })
+  const [unlocked, setUnlocked] = useState(false)
   const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   // Pull the peer cohort from Supabase when the result screen mounts.
@@ -384,6 +385,35 @@ function Result({ segment, answers, onRestart }) {
     ? "leaders in the CBIQ benchmark"
     : `${segment.industry || "your"} leaders in the CBIQ benchmark`
 
+  // Reveal immediately on a valid email; fire the trusted write in the background.
+  // We never block the un-blur on the server response.
+  const handleUnlock = ({ email, companyWebsite }) => {
+    setUnlocked(true)
+    const e10Index = CHOICE_Q[0].options.findIndex((o) => o.t === answers.E10)
+    const e16Index = CHOICE_Q[1].options.findIndex((o) => o.t === answers.E16)
+    const payload = {
+      email,
+      segment: {
+        industry: segment.industry,
+        region: segment.region,
+        size: segment.size,
+        longTerm: segment.longTerm,
+        shortTerm: segment.traveller,
+      },
+      q19: answers.Q19,
+      q20: answers.Q20,
+      q22: answers.Q22,
+      e10Index,
+      e16Index,
+      company_website: companyWebsite,
+    }
+    fetch("/api/scorecard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {})
+  }
+
   return (
     <div>
       <div className="font-mono text-xs uppercase tracking-[0.12em] text-brand-teal mb-1">
@@ -432,11 +462,12 @@ function Result({ segment, answers, onRestart }) {
         <LockedBreakdown
           legs={r.legs}
           peers={{ strategy: row.strategy, alignment: row.alignment, future: row.future, techai: row.techai }}
+          unlocked={unlocked}
         />
       ) : null}
 
       {/* CTA */}
-      <TrialCTA />
+      <TrialCTA onUnlock={handleUnlock} />
 
       <div className="flex gap-3.5 justify-center mt-5">
         <button onClick={onRestart} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Retake</button>
@@ -452,14 +483,14 @@ function Result({ segment, answers, onRestart }) {
   )
 }
 
-function LockedBreakdown({ legs, peers }) {
+function LockedBreakdown({ legs, peers, unlocked }) {
   const rows = [
     ["strategy", "Defined strategy"], ["alignment", "Strategic alignment"],
     ["future", "Future-readiness"], ["techai", "Technology & AI"],
   ]
   return (
     <div className="relative border border-primary/20 bg-brand-navy-2 rounded-xl overflow-hidden mb-4">
-      <div className="px-5 py-5 blur-[5px] pointer-events-none select-none">
+      <div className={`px-5 py-5 ${unlocked ? "" : "blur-[5px] pointer-events-none select-none"}`}>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3.5">Your full breakdown</p>
         <div className="space-y-2.5">
           {rows.map(([k, l]) => (
@@ -475,30 +506,46 @@ function LockedBreakdown({ legs, peers }) {
           ))}
         </div>
       </div>
-      <div className="absolute inset-0 grid place-items-center bg-background/70">
-        <div className="text-center p-4">
-          <div className="w-10 h-10 rounded-full bg-brand-navy border border-border grid place-items-center mx-auto mb-2.5">
-            <Lock size={18} className="text-white" />
-          </div>
-          <div className="text-sm font-bold">See your leg-by-leg breakdown</div>
-          <div className="text-[13px] text-muted-foreground max-w-[340px] mx-auto mt-1">
-            Where you lead, where you lag, and what the top quartile does differently.
+      {!unlocked && (
+        <div className="absolute inset-0 grid place-items-center bg-background/70">
+          <div className="text-center p-4">
+            <div className="w-10 h-10 rounded-full bg-brand-navy border border-border grid place-items-center mx-auto mb-2.5">
+              <Lock size={18} className="text-white" />
+            </div>
+            <div className="text-sm font-bold">See your leg-by-leg breakdown</div>
+            <div className="text-[13px] text-muted-foreground max-w-[340px] mx-auto mt-1">
+              Where you lead, where you lag, and what the top quartile does differently.
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
-function TrialCTA() {
+function TrialCTA({ onUnlock }) {
   const [email, setEmail] = useState("")
+  const [company, setCompany] = useState("") // honeypot — must stay empty for real users
   const [sent, setSent] = useState(false)
   const ok = /\S+@\S+\.\S+/.test(email)
+  const submit = () => {
+    if (!ok) return
+    setSent(true)
+    onUnlock({ email, companyWebsite: company })
+  }
   if (sent) {
     return (
-      <div className="bg-brand-teal/10 border border-brand-teal rounded-2xl px-5 py-5 text-center">
-        <div className="font-bold text-sm text-foreground">Check your inbox</div>
-        <div className="text-[13px] text-muted-foreground mt-1">Your full report and 14-day Premium trial link are on the way.</div>
+      <div className="bg-brand-navy border border-brand-teal rounded-2xl px-5 py-5.5">
+        <div className="text-[17px] font-bold text-white tracking-tight">Your breakdown is unlocked</div>
+        <div className="text-[13px] text-[#b8c4cb] mt-1.5 leading-relaxed">
+          Complete the Global Workforce Deployment survey to unlock the full benchmark across all eight pillars, plus a 14-day Premium trial.
+        </div>
+        <a
+          href="https://www.cbiq.ai/survey"
+          className="mt-4 h-[46px] px-5 rounded-lg font-bold text-[15px] inline-flex items-center gap-1.5 bg-brand-teal text-white transition-colors"
+        >
+          Complete the Global Workforce Deployment survey <ArrowRight size={16} />
+        </a>
       </div>
     )
   }
@@ -513,8 +560,19 @@ function TrialCTA() {
           value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" type="email"
           className="flex-1 min-w-[180px] h-[46px] rounded-lg border border-white/15 bg-background/40 px-3.5 text-[15px] text-foreground placeholder:text-muted-foreground outline-none focus:border-brand-teal"
         />
+        {/* Honeypot: invisible to humans; bots that fill it are silently dropped server-side. */}
+        <input
+          type="text"
+          name="company_website"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+        />
         <button
-          onClick={() => ok && setSent(true)} disabled={!ok}
+          onClick={submit} disabled={!ok}
           className={`h-[46px] px-5 rounded-lg font-bold text-[15px] inline-flex items-center gap-1.5 transition-colors ${
             ok ? "bg-brand-teal text-white cursor-pointer" : "bg-white/10 text-muted-foreground cursor-not-allowed"
           }`}
