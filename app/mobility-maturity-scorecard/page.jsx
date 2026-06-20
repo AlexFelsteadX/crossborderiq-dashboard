@@ -6,6 +6,7 @@ import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
 import { CircularGauge } from "@/components/dashboard-ui"
 import { createClient } from "@/lib/supabase/client"
+import { toPng } from "html-to-image"
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2, X } from "lucide-react"
 
 /*
@@ -526,6 +527,38 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
     ? `Higher than ${pct}% of Global Mobility and HR leaders${sector}`
     : `Benchmarked against Global Mobility and HR leaders${sector}`
 
+  const [downloading, setDownloading] = useState(false)
+
+  // Export the full-resolution card (not the scaled preview). We override the
+  // preview's scale transform to none and pin the canvas to its natural 1080px
+  // width at 2x pixel ratio so the PNG is crisp.
+  const handleDownload = async () => {
+    if (!cardRef.current || downloading) return
+    setDownloading(true)
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        width: 1080,
+        height: fit.h,
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#0A1628",
+        style: { transform: "none", transformOrigin: "top left", margin: "0" },
+      })
+      const link = document.createElement("a")
+      link.download = "cbiq-mobility-maturity-score.png"
+      link.href = dataUrl
+      link.click()
+    } catch (e) {
+      console.log("[v0] share card export failed:", e)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const linkedInUrl =
+    "https://www.linkedin.com/sharing/share-offsite/?url=" +
+    encodeURIComponent("https://www.cbiq.ai/mobility-maturity-scorecard")
+
   return (
     <div
       className="fixed inset-0 z-[100] grid place-items-center bg-background/80 backdrop-blur-sm p-4"
@@ -542,8 +575,10 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
         <X size={18} />
       </button>
 
+      {/* Column: scaled card preview + action buttons. */}
+      <div className="flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
       {/* Scaling wrapper keeps the fixed-width card centered and fully visible. */}
-      <div style={{ width: 1080 * fit.scale, height: fit.h * fit.scale }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ width: 1080 * fit.scale, height: fit.h * fit.scale }}>
         <div
           ref={cardRef}
           className="relative bg-brand-navy text-white flex flex-col items-center text-center overflow-hidden"
@@ -598,14 +633,31 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
               <span className="font-bold text-brand-teal">cbiq.ai/mobility-maturity-scorecard</span>
             </div>
 
-            {/* powered-by footer */}
-            <div className="flex items-center justify-center gap-4" style={{ marginTop: 52 }}>
-              <img src="/gme-white.png" alt="" aria-hidden="true" style={{ height: 64 }} className="object-contain opacity-90" />
-              <span className="font-mono uppercase text-slate-400" style={{ fontSize: 22, letterSpacing: 3 }}>
-                Powered by Global Mobility Executive
-              </span>
+            {/* GME globe mark — no wordmark */}
+            <div className="flex items-center justify-center" style={{ marginTop: 52 }}>
+              <img src="/gme-white.png" alt="Global Mobility Executive" style={{ height: 80 }} className="object-contain opacity-90" />
             </div>
           </div>
+        </div>
+      </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg font-bold text-[15px] bg-brand-teal text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {downloading ? "Preparing…" : "Download image"}
+          </button>
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg font-bold text-[15px] border border-border bg-brand-navy-2 text-foreground hover:border-brand-teal transition-colors"
+          >
+            Share on LinkedIn
+          </a>
         </div>
       </div>
     </div>
