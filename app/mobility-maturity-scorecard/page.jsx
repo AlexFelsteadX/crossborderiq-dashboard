@@ -593,36 +593,31 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_55%,var(--brand-navy)_100%)]" />
           </div>
 
-          {/* content sits above the background layers */}
-          <div className="relative z-10 flex flex-col items-center text-center w-full h-full" style={{ flex: 1 }}>
+          {/* content sits above the background layers — centered stack with even spacing */}
+          <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full" style={{ flex: 1, gap: 52 }}>
             {/* CBIQ logo */}
             <img src="/cbiq-lockup-transparent.png" alt="CBIQ" style={{ height: 92 }} className="object-contain" />
 
             {/* label */}
-            <div className="font-mono uppercase text-brand-teal" style={{ fontSize: 26, letterSpacing: 6, marginTop: 56 }}>
+            <div className="font-mono uppercase text-brand-teal" style={{ fontSize: 26, letterSpacing: 6 }}>
               Mobility Maturity Index
             </div>
 
             {/* score gauge */}
-            <div style={{ marginTop: 44 }}>
-              <CircularGauge value={score} max={100} size={380} stroke={28} label={String(score)} sublabel="/100" />
-            </div>
+            <CircularGauge value={score} max={100} size={380} stroke={28} label={String(score)} sublabel="/100" />
 
             {/* archetype pill */}
             <span
               className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 font-medium text-primary"
-              style={{ fontSize: 34, paddingLeft: 32, paddingRight: 32, paddingTop: 12, paddingBottom: 12, marginTop: 40 }}
+              style={{ fontSize: 34, paddingLeft: 32, paddingRight: 32, paddingTop: 12, paddingBottom: 12 }}
             >
               {archetype}
             </span>
 
             {/* peer line */}
-            <p className="text-slate-200 leading-snug text-balance" style={{ fontSize: 36, marginTop: 44, maxWidth: 820 }}>
+            <p className="text-slate-200 leading-snug text-balance" style={{ fontSize: 36, maxWidth: 820 }}>
               {peerLine}
             </p>
-
-            {/* spacer pushes CTA + footer to the bottom */}
-            <div style={{ flex: 1, minHeight: 44 }} />
 
             {/* CTA */}
             <div
@@ -633,8 +628,11 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
               <span className="font-bold text-brand-teal">cbiq.ai/mobility-maturity-scorecard</span>
             </div>
 
-            {/* GME globe mark — no wordmark */}
-            <div className="flex items-center justify-center" style={{ marginTop: 52 }}>
+            {/* Powered by + GME globe mark */}
+            <div className="flex items-center justify-center" style={{ gap: 20 }}>
+              <span className="font-mono uppercase text-slate-400" style={{ fontSize: 22, letterSpacing: 3 }}>
+                Powered by
+              </span>
               <img src="/gme-white.png" alt="Global Mobility Executive" style={{ height: 80 }} className="object-contain opacity-90" />
             </div>
           </div>
