@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
@@ -498,18 +498,27 @@ function Result({ segment, answers, onRestart }) {
 }
 
 // LinkedIn-ready share card. Visual only for now — no download/share actions.
-// Rendered at a fixed 1080×1080 and scaled to fit the viewport so it stays
-// faithful to the eventual exported asset.
+// Rendered at a fixed 1080-wide, square-minimum canvas and scaled to fit the
+// viewport (both axes) so the whole card — footer included — is always visible.
 function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, onClose }) {
-  const [scale, setScale] = useState(0.4)
+  const cardRef = useRef(null)
+  const [fit, setFit] = useState({ scale: 0.4, h: 1080 })
   useEffect(() => {
-    const fit = () => {
-      const avail = Math.min(window.innerWidth - 48, window.innerHeight - 120, 560)
-      setScale(avail / 1080)
+    const recompute = () => {
+      // offsetHeight is the pre-transform layout height (>= 1080 via min-height).
+      const natural = cardRef.current ? cardRef.current.offsetHeight : 1080
+      const availW = Math.min(window.innerWidth - 48, 560)
+      const availH = window.innerHeight - 120
+      const scale = Math.min(availW / 1080, availH / natural)
+      setFit({ scale, h: natural })
     }
-    fit()
-    window.addEventListener("resize", fit)
-    return () => window.removeEventListener("resize", fit)
+    recompute()
+    const raf = requestAnimationFrame(recompute) // re-measure once layout settles
+    window.addEventListener("resize", recompute)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener("resize", recompute)
+    }
   }, [])
 
   const sector = !usedOverall && industry ? ` in ${industry}` : ""
@@ -533,56 +542,69 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
         <X size={18} />
       </button>
 
-      {/* Scaling wrapper keeps the fixed-1080 card centered and responsive. */}
-      <div style={{ width: 1080 * scale, height: 1080 * scale }} onClick={(e) => e.stopPropagation()}>
+      {/* Scaling wrapper keeps the fixed-width card centered and fully visible. */}
+      <div style={{ width: 1080 * fit.scale, height: fit.h * fit.scale }} onClick={(e) => e.stopPropagation()}>
         <div
-          className="bg-brand-navy text-white flex flex-col items-center text-center overflow-hidden"
-          style={{ width: 1080, height: 1080, transform: `scale(${scale})`, transformOrigin: "top left", padding: 84 }}
+          ref={cardRef}
+          className="relative bg-brand-navy text-white flex flex-col items-center text-center overflow-hidden"
+          style={{ width: 1080, minHeight: 1080, transform: `scale(${fit.scale})`, transformOrigin: "top left", padding: 84 }}
         >
-          {/* CBIQ logo */}
-          <img src="/cbiq-lockup-transparent.png" alt="CBIQ" style={{ height: 92 }} className="object-contain" />
-
-          {/* label */}
-          <div className="font-mono uppercase text-brand-teal" style={{ fontSize: 26, letterSpacing: 6, marginTop: 56 }}>
-            Mobility Maturity Index
+          {/* Homepage background treatment: network texture, navy overlay, teal glows, bottom fade. */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <img src="/images/hero-network.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover opacity-40" />
+            <div className="absolute inset-0 bg-brand-navy/80" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_55%,var(--brand-navy)_100%)]" />
           </div>
 
-          {/* score gauge */}
-          <div style={{ marginTop: 44 }}>
-            <CircularGauge value={score} max={100} size={380} stroke={28} label={String(score)} sublabel="/100" />
-          </div>
+          {/* content sits above the background layers */}
+          <div className="relative z-10 flex flex-col items-center text-center w-full h-full" style={{ flex: 1 }}>
+            {/* CBIQ logo */}
+            <img src="/cbiq-lockup-transparent.png" alt="CBIQ" style={{ height: 92 }} className="object-contain" />
 
-          {/* archetype pill */}
-          <span
-            className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 font-medium text-primary"
-            style={{ fontSize: 34, paddingLeft: 32, paddingRight: 32, paddingTop: 12, paddingBottom: 12, marginTop: 40 }}
-          >
-            {archetype}
-          </span>
+            {/* label */}
+            <div className="font-mono uppercase text-brand-teal" style={{ fontSize: 26, letterSpacing: 6, marginTop: 56 }}>
+              Mobility Maturity Index
+            </div>
 
-          {/* peer line */}
-          <p className="text-slate-200 leading-snug text-balance" style={{ fontSize: 36, marginTop: 44, maxWidth: 820 }}>
-            {peerLine}
-          </p>
+            {/* score gauge */}
+            <div style={{ marginTop: 44 }}>
+              <CircularGauge value={score} max={100} size={380} stroke={28} label={String(score)} sublabel="/100" />
+            </div>
 
-          {/* spacer pushes CTA + footer to the bottom */}
-          <div style={{ flex: 1 }} />
-
-          {/* CTA */}
-          <div
-            className="rounded-2xl border border-primary/30 bg-primary/5 text-slate-300 leading-snug"
-            style={{ fontSize: 30, padding: "28px 40px", maxWidth: 900 }}
-          >
-            Take the free 3-minute benchmark at{" "}
-            <span className="font-bold text-brand-teal">cbiq.ai/mobility-maturity-scorecard</span>
-          </div>
-
-          {/* powered-by footer */}
-          <div className="flex items-center justify-center gap-4" style={{ marginTop: 52 }}>
-            <img src="/gme-white.png" alt="" aria-hidden="true" style={{ height: 64 }} className="object-contain opacity-90" />
-            <span className="font-mono uppercase text-slate-400" style={{ fontSize: 22, letterSpacing: 3 }}>
-              Powered by Global Mobility Executive
+            {/* archetype pill */}
+            <span
+              className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 font-medium text-primary"
+              style={{ fontSize: 34, paddingLeft: 32, paddingRight: 32, paddingTop: 12, paddingBottom: 12, marginTop: 40 }}
+            >
+              {archetype}
             </span>
+
+            {/* peer line */}
+            <p className="text-slate-200 leading-snug text-balance" style={{ fontSize: 36, marginTop: 44, maxWidth: 820 }}>
+              {peerLine}
+            </p>
+
+            {/* spacer pushes CTA + footer to the bottom */}
+            <div style={{ flex: 1, minHeight: 44 }} />
+
+            {/* CTA */}
+            <div
+              className="rounded-2xl border border-primary/30 bg-primary/5 text-slate-300 leading-snug"
+              style={{ fontSize: 30, padding: "28px 40px", maxWidth: 900 }}
+            >
+              Take the free 3-minute benchmark at{" "}
+              <span className="font-bold text-brand-teal">cbiq.ai/mobility-maturity-scorecard</span>
+            </div>
+
+            {/* powered-by footer */}
+            <div className="flex items-center justify-center gap-4" style={{ marginTop: 52 }}>
+              <img src="/gme-white.png" alt="" aria-hidden="true" style={{ height: 64 }} className="object-contain opacity-90" />
+              <span className="font-mono uppercase text-slate-400" style={{ fontSize: 22, letterSpacing: 3 }}>
+                Powered by Global Mobility Executive
+              </span>
+            </div>
           </div>
         </div>
       </div>
