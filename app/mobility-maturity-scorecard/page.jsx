@@ -183,8 +183,8 @@ function Intro({ onStart }) {
         Mobility Maturity<br />Scorecard
       </h1>
       <p className="text-base sm:text-lg leading-relaxed text-muted-foreground max-w-[540px] mb-7">
-        Answer five quick questions and get your Mobility Maturity Index score, then see how
-        you compare to mobility leaders in your industry.
+        Tell us about your organization, answer five quick questions and get your Mobility Maturity
+        Index score, benchmarked against Global Mobility, HR leaders and Talent in your industry.
       </p>
       <div className="flex flex-wrap gap-x-8 gap-y-4 mb-8">
         {[["5", "questions"], ["1", "personal score"], ["427+", "leaders benchmarked"]].map(([n, l]) => (
