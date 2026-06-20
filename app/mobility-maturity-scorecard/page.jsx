@@ -217,9 +217,8 @@ function Segment({ segment, setSegment, onNext }) {
       <Field label="Industry"><Select value={segment.industry} onChange={set("industry")} options={INDUSTRIES} /></Field>
       <Field label="Headquarters region"><Select value={segment.region} onChange={set("region")} options={REGIONS} /></Field>
       <Field label="Employees globally"><Select value={segment.size} onChange={set("size")} options={SIZES} /></Field>
-      <Field label="Long-term & permanent"><Select value={segment.longTerm} onChange={set("longTerm")} options={LONGTERM_OPTIONS} /></Field>
-      <Field label="Short-term & business travel"><Select value={segment.traveller} onChange={set("traveller")} options={TRAVELLER_OPTIONS} /></Field>
-      <p className="text-xs text-muted-foreground -mt-2 mb-6">An approximate range is fine.</p>
+      <Field label="Approx. number of long-term & permanent"><Select value={segment.longTerm} onChange={set("longTerm")} options={LONGTERM_OPTIONS} /></Field>
+      <Field label="Approx. number of short-term & business travel"><Select value={segment.traveller} onChange={set("traveller")} options={TRAVELLER_OPTIONS} /></Field>
       <div className="mt-3">
         <Button size="lg" onClick={onNext} disabled={!ready} className="gap-2">
           Continue <ChevronRight size={17} />
