@@ -106,7 +106,7 @@ export default function MobilityMaturityScorecardPage() {
   const reset = () => { setStep(-1); setSegment({ industry: "", region: "", size: "" }); setAnswers({}) }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="relative min-h-screen flex flex-col bg-brand-navy text-foreground">
       <style>{`
         @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
         .tnum{ font-variant-numeric: tabular-nums; }
@@ -114,9 +114,24 @@ export default function MobilityMaturityScorecardPage() {
         .lift:hover{ transform: translateY(-1px); }
       `}</style>
 
+      {/* Homepage background treatment: global network texture, navy overlay,
+          teal radial glows, and a bottom fade — fixed so it sits behind every step. */}
+      <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
+        <img
+          src="/images/hero-network.jpg"
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover opacity-40"
+        />
+        <div className="absolute inset-0 bg-brand-navy/80" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_55%,var(--brand-navy)_100%)]" />
+      </div>
+
       <GlobalNav />
 
-      <main className="flex-1 w-full">
+      <main className="relative flex-1 w-full">
         <div className="mx-auto w-full max-w-[720px] px-5 py-10 sm:py-14">
           {step !== -1 && (
             <div className="flex justify-end mb-6">
@@ -147,7 +162,9 @@ export default function MobilityMaturityScorecardPage() {
         </div>
       </main>
 
-      <GlobalFooter />
+      <div className="relative">
+        <GlobalFooter />
+      </div>
     </div>
   )
 }
