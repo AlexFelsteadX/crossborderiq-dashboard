@@ -30,6 +30,11 @@ const INDUSTRIES = ["Technology & IT", "Financial Services", "Professional Servi
 const REGIONS = ["Americas", "Europe", "Middle East", "Africa", "Asia-Pacific (APAC & Australia)"]
 const SIZES = ["Fewer than 250", "250 – 999", "1,000 – 4,999", "5,000 – 9,999",
   "10,000 – 24,999", "25,000 – 49,999", "50,000+"]
+// Assignee-population ranges — identical to the Premium Dashboard peer-segment
+// filters of the same names (excluding the "All" default). Collected for the
+// benchmark; not used in scoring or the cohort call.
+const LONGTERM_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
+const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
 
 // ----------------------------- questions ----------------------------
 const AGREE = ["Strongly disagree", "Disagree", "Slightly disagree", "Neutral",
@@ -97,10 +102,10 @@ function archetype(s) {
 // =================================================================
 export default function MobilityMaturityScorecardPage() {
   const [step, setStep] = useState(-1) // -1 intro, 0 segment, 1..5 questions, 99 result
-  const [segment, setSegment] = useState({ industry: "", region: "", size: "" })
+  const [segment, setSegment] = useState({ industry: "", region: "", size: "", longTerm: "", traveller: "" })
   const [answers, setAnswers] = useState({})
 
-  const reset = () => { setStep(-1); setSegment({ industry: "", region: "", size: "" }); setAnswers({}) }
+  const reset = () => { setStep(-1); setSegment({ industry: "", region: "", size: "", longTerm: "", traveller: "" }); setAnswers({}) }
 
   return (
     <div className="relative min-h-screen flex flex-col bg-brand-navy text-foreground">
@@ -177,11 +182,11 @@ function Intro({ onStart }) {
         Mobility Maturity<br />Scorecard
       </h1>
       <p className="text-base sm:text-lg leading-relaxed text-muted-foreground max-w-[540px] mb-7">
-        Answer eight quick questions and get your Mobility Maturity Index score, then see how
-        you compare to mobility leaders in your industry, region, and company size.
+        Answer five quick questions and get your Mobility Maturity Index score, then see how
+        you compare to mobility leaders in your industry.
       </p>
       <div className="flex flex-wrap gap-x-8 gap-y-4 mb-8">
-        {[["8", "questions"], ["1", "personal score"], ["427+", "leaders benchmarked"]].map(([n, l]) => (
+        {[["5", "questions"], ["1", "personal score"], ["427+", "leaders benchmarked"]].map(([n, l]) => (
           <div key={l}>
             <div className="tnum font-mono text-2xl font-bold text-foreground">{n}</div>
             <div className="text-xs text-muted-foreground">{l}</div>
@@ -200,7 +205,7 @@ function Intro({ onStart }) {
 
 // ----------------------------- segment ------------------------------
 function Segment({ segment, setSegment, onNext }) {
-  const ready = segment.industry && segment.region && segment.size
+  const ready = segment.industry && segment.region && segment.size && segment.longTerm && segment.traveller
   const set = (k) => (e) => setSegment({ ...segment, [k]: e.target.value })
   return (
     <div>
@@ -212,6 +217,9 @@ function Segment({ segment, setSegment, onNext }) {
       <Field label="Industry"><Select value={segment.industry} onChange={set("industry")} options={INDUSTRIES} /></Field>
       <Field label="Headquarters region"><Select value={segment.region} onChange={set("region")} options={REGIONS} /></Field>
       <Field label="Employees globally"><Select value={segment.size} onChange={set("size")} options={SIZES} /></Field>
+      <Field label="Long-term & permanent"><Select value={segment.longTerm} onChange={set("longTerm")} options={LONGTERM_OPTIONS} /></Field>
+      <Field label="Short-term & business travel"><Select value={segment.traveller} onChange={set("traveller")} options={TRAVELLER_OPTIONS} /></Field>
+      <p className="text-xs text-muted-foreground -mt-2 mb-6">An approximate range is fine.</p>
       <div className="mt-3">
         <Button size="lg" onClick={onNext} disabled={!ready} className="gap-2">
           Continue <ChevronRight size={17} />
