@@ -66,6 +66,7 @@ const CHOICE_Q = [
   },
 ]
 const TOTAL_STEPS = 1 + SCALE_Q.length + CHOICE_Q.length // segment + 5
+const QUESTION_COUNT = SCALE_Q.length + CHOICE_Q.length // 5 scoring questions
 
 // ----------------------------- scoring ------------------------------
 // Binary scoring mirrors the benchmark exactly so the taker's score is
@@ -209,7 +210,7 @@ function Segment({ segment, setSegment, onNext }) {
   const set = (k) => (e) => setSegment({ ...segment, [k]: e.target.value })
   return (
     <div>
-      <Progress index={0} />
+      <Progress setup />
       <h2 className="text-2xl font-bold tracking-tight mt-5 mb-1.5">First, your peer group</h2>
       <p className="text-sm text-muted-foreground mb-6">
         We'll compare your score to leaders who match your profile.
@@ -244,7 +245,7 @@ function Questions({ step, answers, setAnswers, onBack, onNext }) {
 
   return (
     <div>
-      <Progress index={step} />
+      <Progress step={step} />
       <div className="font-mono text-xs text-muted-foreground mt-5 mb-2.5">
         {q.id} · {legName(q.leg)}
       </div>
@@ -601,15 +602,18 @@ function TrialCTA({ onUnlock }) {
 }
 
 // ----------------------------- shared bits --------------------------
-function Progress({ index }) {
-  const pct = Math.round((index / TOTAL_STEPS) * 100)
+// `setup` = peer-group screen: no step number, empty bar.
+// Otherwise `step` is 1..QUESTION_COUNT for the five question screens.
+function Progress({ step, setup }) {
+  const total = QUESTION_COUNT
+  const pct = setup ? 0 : Math.round((step / total) * 100)
   return (
     <div>
       <div className="flex justify-between text-[11px] text-muted-foreground font-mono mb-1.5">
-        <span>STEP {index + 1} / {TOTAL_STEPS}</span><span>{pct}%</span>
+        <span>{setup ? "SETUP" : `QUESTION ${step} OF ${total}`}</span><span>{pct}%</span>
       </div>
       <div className="h-1 rounded-full bg-border">
-        <div className="h-full rounded-full bg-brand-teal transition-[width] duration-300" style={{ width: `${Math.max(8, pct)}%` }} />
+        <div className="h-full rounded-full bg-brand-teal transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
     </div>
   )
