@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
+import { CircularGauge } from "@/components/dashboard-ui"
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2 } from "lucide-react"
 
 /*
@@ -328,18 +329,17 @@ function Result({ segment, answers, onRestart }) {
       </div>
 
       {/* gauge + headline */}
-      <div className="bg-brand-navy rounded-[18px] px-6 pt-7 pb-6 mb-4 border border-border">
-        <Gauge score={r.score} peer={r.mean} prog={prog} />
-        <div className="text-center mt-1">
-          <div className="tnum font-mono text-[56px] font-extrabold leading-none tracking-tighter text-white">{shown}</div>
-          <div className="text-xs text-[#9fb0ba] mt-0.5 font-mono">MOBILITY MATURITY INDEX · 0–100</div>
-          <div className="text-[22px] font-bold mt-3.5 tracking-tight text-brand-teal">{a.name}</div>
-          <p className="text-sm leading-relaxed text-[#c7d2d8] max-w-[460px] mx-auto mt-2">{a.line}</p>
+      <div className="bg-brand-navy-2 rounded-2xl px-6 pt-8 pb-7 mb-4 border-2 border-primary/50 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+        <div className="flex flex-col items-center text-center">
+          <CircularGauge value={r.score * prog} max={100} size={176} stroke={13} label={String(shown)} sublabel="/100" />
+          <div className="text-xs text-slate-400 mt-4 font-mono uppercase tracking-[0.15em]">Mobility Maturity Index · 0–100</div>
+          <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mt-3">{a.name}</span>
+          <p className="text-sm leading-relaxed text-slate-300 max-w-[460px] mx-auto mt-3">{a.line}</p>
         </div>
       </div>
 
       {/* the ONE free peer line */}
-      <div className="bg-card border border-border rounded-2xl px-5 py-4.5 mb-4 flex gap-3.5 items-center">
+      <div className="bg-brand-navy-2 border border-primary/15 rounded-xl px-5 py-4.5 mb-4 flex gap-3.5 items-center">
         <div className="tnum font-mono text-3xl font-extrabold text-brand-teal min-w-16">{r.pct}%</div>
         <div className="text-sm leading-snug text-foreground">
           You scored higher than <strong>{r.pct}% of {segment.industry || "your"} leaders</strong> in the CBIQ benchmark.
@@ -367,55 +367,30 @@ function Result({ segment, answers, onRestart }) {
   )
 }
 
-// SVG semicircle dial: fill = your score, tick = peer average, needle = you.
-function Gauge({ score, peer, prog }) {
-  const w = 320, h = 176, cx = 160, cy = 158, r = 132
-  const ang = (v) => Math.PI * (1 - v / 100)           // value -> radians
-  const pt = (v, rad) => [cx + rad * Math.cos(ang(v)), cy - rad * Math.sin(ang(v))]
-  const arc = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
-  const offset = 100 - score * prog                    // pathLength=100
-  const [px, py] = pt(peer, r)
-  const [px2, py2] = pt(peer, r + 13)
-  const [nx, ny] = pt(score * prog, r * 0.74)          // needle tip
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" className="block max-w-[360px] mx-auto">
-      <path d={arc} fill="none" stroke="#23344a" strokeWidth={14} strokeLinecap="round" />
-      <path d={arc} fill="none" stroke="var(--brand-teal)" strokeWidth={14} strokeLinecap="round"
-        pathLength={100} strokeDasharray="100" strokeDashoffset={offset} />
-      {/* peer tick */}
-      <line x1={px} y1={py} x2={px2} y2={py2} stroke="#fff" strokeWidth={2.5} />
-      <text x={px2} y={py2 - 6} fill="#9fb0ba" fontSize={10} className="font-mono" textAnchor="middle">peers {peer}</text>
-      {/* needle */}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#fff" strokeWidth={3} strokeLinecap="round" />
-      <circle cx={cx} cy={cy} r={6} fill="#fff" />
-      {/* end labels */}
-      <text x={cx - r} y={cy + 18} fill="#5d6f7d" fontSize={10} className="font-mono" textAnchor="middle">0</text>
-      <text x={cx + r} y={cy + 18} fill="#5d6f7d" fontSize={10} className="font-mono" textAnchor="middle">100</text>
-    </svg>
-  )
-}
-
 function LockedBreakdown({ legs }) {
   const rows = [
     ["strategy", "Defined strategy"], ["alignment", "Strategic alignment"],
     ["future", "Future-readiness"], ["techai", "Technology & AI"],
   ]
   return (
-    <div className="relative border border-border rounded-2xl overflow-hidden mb-4">
-      <div className="px-5 py-4.5 blur-[5px] pointer-events-none select-none bg-card">
-        <div className="text-sm font-bold mb-3.5">Your full breakdown</div>
-        {rows.map(([k, l]) => (
-          <div key={k} className="mb-3">
-            <div className="flex justify-between text-[13px] mb-1.5">
-              <span>{l}</span>
-              <span className="tnum font-mono">{legs[k]} <span className="text-muted-foreground">vs {LEG_PEER[k]}</span></span>
+    <div className="relative border border-primary/20 bg-brand-navy-2 rounded-xl overflow-hidden mb-4">
+      <div className="px-5 py-5 blur-[5px] pointer-events-none select-none">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3.5">Your full breakdown</p>
+        <div className="space-y-2.5">
+          {rows.map(([k, l]) => (
+            <div key={k}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">{l}</span>
+                <span className="text-slate-200 font-medium tnum">{legs[k]}% <span className="text-slate-500 font-normal">vs {LEG_PEER[k]}</span></span>
+              </div>
+              <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(Math.max(legs[k], 0), 100)}%` }} />
+              </div>
             </div>
-            <Bar you={legs[k]} peer={LEG_PEER[k]} />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <div className="absolute inset-0 grid place-items-center bg-background/60">
+      <div className="absolute inset-0 grid place-items-center bg-background/70">
         <div className="text-center p-4">
           <div className="w-10 h-10 rounded-full bg-brand-navy border border-border grid place-items-center mx-auto mb-2.5">
             <Lock size={18} className="text-white" />
@@ -426,15 +401,6 @@ function LockedBreakdown({ legs }) {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Bar({ you, peer }) {
-  return (
-    <div className="relative h-2.5 rounded-full bg-border">
-      <div className="absolute inset-0 rounded-full bg-brand-teal" style={{ width: `${you}%` }} />
-      <div className="absolute -top-1 w-0.5 h-[15px] bg-foreground" style={{ left: `${peer}%` }} />
     </div>
   )
 }
