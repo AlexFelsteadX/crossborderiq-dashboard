@@ -1,6 +1,6 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, Users, Sparkles, ArrowDown } from "lucide-react"
+import { Lock, Users, Sparkles, ArrowDown, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
@@ -164,7 +164,22 @@ export default async function WorkforceIntelligencePage() {
         <section className="mb-12">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
-            <p className="text-sm text-slate-400 mt-1">Everything below unlocks with Premium.</p>
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
+              Unlock with Premium to slice the benchmark by industry, region, company size and assignee
+              type, see all seven pillar indices, and track year-on-year movement.
+            </p>
+            <div className="mt-4 flex flex-col items-start gap-5">
+              <a
+                href="https://www.cbiq.ai/survey"
+                className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+              >
+                Get 14 days of Premium free
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <p className="text-xs text-slate-500">
+                Complete the Global Workforce Deployment survey to unlock your 14-day trial.
+              </p>
+            </div>
           </div>
 
           {/* Peer-segment filters — controls for the locked dashboard below */}
