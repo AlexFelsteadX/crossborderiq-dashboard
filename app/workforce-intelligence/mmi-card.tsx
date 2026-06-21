@@ -1,9 +1,17 @@
 import { BarChart3 } from "lucide-react"
 import Link from "next/link"
 
+interface ScoreComponent {
+  label: string
+  /** Whole-number percentage (0–100) for this leg of the index. */
+  pct: number
+}
+
 interface MmiCardProps {
   /** Live, all-regions industry-average MMI value (whole-number percentage). */
   allRegionsValue: number
+  /** The four legs that make up the index — shown free, no padlock. */
+  scoreComponents: ScoreComponent[]
 }
 
 /**
@@ -16,7 +24,7 @@ interface MmiCardProps {
  * This is a server-renderable component; the only live number (industry average)
  * arrives via props from the server page.
  */
-export function MmiCard({ allRegionsValue }: MmiCardProps) {
+export function MmiCard({ allRegionsValue, scoreComponents }: MmiCardProps) {
   return (
     <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -87,6 +95,29 @@ export function MmiCard({ allRegionsValue }: MmiCardProps) {
               &rarr;
             </span>
           </Link>
+        </div>
+      </div>
+
+      {/* What makes up this score — the four index legs, shown free (no padlock). */}
+      <div className="mt-8 pt-8 border-t border-primary/15">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-4">
+          What makes up this score
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+          {scoreComponents.map((c) => (
+            <div key={c.label}>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">{c.label}</span>
+                <span className="text-slate-200 font-medium">{Math.round(c.pct)}%</span>
+              </div>
+              <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(Math.max(c.pct, 0), 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
