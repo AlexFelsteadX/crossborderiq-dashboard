@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth"
 // Peer-segment filter options — sourced VERBATIM from the Premium dashboard's
 // filter bar (app/premium-dashboard/client.tsx) so the option values match exactly.
 const FILTERS: { key: string; label: string; options: string[] }[] = [
-  { key: "region", label: "Region", options: ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC)"] },
+  { key: "region", label: "Region", options: ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC & Australia)"] },
   {
     key: "industry",
     label: "Industry",
@@ -21,9 +21,17 @@ const FILTERS: { key: string; label: string; options: string[] }[] = [
       "Energy & Utilities",
     ],
   },
-  { key: "size", label: "Company size", options: ["5,000+", "1,000–4,999"] },
-  { key: "assignee", label: "Long-term & permanent", options: ["101–500", "51–100", "1–50"] },
-  { key: "traveller", label: "Short-term & business travel", options: ["501–1,000", "101–500", "1–100"] },
+  {
+    key: "size",
+    label: "Company size",
+    options: ["Fewer than 250", "250 – 999", "1,000 – 4,999", "5,000 – 9,999", "10,000 – 24,999", "25,000 – 49,999", "50,000+"],
+  },
+  { key: "assignee", label: "Long-term & permanent", options: ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"] },
+  {
+    key: "traveller",
+    label: "Short-term & business travel",
+    options: ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"],
+  },
 ]
 
 const ALL = "All"
@@ -130,7 +138,7 @@ export function PeerSegmentFilters() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Want to see how {namedValue} compares across the full benchmark?
+              Want to see how Global Mobility and HR leaders in your segment compare across the full benchmark?
             </p>
             <p className="text-sm text-slate-400 mt-0.5">
               Unlock peer segmentation by region, industry, company size and assignee type with Premium.
