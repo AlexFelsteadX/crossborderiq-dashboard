@@ -168,7 +168,7 @@ export default async function WorkforceIntelligencePage() {
               Unlock with Premium to slice the benchmark by industry, region, company size and assignee
               type, see all seven pillar indices, and track year-on-year movement.
             </p>
-            <div className="mt-4 flex flex-col items-start gap-1.5">
+            <div className="mt-4 flex flex-col items-start gap-5">
               <a
                 href="https://www.cbiq.ai/survey"
                 className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
