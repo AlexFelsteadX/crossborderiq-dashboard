@@ -130,7 +130,7 @@ export function PeerSegmentFilters() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              Want to see how {namedValue} compares across the full benchmark?
+              Want to see how Global Mobility and HR leaders in your segment compare across the full benchmark?
             </p>
             <p className="text-sm text-slate-400 mt-0.5">
               Unlock peer segmentation by region, industry, company size and assignee type with Premium.
