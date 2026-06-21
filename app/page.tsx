@@ -133,7 +133,7 @@ export default async function HomePage() {
                   </Button>
                   <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                     <Link href="/pricing#free-access">
-                      Get FREE access
+                      Get free access
                     </Link>
                   </Button>
                 </div>
