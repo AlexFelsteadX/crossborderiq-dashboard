@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { MmiCard } from "./mmi-card"
+import { PeerSegmentFilters } from "./peer-segment-filters"
 import { PremiumUpgradeButton } from "./premium-cta"
 
 export const metadata = {
@@ -15,6 +16,10 @@ export const metadata = {
 
 interface StrategicMobilityIndex {
   index_score: number
+  defined_strategy: number
+  aligned: number
+  future: number
+  tech_ai_maturity: number
 }
 
 // ---------------------------------------------------------------------------
@@ -91,14 +96,19 @@ const BREAKDOWN_SECTIONS: { name: string; rows: string[] }[] = [
 export default async function WorkforceIntelligencePage() {
   const supabase = await createClient()
 
-  // Fetch Strategic Mobility Index score (live, already a whole number percentage).
-  // This is the only live read on this public page — it drives the MMI gauge.
-  const { data: smiData, error } = await supabase
-    .from("v_strategic_mobility_index")
-    .select("index_score")
-    .single()
+  // Fetch the live Mobility Maturity Index via RPC. This single read drives the
+  // gauge (index_score) and now also the free "What makes up this score" panel —
+  // the same response already returns the four leg values, so no extra call.
+  const { data: smiData, error } = await supabase.rpc("get_premium_mmi")
+  const smiRow = (Array.isArray(smiData) ? smiData[0] : smiData) as StrategicMobilityIndex | null
 
-  const smiScore = (smiData as StrategicMobilityIndex | null)?.index_score ?? 0
+  const smiScore = smiRow?.index_score ?? 0
+  const scoreComponents = [
+    { label: "Defined strategy", pct: smiRow?.defined_strategy ?? 0 },
+    { label: "Aligned to business", pct: smiRow?.aligned ?? 0 },
+    { label: "Future readiness", pct: smiRow?.future ?? 0 },
+    { label: "Technology & AI maturity", pct: smiRow?.tech_ai_maturity ?? 0 },
+  ]
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -126,17 +136,10 @@ export default async function WorkforceIntelligencePage() {
             Get your personal Mobility Maturity score free in 3 minutes, or unlock the full benchmark below.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/mobility-maturity-scorecard"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-            >
-              Get your free score
-              <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
-            </Link>
+          <div className="flex justify-center">
             <a
               href="#access-full-research"
-              className="group inline-flex items-center gap-2 rounded-full border border-primary/30 px-7 h-12 font-semibold text-slate-100 transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-slate-50"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
               Access Full Data
               <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
@@ -153,7 +156,7 @@ export default async function WorkforceIntelligencePage() {
 
         {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
-        <MmiCard allRegionsValue={smiScore} />
+          <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} />
 
         {/* 4 + 5. INSIDE THE FULL DASHBOARD — single richer locked preview.
             DATA-SAFETY: every element below is built from static label strings only.
@@ -162,6 +165,11 @@ export default async function WorkforceIntelligencePage() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
             <p className="text-sm text-slate-400 mt-1">Everything below unlocks with Premium.</p>
+          </div>
+
+          {/* Peer-segment filters — controls for the locked dashboard below */}
+          <div className="mb-10">
+            <PeerSegmentFilters />
           </div>
 
           {/* Pillar snapshot — locked gauge tiles, one per pillar (names only, no %) */}
