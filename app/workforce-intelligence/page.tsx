@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { MmiCard } from "./mmi-card"
+import { PeerSegmentFilters } from "./peer-segment-filters"
 import { PremiumUpgradeButton } from "./premium-cta"
 
 export const metadata = {
@@ -155,6 +156,11 @@ export default async function WorkforceIntelligencePage() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
             <p className="text-sm text-slate-400 mt-1">Everything below unlocks with Premium.</p>
+          </div>
+
+          {/* Peer-segment filters — controls for the locked dashboard below */}
+          <div className="mb-10">
+            <PeerSegmentFilters />
           </div>
 
           {/* Pillar snapshot — locked gauge tiles, one per pillar (names only, no %) */}
