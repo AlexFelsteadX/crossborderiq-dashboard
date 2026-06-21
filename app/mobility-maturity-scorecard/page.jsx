@@ -522,7 +522,7 @@ function ShareCardModal({ score, archetype, pct, hasPct, industry, usedOverall, 
     }
   }, [])
 
-  const sector = !usedOverall && industry ? ` in ${industry}` : ""
+  const sector = !usedOverall && industry ? ` in the ${industry} sector` : ""
   const peerLine = hasPct
     ? `Higher than ${pct}% of Global Mobility and HR leaders${sector}`
     : `Benchmarked against Global Mobility and HR leaders${sector}`
