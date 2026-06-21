@@ -133,7 +133,7 @@ export default async function HomePage() {
                   </Button>
                   <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                     <Link href="/pricing#free-access">
-                      Get FREE access
+                      Get free access
                     </Link>
                   </Button>
                 </div>
@@ -206,14 +206,16 @@ export default async function HomePage() {
                     The industry&apos;s first composite benchmark for workforce mobility maturity.
                   </p>
                   
-                  {/* CTA Link */}
-                  <Link 
-                    href="/workforce-intelligence" 
-                    className="flex items-center justify-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
-                  >
-                    <span>The industry average sits at {smiScore}%. See how your organization compares</span>
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
+                  {/* Scorecard CTA */}
+                  <p className="text-sm text-slate-300 text-center mb-4 leading-relaxed">
+                    The industry average is {smiScore}%. Where do you stand?
+                  </p>
+                  <Button className="w-full gap-2 bg-primary hover:bg-primary/90 h-11 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
+                    <Link href="/mobility-maturity-scorecard">
+                      Get your free score
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>

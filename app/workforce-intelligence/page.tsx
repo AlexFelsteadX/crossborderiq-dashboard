@@ -123,13 +123,20 @@ export default async function WorkforceIntelligencePage() {
           </h1>
 
           <p className="text-lg text-slate-300 max-w-3xl mx-auto mb-6 text-pretty">
-            Benchmark your workforce against 1,500+ peers.
+            Get your personal Mobility Maturity score free in 3 minutes, or unlock the full benchmark below.
           </p>
 
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/mobility-maturity-scorecard"
+              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+            >
+              Get your free score
+              <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+            </Link>
             <a
               href="#access-full-research"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+              className="group inline-flex items-center gap-2 rounded-full border border-primary/30 px-7 h-12 font-semibold text-slate-100 transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-slate-50"
             >
               Access Full Data
               <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
