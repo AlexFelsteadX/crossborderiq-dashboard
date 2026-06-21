@@ -66,50 +66,6 @@ export function MmiCard({ allRegionsValue }: MmiCardProps) {
 
   return (
     <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-      {/* Integrated peer-segment filter bar */}
-      <div className="mb-8 rounded-xl border border-primary/20 bg-brand-navy/40 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2 text-slate-400">
-            <BarChart3 className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wide">Filter your peer segment</span>
-          </div>
-          <button
-            type="button"
-            onClick={resetFilters}
-            disabled={!isFiltered}
-            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 px-2.5 py-1 text-xs text-slate-300 transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Reset filters
-          </button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {FILTERS.map((filter) => (
-            <div key={filter.key}>
-              <label
-                htmlFor={`mmi-filter-${filter.key}`}
-                className="block text-[11px] font-medium text-slate-400 mb-1.5 uppercase tracking-wide"
-              >
-                {filter.label}
-              </label>
-              <select
-                id={`mmi-filter-${filter.key}`}
-                value={filters[filter.key]}
-                onChange={(e) => handleChange(filter.key, e.target.value)}
-                className="w-full rounded-lg border border-primary/30 bg-brand-navy px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value={ALL}>All</option>
-                {filter.options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Left: live gauge (all "All") OR locked teaser (any filter narrowed) */}
         <div className="flex justify-center">
@@ -183,12 +139,66 @@ export function MmiCard({ allRegionsValue }: MmiCardProps) {
           </p>
 
           <Link
+            href="/mobility-maturity-scorecard"
+            className="group mb-5 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 h-12 text-base font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+          >
+            Get your free score
+            <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">
+              &rarr;
+            </span>
+          </Link>
+
+          <Link
             href="/pricing#global-workforce-intelligence"
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
+            className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
           >
             <span>Unlock region, industry, company-size &amp; assignee-type filters</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
+        </div>
+      </div>
+
+      {/* Integrated peer-segment filter bar — sits below the gauge, nearer the Premium content */}
+      <div className="mt-8 rounded-xl border border-primary/20 bg-brand-navy/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 text-slate-400">
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide">Filter your peer segment</span>
+          </div>
+          <button
+            type="button"
+            onClick={resetFilters}
+            disabled={!isFiltered}
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 px-2.5 py-1 text-xs text-slate-300 transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset filters
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {FILTERS.map((filter) => (
+            <div key={filter.key}>
+              <label
+                htmlFor={`mmi-filter-${filter.key}`}
+                className="block text-[11px] font-medium text-slate-400 mb-1.5 uppercase tracking-wide"
+              >
+                {filter.label}
+              </label>
+              <select
+                id={`mmi-filter-${filter.key}`}
+                value={filters[filter.key]}
+                onChange={(e) => handleChange(filter.key, e.target.value)}
+                className="w-full rounded-lg border border-primary/30 bg-brand-navy px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value={ALL}>All</option>
+                {filter.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
         </div>
       </div>
     </div>
