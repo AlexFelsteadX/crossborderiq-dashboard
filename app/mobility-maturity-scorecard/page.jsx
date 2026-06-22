@@ -199,7 +199,7 @@ function Intro({ onStart }) {
         Get my score <ArrowRight size={17} />
       </Button>
       <p className="text-xs text-muted-foreground mt-4 max-w-[480px]">
-        Your answers are anonymized and aggregated into the benchmark. Contact details are never shared with vendors.
+        Your answers are anonymized and aggregated into the benchmark. Contact details are never shared.
       </p>
     </div>
   )
