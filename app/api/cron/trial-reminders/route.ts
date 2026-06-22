@@ -1,5 +1,5 @@
 // app/api/cron/trial-reminders/route.ts
-import sendEmail from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 import { trialReminder10dEmail, trialReminder3dEmail, trialWinbackEmail } from "@/lib/trial-emails";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
