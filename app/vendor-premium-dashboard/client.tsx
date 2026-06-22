@@ -794,7 +794,7 @@ export function VendorPremiumDashboardClient() {
   const regionOptions = [
     { value: null, label: "All" },
     { value: "Americas", label: "Americas" },
-    { value: "Europe", label: "Europe" },
+    { value: "Europe (Inc. UK & Ireland)", label: "Europe (Inc. UK & Ireland)" },
     { value: "Middle East", label: "Middle East" },
     { value: "Asia-Pacific (APAC & Australia)", label: "Asia-Pacific (APAC & Australia)" },
   ]
