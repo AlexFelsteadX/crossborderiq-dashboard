@@ -115,7 +115,7 @@ const INDUSTRY_OPTIONS = [
   "Healthcare & Life Sciences",
   "Energy & Utilities",
 ]
-const REGION_OPTIONS = ["Americas", "Europe", "Middle East", "Asia-Pacific (APAC & Australia)"]
+const REGION_OPTIONS = ["Americas", "Europe (Inc. UK & Ireland)", "Middle East", "Asia-Pacific (APAC & Australia)"]
 const SIZE_OPTIONS = [
   "Fewer than 250",
   "250 – 999",
