@@ -121,7 +121,7 @@ export default async function HomePage() {
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed text-pretty">
-                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against 1,500+ global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
+                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against 2,000+ global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
