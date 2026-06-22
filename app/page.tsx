@@ -112,7 +112,7 @@ export default async function HomePage() {
               <div className="text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Trusted by 1,500+ Global Workforce Leaders
+                  Informed by 2,000+ Global Workforce Leaders
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-50 leading-tight mb-6 tracking-tight text-balance">
