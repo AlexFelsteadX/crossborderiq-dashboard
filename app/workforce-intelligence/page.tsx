@@ -125,7 +125,7 @@ export default async function WorkforceIntelligencePage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
-            Trusted by 1,500+ Global Workforce Leaders
+            Informed by 2,000+ Global Workforce Leaders
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">

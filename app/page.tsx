@@ -112,7 +112,7 @@ export default async function HomePage() {
               <div className="text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Trusted by 1,500+ Global Workforce Leaders
+                  Informed by 2,000+ Global Workforce Leaders
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-50 leading-tight mb-6 tracking-tight text-balance">
@@ -121,7 +121,7 @@ export default async function HomePage() {
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed text-pretty">
-                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against 1,500+ global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
+                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against 2,000+ global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
