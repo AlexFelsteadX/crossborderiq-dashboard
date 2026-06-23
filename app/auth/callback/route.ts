@@ -5,16 +5,31 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
+  // Only allow same-origin relative redirects.
+  const safeNext = next.startsWith('/') ? next : '/'
 
+  const supabase = await createClient()
+
+  // Code-style sign-in (OAuth / PKCE code): exchange the code for a session.
   if (code) {
-    const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`${origin}${safeNext}`)
     }
+    return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
   }
 
-  // If there's an error or no code, redirect to login with error
+  // No code present. The user may already have been signed in by the
+  // token_hash magic-link flow at /auth/confirm, which then forwards here.
+  // If a valid session exists, continue to `next` instead of erroring.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    return NextResponse.redirect(`${origin}${safeNext}`)
+  }
+
+  // Genuinely not authenticated and no code to exchange: send to login.
   return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
 }
