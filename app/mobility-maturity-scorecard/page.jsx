@@ -175,6 +175,26 @@ export default function MobilityMaturityScorecardPage() {
 
 // ----------------------------- intro --------------------------------
 function Intro({ onStart }) {
+  const [leadersBenchmarked, setLeadersBenchmarked] = useState("1,200+")
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase.rpc("get_leaders_benchmarked")
+        if (!active || error || data == null) return
+        const floored = Math.floor(Number(data) / 100) * 100
+        setLeadersBenchmarked(floored.toLocaleString("en-US") + "+")
+      } catch (_) {
+        // keep the default fallback on any error
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
     <div>
       <div className="font-mono text-xs uppercase tracking-[0.15em] text-brand-teal mb-4">
@@ -188,7 +208,7 @@ function Intro({ onStart }) {
         Index score, benchmarked against Global Mobility, HR and Talent leaders in your industry.
       </p>
       <div className="flex flex-wrap gap-x-8 gap-y-4 mb-8">
-        {[["5", "questions"], ["1", "personal score"], ["427+", "leaders benchmarked"]].map(([n, l]) => (
+        {[["5", "questions"], ["1", "personal score"], [leadersBenchmarked, "leaders benchmarked"]].map(([n, l]) => (
           <div key={l}>
             <div className="tnum font-mono text-2xl font-bold text-foreground">{n}</div>
             <div className="text-xs text-muted-foreground">{l}</div>
