@@ -10,6 +10,7 @@ import {
   BarChart3,
   ChevronDown,
   Loader2,
+  Lightbulb,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -887,22 +888,24 @@ export function PremiumDashboardClient() {
   if (aheadPillars.length > 0 && behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Compared to similar organizations, you&apos;re ahead on {colorNames(aheadPillars, "text-emerald-400")}, but
-        behind on {colorNames(behindPillars, "text-amber-400")}.
+        Here&apos;s what stands out: compared to similar organizations, your programme leads on{" "}
+        {colorNames(aheadPillars, "text-emerald-400")}, but trails on {colorNames(behindPillars, "text-amber-400")} —
+        two areas that may be worth a closer look.
       </>
     )
   } else if (aheadPillars.length > 0) {
     pillarNarrative = (
       <>
-        Compared to similar organizations, you&apos;re ahead on {colorNames(aheadPillars, "text-emerald-400")} and in
-        line elsewhere.
+        Here&apos;s what stands out: your programme is ahead of similar organizations, most notably on{" "}
+        {colorNames(aheadPillars, "text-emerald-400")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Compared to similar organizations, you&apos;re behind on {colorNames(behindPillars, "text-amber-400")}, and in
-        line elsewhere.
+        Here&apos;s what stands out: compared to similar organizations, your programme trails on{" "}
+        {colorNames(behindPillars, "text-amber-400")} — areas that may be worth a closer look — and is in line
+        elsewhere.
       </>
     )
   } else {
@@ -1153,9 +1156,12 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           {isFiltered && primaryPillars.length > 0 && (
-            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 px-5 py-4 mb-6">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">How you compare</p>
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed text-pretty">{pillarNarrative}</p>
+            <div className="rounded-xl rounded-l-none border border-l-4 border-primary/15 border-l-primary bg-primary/[0.06] px-5 py-4 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="h-[18px] w-[18px] text-primary shrink-0" aria-hidden="true" />
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
+              </div>
+              <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{pillarNarrative}</p>
             </div>
           )}
           <h2 className="text-lg font-semibold text-slate-200 mb-6">Pillar snapshot</h2>
