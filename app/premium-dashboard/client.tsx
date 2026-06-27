@@ -1038,7 +1038,7 @@ export function PremiumDashboardClient() {
                       <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
                         <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
                           <Icon className="h-4 w-4" aria-hidden="true" />
-                          {ahead || behind ? `${Math.abs(diffPts)} pts` : "In line"}
+                          {ahead ? `${Math.abs(diffPts)} pts ahead` : behind ? `${Math.abs(diffPts)} pts behind` : "In line"}
                         </span>
                         <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
                       </div>
@@ -1124,7 +1124,7 @@ export function PremiumDashboardClient() {
                           <div className="mt-2.5 flex flex-col items-center gap-1 rounded-md bg-slate-800/40 px-2 py-1">
                             <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
                               <Icon className="h-4 w-4" aria-hidden="true" />
-                              {ahead || behind ? `${Math.abs(diffPts)} pts` : "In line"}
+                              {ahead ? `${Math.abs(diffPts)} pts ahead` : behind ? `${Math.abs(diffPts)} pts behind` : "In line"}
                             </span>
                             <span className="text-xs text-slate-400">Market: {formatPct(p.overall_pct)}</span>
                           </div>
