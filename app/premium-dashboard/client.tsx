@@ -790,6 +790,32 @@ export function PremiumDashboardClient() {
   const primaryPillars = pillars.filter((p) => !remoteRegex.test(`${p.pillar} ${p.short_name}`))
   const remotePillar = pillars.find((p) => remoteRegex.test(`${p.pillar} ${p.short_name}`))
 
+  // One-line "you vs market" narrative across the five primary pillars. Derived
+  // entirely from pillar values already in state — meaningful only when a segment
+  // filter is active, and skips any pillar whose segment value is suppressed.
+  const joinNames = (names: string[]) =>
+    names.length <= 1
+      ? names.join("")
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+  const aheadPillars = primaryPillars
+    .filter((p) => !resolve(p.confidence, p.seg_pct, p.overall_pct).isFallback)
+    .filter((p) => Math.round((p.seg_pct - p.overall_pct) * 100) >= 2)
+    .map((p) => p.short_name)
+  const behindPillars = primaryPillars
+    .filter((p) => !resolve(p.confidence, p.seg_pct, p.overall_pct).isFallback)
+    .filter((p) => Math.round((p.seg_pct - p.overall_pct) * 100) <= -2)
+    .map((p) => p.short_name)
+  let pillarNarrative = ""
+  if (aheadPillars.length > 0 && behindPillars.length > 0) {
+    pillarNarrative = `Compared to similar organizations, you're ahead on ${joinNames(aheadPillars)}, but behind on ${joinNames(behindPillars)}.`
+  } else if (aheadPillars.length > 0) {
+    pillarNarrative = `Compared to similar organizations, you're ahead on ${joinNames(aheadPillars)} and in line elsewhere.`
+  } else if (behindPillars.length > 0) {
+    pillarNarrative = `Compared to similar organizations, you're behind on ${joinNames(behindPillars)}, and in line elsewhere.`
+  } else {
+    pillarNarrative = "Your mobility maturity is broadly in line with similar organizations across all pillars."
+  }
+
   // 2025 is a lighter event-wave view: no MMI, no remote tile, no YoY.
   const is2025 = filters.year === 2025
 
@@ -1033,6 +1059,11 @@ export function PremiumDashboardClient() {
 
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
+          {isFiltered && primaryPillars.length > 0 && (
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-5 text-pretty">
+              {pillarNarrative}
+            </p>
+          )}
           <h2 className="text-lg font-semibold text-slate-200 mb-6">Pillar snapshot</h2>
           {primaryPillars.length === 0 ? (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
