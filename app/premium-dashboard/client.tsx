@@ -325,6 +325,12 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         suppressed ? b.overallPct - a.overallPct : b.segPct - a.segPct,
       )
 
+  // Divergence highlighting applies only to the STANDARD answer-bar rows when a
+  // segment comparison is active. Agreement-scale cards (and the early-returned
+  // direction matrix) are left exactly as-is.
+  const enableDivergence = showComparison && !isAgreementScale
+  const NOTABLE_PTS = 10
+
   // Summary built from the same primary percentages each row displays (each rounded, then summed).
   const agreementSummary = isAgreementScale
     ? [
@@ -437,6 +443,13 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           const segDisplay = Math.round(answer.segPct * 100)
           const overallDisplay = Math.round(answer.overallPct * 100)
           const shown = suppressed ? overallDisplay : segDisplay
+          // Signed gap from the market, in percentage points.
+          const divergence = Math.round((answer.segPct - answer.overallPct) * 100)
+          // Notable = 10+ points from market, reliable base, comparison active.
+          const notable =
+            enableDivergence && answer.segN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
+          // Gently de-emphasise the in-line rows so notable ones dominate.
+          const deEmphasize = enableDivergence && !notable
           // Anchor the agreement-scale endpoints.
           let optionLabel = answer.option
           if (isAgreementScale) {
@@ -445,13 +458,20 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
               optionLabel = `${answer.option} · strongly disagree`
           }
           return (
-            <div key={idx}>
+            <div key={idx} className={deEmphasize ? "opacity-60 transition-opacity" : undefined}>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-slate-400 truncate pr-2">{optionLabel}</span>
                 <span className="text-slate-200 font-medium shrink-0">
                   {shown}%
                   {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
+                  )}
+                  {notable && (
+                    <span
+                      className={`font-medium ml-1.5 ${divergence > 0 ? "text-emerald-400" : "text-amber-400"}`}
+                    >
+                      {divergence > 0 ? `+${divergence}` : divergence} vs market
+                    </span>
                   )}
                   {SHOW_COUNTS && !isAgreementScale && answer.segN < LOW_BASE && (
                     <span className="text-slate-500 font-normal ml-1.5">· n={answer.segN}</span>
@@ -511,6 +531,54 @@ function BreakdownSection({
   onToggle: () => void
   isFiltered: boolean
 }) {
+  // One-line "how this area compares" summary, derived from segPct/overallPct
+  // already on each answer. Only meaningful when filtered; skips suppressed
+  // questions and low-base cells, and picks the single most ahead/behind option.
+  const summary = (() => {
+    if (!isFiltered) return null
+    const active = questions.filter((q) => q.confidence !== "suppressed")
+    if (active.length === 0) return null
+    const NOTABLE = 0.1
+    const LOW_BASE = 5
+    let bestAhead: { label: string; gap: number } | null = null
+    let bestBehind: { label: string; gap: number } | null = null
+    for (const q of active) {
+      for (const a of q.answers) {
+        if (a.segN < LOW_BASE) continue
+        const gap = a.segPct - a.overallPct
+        if (gap >= NOTABLE && (!bestAhead || gap > bestAhead.gap)) bestAhead = { label: a.option, gap }
+        if (gap <= -NOTABLE && (!bestBehind || gap < bestBehind.gap)) bestBehind = { label: a.option, gap }
+      }
+    }
+    return { bestAhead, bestBehind }
+  })()
+
+  const summaryNode = summary
+    ? summary.bestAhead && summary.bestBehind
+      ? (
+          <>
+            In this area, you&apos;re most ahead on{" "}
+            <span className="font-medium text-emerald-400">{summary.bestAhead.label}</span> and furthest behind on{" "}
+            <span className="font-medium text-amber-400">{summary.bestBehind.label}</span> versus the market.
+          </>
+        )
+      : summary.bestAhead
+        ? (
+            <>
+              In this area, you&apos;re ahead of the market, most notably on{" "}
+              <span className="font-medium text-emerald-400">{summary.bestAhead.label}</span>.
+            </>
+          )
+        : summary.bestBehind
+          ? (
+              <>
+                In this area, you&apos;re behind the market, most notably on{" "}
+                <span className="font-medium text-amber-400">{summary.bestBehind.label}</span>.
+              </>
+            )
+          : <>In this area, you&apos;re broadly in line with the market.</>
+    : null
+
   return (
     <section
       className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
@@ -539,6 +607,11 @@ function BreakdownSection({
       </button>
       {isOpen && (
         <div className="px-5 pb-5 pt-1">
+          {summaryNode && (
+            <p className="rounded-xl border border-primary/15 bg-brand-navy-3/40 px-4 py-3 mb-4 text-sm text-slate-300 leading-relaxed text-pretty">
+              {summaryNode}
+            </p>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
               <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
