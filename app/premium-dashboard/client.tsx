@@ -1045,14 +1045,14 @@ export function PremiumDashboardClient() {
                         const ahead = diffPts >= 2
                         const behind = diffPts <= -2
                         const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                        const tone = ahead ? "text-primary" : behind ? "text-amber-400" : "text-slate-500"
+                        const tone = ahead ? "text-emerald-400" : behind ? "text-amber-400" : "text-slate-400"
                         return (
-                          <div className="mt-2 flex flex-col items-center gap-0.5">
-                            <span className="text-[11px] text-slate-500">Market: {formatPct(p.overall_pct)}</span>
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${tone}`}>
-                              <Icon className="h-3 w-3" aria-hidden="true" />
+                          <div className="mt-2.5 flex flex-col items-center gap-1 rounded-md bg-slate-800/40 px-2 py-1">
+                            <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
+                              <Icon className="h-4 w-4" aria-hidden="true" />
                               {ahead || behind ? `${Math.abs(diffPts)} pts` : "In line"}
                             </span>
+                            <span className="text-xs text-slate-400">Market: {formatPct(p.overall_pct)}</span>
                           </div>
                         )
                       })()}
