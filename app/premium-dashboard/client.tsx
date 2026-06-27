@@ -1036,6 +1036,26 @@ export function PremiumDashboardClient() {
                     {p.metric_label && (
                       <p className="text-[11px] text-slate-500 mt-1 leading-snug">{p.metric_label}</p>
                     )}
+                    {/* "You vs market" — only meaningful when a segment filter is active and
+                        the segment value is shown (not a suppression fallback). */}
+                    {isFiltered &&
+                      !r.isFallback &&
+                      (() => {
+                        const diffPts = Math.round((p.seg_pct - p.overall_pct) * 100)
+                        const ahead = diffPts >= 2
+                        const behind = diffPts <= -2
+                        const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
+                        const tone = ahead ? "text-primary" : behind ? "text-amber-400" : "text-slate-500"
+                        return (
+                          <div className="mt-2 flex flex-col items-center gap-0.5">
+                            <span className="text-[11px] text-slate-500">Market: {formatPct(p.overall_pct)}</span>
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${tone}`}>
+                              <Icon className="h-3 w-3" aria-hidden="true" />
+                              {ahead || behind ? `${Math.abs(diffPts)} pts` : "In line"}
+                            </span>
+                          </div>
+                        )
+                      })()}
                     {SHOW_COUNTS && <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>}
                     {r.isLimited && (
                       <span className="mt-1 text-[10px] font-medium text-amber-400">Limited sample</span>
