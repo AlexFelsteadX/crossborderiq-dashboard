@@ -976,6 +976,28 @@ export function PremiumDashboardClient() {
                   </p>
                 )}
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
+                {/* "You vs market" — only when a segment filter is active and the
+                    segment index is shown (not a suppression fallback). Mirrors the
+                    pillar snapshot comparison chip. */}
+                {isFiltered &&
+                  !mmiResolved.isFallback &&
+                  (() => {
+                    const marketIndex = Math.round(mmi.overall_index)
+                    const diffPts = Math.round(mmi.index_score - mmi.overall_index)
+                    const ahead = diffPts >= 2
+                    const behind = diffPts <= -2
+                    const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
+                    const tone = ahead ? "text-emerald-400" : behind ? "text-amber-400" : "text-slate-400"
+                    return (
+                      <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
+                        <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
+                          <Icon className="h-4 w-4" aria-hidden="true" />
+                          {ahead || behind ? `${Math.abs(diffPts)} pts` : "In line"}
+                        </span>
+                        <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
+                      </div>
+                    )
+                  })()}
               </div>
 
               <div className="lg:border-l lg:border-primary/15 lg:pl-8">
