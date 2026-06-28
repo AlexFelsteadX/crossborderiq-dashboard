@@ -157,9 +157,10 @@ const DIRECTIONAL_UP_ANSWERS: Record<string, string[]> = {
 // Given a question's q_code and an answer's option label, returns whether THIS
 // answer row should be treated as directional (ahead/behind interpretation valid).
 function isDirectionalRow(qCode: string, answerOption: string): boolean {
-  if (DIRECTIONAL_UP_QCODES.has(qCode)) return true
-  const better = DIRECTIONAL_UP_ANSWERS[qCode]
-  if (better && better.includes(answerOption)) return true
+  const code = (qCode ?? "").toUpperCase().trim()
+  if (DIRECTIONAL_UP_QCODES.has(code)) return true
+  const better = DIRECTIONAL_UP_ANSWERS[code]
+  if (better && better.some((b) => b.trim() === (answerOption ?? "").trim())) return true
   return false
 }
 
