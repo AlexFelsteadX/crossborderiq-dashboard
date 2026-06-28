@@ -688,6 +688,24 @@ function BreakdownSection({
 // BLOCK 4 — YOY TREND CARD
 // =============================================================================
 
+// Display-only: expand jargon acronyms in YoY labels for a senior audience.
+// This NEVER touches the underlying data — it is applied only at render time,
+// and is not used for matching, keying, filtering, or lookups.
+const YOY_ACRONYM_EXPANSIONS: [RegExp, string][] = [
+  [/\bIRW\b/g, "International Remote Work"],
+  [/\bRMC\b/g, "Relocation Management Company"],
+  [/\bEVP\b/g, "Employee Value Proposition"],
+  [/\bGM\b/g, "Global Mobility"],
+]
+
+function expandYoYLabel(label: string): string {
+  let out = label
+  for (const [pattern, replacement] of YOY_ACRONYM_EXPANSIONS) {
+    out = out.replace(pattern, replacement)
+  }
+  return out
+}
+
 function YoYTrendCard({ row }: { row: YoYRow }) {
   const suppressed = row.confidence === "suppressed"
   const p2025 = suppressed ? row.ov_pct_2025 : row.pct_2025
@@ -714,8 +732,10 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 pr-3">
-          <p className="text-sm font-medium text-slate-200 leading-tight">{row.concept}</p>
-          {row.metric_label && <p className="text-xs text-slate-400 mt-0.5">{row.metric_label}</p>}
+          <p className="text-sm font-medium text-slate-200 leading-tight">{expandYoYLabel(row.concept)}</p>
+          {row.metric_label && (
+            <p className="text-xs text-slate-400 mt-0.5">{expandYoYLabel(row.metric_label)}</p>
+          )}
         </div>
         <div className={`flex items-center gap-1.5 ${deltaColor}`}>
           <DeltaIcon className="h-5 w-5" />
