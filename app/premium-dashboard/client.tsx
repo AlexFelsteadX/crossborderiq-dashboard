@@ -531,54 +531,6 @@ function BreakdownSection({
   onToggle: () => void
   isFiltered: boolean
 }) {
-  // One-line "how this area compares" summary, derived from segPct/overallPct
-  // already on each answer. Only meaningful when filtered; skips suppressed
-  // questions and low-base cells, and picks the single most ahead/behind option.
-  const summary = (() => {
-    if (!isFiltered) return null
-    const active = questions.filter((q) => q.confidence !== "suppressed")
-    if (active.length === 0) return null
-    const NOTABLE = 0.1
-    const LOW_BASE = 5
-    let bestAhead: { label: string; gap: number } | null = null
-    let bestBehind: { label: string; gap: number } | null = null
-    for (const q of active) {
-      for (const a of q.answers) {
-        if (a.segN < LOW_BASE) continue
-        const gap = a.segPct - a.overallPct
-        if (gap >= NOTABLE && (!bestAhead || gap > bestAhead.gap)) bestAhead = { label: a.option, gap }
-        if (gap <= -NOTABLE && (!bestBehind || gap < bestBehind.gap)) bestBehind = { label: a.option, gap }
-      }
-    }
-    return { bestAhead, bestBehind }
-  })()
-
-  const summaryNode = summary
-    ? summary.bestAhead && summary.bestBehind
-      ? (
-          <>
-            In this area, you&apos;re most ahead on{" "}
-            <span className="font-medium text-emerald-400">{summary.bestAhead.label}</span> and furthest behind on{" "}
-            <span className="font-medium text-amber-400">{summary.bestBehind.label}</span> versus the market.
-          </>
-        )
-      : summary.bestAhead
-        ? (
-            <>
-              In this area, you&apos;re ahead of the market, most notably on{" "}
-              <span className="font-medium text-emerald-400">{summary.bestAhead.label}</span>.
-            </>
-          )
-        : summary.bestBehind
-          ? (
-              <>
-                In this area, you&apos;re behind the market, most notably on{" "}
-                <span className="font-medium text-amber-400">{summary.bestBehind.label}</span>.
-              </>
-            )
-          : <>In this area, you&apos;re broadly in line with the market.</>
-    : null
-
   return (
     <section
       className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
@@ -607,11 +559,6 @@ function BreakdownSection({
       </button>
       {isOpen && (
         <div className="px-5 pb-5 pt-1">
-          {summaryNode && (
-            <p className="rounded-xl border border-primary/15 bg-brand-navy-3/40 px-4 py-3 mb-4 text-sm text-slate-300 leading-relaxed text-pretty">
-              {summaryNode}
-            </p>
-          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
               <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
