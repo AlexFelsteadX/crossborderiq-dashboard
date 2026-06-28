@@ -464,7 +464,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const netLabel = (net: number) =>
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
     return (
-      <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+      <div className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6">
         <div className="flex items-start justify-between gap-3 mb-1">
           <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
@@ -518,7 +518,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   }
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+    <div className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
@@ -715,8 +715,8 @@ function BreakdownSection({
     <section
       className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
         isOpen
-          ? "border-l-4 border-l-primary border-y border-r border-primary/30 bg-brand-navy-2/70 shadow-[0_0_24px_-8px_rgb(var(--brand-teal-rgb)_/_0.35)]"
-          : "border border-primary/15 bg-brand-navy-2/40 hover:border-primary/40 hover:shadow-[0_0_18px_-8px_rgb(var(--brand-teal-rgb)_/_0.3)]"
+          ? "border-l-4 border-l-primary/70 border-y border-r border-slate-700/50 bg-brand-navy-2/70"
+          : "border border-slate-700/50 bg-brand-navy-2/40 hover:border-slate-600"
       }`}
     >
       <button
@@ -752,7 +752,7 @@ function BreakdownSection({
               <p className="text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
             </div>
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {questions.map((q) => (
               <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
             ))}
@@ -807,7 +807,7 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
 
   return (
     <div
-      className={`rounded-xl border border-primary/20 border-l-4 ${borderColor} bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] transition-all duration-200`}
+      className={`rounded-xl border border-slate-700/50 border-l-4 ${borderColor} bg-brand-navy-2/40 p-5 transition-all duration-200`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 pr-3">
@@ -1137,7 +1137,7 @@ export function PremiumDashboardClient() {
         )}
 
         {/* ============================ FILTER BAR (sticky) ============================ */}
-        <div className="sticky top-2 z-20 rounded-2xl border border-primary/30 bg-brand-navy-2/95 backdrop-blur p-5 mb-10 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+        <div className="sticky top-2 z-20 rounded-2xl border border-slate-700/50 bg-brand-navy-2/95 backdrop-blur p-6 mb-12">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="h-5 w-5 text-primary" />
@@ -1207,7 +1207,7 @@ export function PremiumDashboardClient() {
 
         {/* 2025 event-wave explainer banner */}
         {is2025 && (
-          <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 px-5 py-4 mb-10">
+          <div className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 px-5 py-4 mb-12">
             <p className="text-sm text-slate-400 leading-relaxed">
               2025 shows the new-focus areas captured at GME events — strategy and remote-work detail
               arrived in the 2026 wave. Use the 2026 tab for the full benchmark and year-on-year trends.
@@ -1218,7 +1218,7 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 1 — MMI ============================ */}
         {!is2025 && (
         <div
-          className={`rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-6 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-10 transition-opacity ${
+          className={`rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-8 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-16 transition-opacity ${
             loadingMain ? "opacity-60" : "opacity-100"
           }`}
         >
@@ -1313,7 +1313,7 @@ export function PremiumDashboardClient() {
         )}
 
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
-        <div className={`mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
+        <div className={`mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           {isFiltered && primaryPillars.length > 0 && (
             <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
               <div className="flex items-center gap-2 mb-2">
@@ -1342,7 +1342,7 @@ export function PremiumDashboardClient() {
                 return (
                   <div
                     key={p.pillar}
-                    className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex flex-col items-center text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                    className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6 flex flex-col items-center text-center"
                   >
                     <CircularGauge
                       value={Math.round(r.value * 100)}
@@ -1420,7 +1420,7 @@ export function PremiumDashboardClient() {
 
         {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS (2026 only) ============================ */}
         {!is2025 && (
-        <div className="mb-12">
+        <div className="mb-16">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold text-slate-200">Year-on-year trends (2025 → 2026)</h2>
@@ -1445,7 +1445,7 @@ export function PremiumDashboardClient() {
         )}
 
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
-        <div className={`space-y-3 mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
+        <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-slate-200">Detailed breakdowns</h2>
             {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
