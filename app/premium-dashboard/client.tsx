@@ -467,10 +467,8 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
                   )}
                   {notable && (
-                    <span
-                      className={`font-medium ml-1.5 ${divergence > 0 ? "text-emerald-400" : "text-amber-400"}`}
-                    >
-                      {divergence > 0 ? `+${divergence}` : divergence} vs market
+                    <span className="font-normal ml-1.5 text-slate-400">
+                      {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"} market
                     </span>
                   )}
                   {SHOW_COUNTS && !isAgreementScale && answer.segN < LOW_BASE && (
