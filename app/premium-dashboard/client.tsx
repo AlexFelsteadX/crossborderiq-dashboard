@@ -385,67 +385,142 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
       ]
     : null
 
+  // --- Summary-first collapse: each question is collapsed by default and expands
+  // to the full breakdown on click. The headline below is shown in both states. ---
+  const [expanded, setExpanded] = useState(false)
+
+  // Whole-question directional codes (Q-series) reference the question; answer-specific
+  // ones (E10/E16) reference the answer. Mirror the helper's two matching modes.
+  const wholeQuestionDirectional = isDirectionalRow(q.qCode, "__never_matches__")
+  const questionIsDirectional = q.answers.some((a) => isDirectionalRow(q.qCode, a.option))
+
+  let headlineNode: React.ReactNode = null
+  if (questionIsDirectional && showComparison) {
+    // Lead with the comparison: the directional answer with the largest abs gap.
+    let best: { option: string; div: number } | null = null
+    for (const a of q.answers) {
+      if (a.segN < LOW_BASE) continue
+      if (!isDirectionalRow(q.qCode, a.option)) continue
+      const div = Math.round((a.segPct - a.overallPct) * 100)
+      if (!best || Math.abs(div) > Math.abs(best.div)) best = { option: a.option, div }
+    }
+    if (best && best.div !== 0) {
+      const ahead = best.div > 0
+      headlineNode = (
+        <span className={`font-medium ${ahead ? "text-emerald-400" : "text-amber-400"}`}>
+          You&apos;re {Math.abs(best.div)} pts {ahead ? "ahead" : "behind"} of similar organizations
+          {!wholeQuestionDirectional && ` on ${best.option}`}
+        </span>
+      )
+    }
+  }
+  if (!headlineNode) {
+    // Neutral, factual lead — no comparison implied.
+    if (isDirectionMatrix && matrixRows && matrixRows.length > 0) {
+      const increasing = matrixRows.filter((r) => r.net > 0).length
+      headlineNode = (
+        <span className="text-slate-400">
+          {increasing > matrixRows.length / 2
+            ? "Most move types expected to increase"
+            : "Mixed outlook across move types"}
+        </span>
+      )
+    } else if (answers.length > 0) {
+      const top = answers[0]
+      headlineNode = (
+        <span className="text-slate-400">
+          Most common: {top.option} ({shownPct(top)}%)
+        </span>
+      )
+    }
+  }
+
+  // Shared clickable header (question label + headline + chevron) for both variants.
+  const cardHeader = (
+    <button
+      type="button"
+      onClick={() => setExpanded((v) => !v)}
+      aria-expanded={expanded}
+      className="flex w-full items-start justify-between gap-3 text-left"
+    >
+      <div className="min-w-0">
+        <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
+        {headlineNode && <p className="text-xs mt-1 leading-snug">{headlineNode}</p>}
+      </div>
+      <ChevronDown
+        className={`h-4 w-4 text-primary shrink-0 mt-0.5 transition-transform duration-300 ${
+          expanded ? "rotate-180" : ""
+        }`}
+        aria-hidden="true"
+      />
+    </button>
+  )
+
   if (isDirectionMatrix && matrixRows) {
     const netLabel = (net: number) =>
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
     return (
       <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
-        </div>
+        {cardHeader}
 
-        {/* Direction legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
-          {DIRECTION_ORDER.map((dir) => (
-            <span key={dir} className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ backgroundColor: DIRECTION_COLORS[dir] }}
-              />
-              {dir}
-            </span>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          {matrixRows.map((row) => (
-            <div key={row.prefix} className="grid grid-cols-[9rem_1fr_4rem] items-center gap-3">
-              <span className="text-xs text-slate-300 truncate" title={row.prefix}>
-                {row.prefix}
-              </span>
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
-                {row.segments
-                  .filter((s) => s.width > 0)
-                  .map((s) => (
-                    <div
-                      key={s.dir}
-                      className="h-full"
-                      style={{ width: `${s.width}%`, backgroundColor: DIRECTION_COLORS[s.dir] }}
-                      title={`${s.dir} ${Math.round(s.width)}%`}
-                    />
-                  ))}
-              </div>
-              <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
-                {netLabel(row.net)}
-              </span>
+        {expanded && (
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-3 mt-3">
+              {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
             </div>
-          ))}
-        </div>
 
-        {suppressed && <FallbackNote className="mt-3" />}
+            {/* Direction legend */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
+              {DIRECTION_ORDER.map((dir) => (
+                <span key={dir} className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    style={{ backgroundColor: DIRECTION_COLORS[dir] }}
+                  />
+                  {dir}
+                </span>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              {matrixRows.map((row) => (
+                <div key={row.prefix} className="grid grid-cols-[9rem_1fr_4rem] items-center gap-3">
+                  <span className="text-xs text-slate-300 truncate" title={row.prefix}>
+                    {row.prefix}
+                  </span>
+                  <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
+                    {row.segments
+                      .filter((s) => s.width > 0)
+                      .map((s) => (
+                        <div
+                          key={s.dir}
+                          className="h-full"
+                          style={{ width: `${s.width}%`, backgroundColor: DIRECTION_COLORS[s.dir] }}
+                          title={`${s.dir} ${Math.round(s.width)}%`}
+                        />
+                      ))}
+                  </div>
+                  <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
+                    {netLabel(row.net)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {suppressed && <FallbackNote className="mt-3" />}
+          </>
+        )}
       </div>
     )
   }
 
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-      <div className="flex items-start justify-between gap-3 mb-1">
-        <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 mb-3">
+      {cardHeader}
+
+      {expanded && (
+        <>
+      <div className="flex flex-wrap items-center gap-2 mb-3 mt-3">
         {SHOW_COUNTS && (
           <span className="text-[11px] text-slate-500">
             {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
@@ -562,6 +637,8 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         <p className="text-[10px] text-slate-500 mt-3">
           n shown where a cell is based on fewer than 5 responses.
         </p>
+      )}
+        </>
       )}
     </div>
   )
