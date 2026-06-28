@@ -636,10 +636,14 @@ function WhitespacePanel({
           <div className="space-y-4">
             {rows.map((row, idx) => {
               const saturated = row.tag === "Saturated"
+              const suppressed = row.confidence === "suppressed"
+              const limited = row.confidence === "limited"
               return (
                 <div
                   key={`${row.category}-${idx}`}
-                  className="rounded-xl border border-primary/15 bg-brand-navy-2/60 p-4"
+                  className={`rounded-xl border border-primary/15 bg-brand-navy-2/60 p-4 ${
+                    suppressed ? "opacity-60" : ""
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -651,19 +655,25 @@ function WhitespacePanel({
                       >
                         {row.tag}
                       </span>
-                      {row.is_emerging && (
+                      {limited && (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                          Limited sample
+                        </span>
+                      )}
+                      {row.is_emerging && !suppressed && (
                         <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
                       )}
                     </div>
-                    {row.tag === "Opening" && row.gap !== null && (
+                    {/* Confident badges are gated on having enough segment data */}
+                    {!suppressed && row.tag === "Opening" && row.gap !== null && (
                       <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt opening</span>
                     )}
-                    {saturated && row.have_pct !== null && (
+                    {!suppressed && saturated && row.have_pct !== null && (
                       <span className="text-xs text-slate-500 italic shrink-0">
                         Already outsourced by {row.have_pct}%
                       </span>
                     )}
-                    {row.is_emerging && (
+                    {!suppressed && row.is_emerging && (
                       <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}% opportunity</span>
                     )}
                   </div>
@@ -686,7 +696,12 @@ function WhitespacePanel({
                   {!row.is_emerging && row.have_pct !== null && (
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] text-slate-400">Already outsources</span>
+                        <span className="text-[11px] text-slate-400">
+                          Already outsources
+                          {row.have_base_n > 0 && (
+                            <span className="text-slate-500 ml-1.5">n={row.have_base_n}</span>
+                          )}
+                        </span>
                         <span className="text-[11px] font-medium text-slate-400">{row.have_pct}%</span>
                       </div>
                       <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
@@ -696,6 +711,12 @@ function WhitespacePanel({
                         />
                       </div>
                     </div>
+                  )}
+
+                  {suppressed && (
+                    <p className="text-[11px] text-slate-500 italic mt-2">
+                      Not enough organisations in this segment to report provision reliably
+                    </p>
                   )}
                 </div>
               )
