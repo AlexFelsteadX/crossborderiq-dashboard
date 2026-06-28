@@ -661,7 +661,17 @@ function BreakdownSection({
       {isOpen && (
         <div className="px-5 pb-5 pt-1">
           {summaryNode && (
-            <p className="text-sm text-slate-400 leading-relaxed mb-4 text-pretty">{summaryNode}</p>
+            <div className="flex items-start gap-2.5 rounded-xl rounded-l-none border border-slate-700/60 border-l-2 border-l-primary/50 bg-slate-800/40 px-4 py-3 mb-4">
+              <img
+                src="/cbiq-mark.png"
+                alt=""
+                aria-hidden="true"
+                width={18}
+                height={18}
+                className="h-[18px] w-[18px] shrink-0 mt-0.5"
+              />
+              <p className="text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
+            </div>
           )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
