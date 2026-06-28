@@ -128,6 +128,41 @@ const SIZE_OPTIONS = [
 const ASSIGNEE_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
 const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
 
+// =============================================================================
+// QUESTION DIRECTIONALITY — where "above market" is genuinely BETTER (ahead),
+// so ahead/behind interpretation (coloured) is valid. Everything else stays a
+// neutral factual gap (muted grey, "above/below market", no judgment).
+// =============================================================================
+
+const DIRECTIONAL_UP_QCODES = new Set([
+  "Q6",
+  "Q16",
+  "Q19",
+  "Q20",
+  "Q21",
+  "Q23",
+  "Q28",
+  "Q34",
+  "Q58",
+  "Q66",
+  "Q67",
+])
+// These two questions are directional only for SPECIFIC answers; all other answers are neutral.
+const DIRECTIONAL_UP_ANSWERS: Record<string, string[]> = {
+  E10: ["Using AI in production", "Piloting AI use cases"],
+  E16: ["Yes — a dedicated Global Mobility / assignment management platform"],
+}
+// Everything else is neutral: show the factual gap (muted), never ahead/behind.
+
+// Given a question's q_code and an answer's option label, returns whether THIS
+// answer row should be treated as directional (ahead/behind interpretation valid).
+function isDirectionalRow(qCode: string, answerOption: string): boolean {
+  if (DIRECTIONAL_UP_QCODES.has(qCode)) return true
+  const better = DIRECTIONAL_UP_ANSWERS[qCode]
+  if (better && better.includes(answerOption)) return true
+  return false
+}
+
 const DEFAULT_FILTERS: Filters = {
   industry: null,
   region: null,
@@ -466,11 +501,27 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                   {showComparison && (
                     <span className="text-slate-500 font-normal ml-1.5">(all {overallDisplay}%)</span>
                   )}
-                  {notable && (
-                    <span className="font-normal ml-1.5 text-slate-400">
-                      {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"} market
-                    </span>
-                  )}
+                  {notable &&
+                    (isDirectionalRow(q.qCode, answer.option) ? (
+                      // Directional: above market is genuinely better → ahead/behind, coloured.
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-medium ml-1.5 ${
+                          divergence > 0 ? "text-emerald-400" : "text-amber-400"
+                        }`}
+                      >
+                        {divergence > 0 ? (
+                          <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                        )}
+                        {Math.abs(divergence)} pts {divergence > 0 ? "ahead" : "behind"}
+                      </span>
+                    ) : (
+                      // Neutral: just a profile difference, not a judgment → muted, factual.
+                      <span className="font-normal ml-1.5 text-slate-400">
+                        {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"} market
+                      </span>
+                    ))}
                   {SHOW_COUNTS && !isAgreementScale && answer.segN < LOW_BASE && (
                     <span className="text-slate-500 font-normal ml-1.5">· n={answer.segN}</span>
                   )}
