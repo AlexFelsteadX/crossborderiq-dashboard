@@ -10,7 +10,6 @@ import {
   BarChart3,
   ChevronDown,
   Loader2,
-  Lightbulb,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -1156,9 +1155,16 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-12 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           {isFiltered && primaryPillars.length > 0 && (
-            <div className="rounded-xl rounded-l-none border border-l-4 border-primary/15 border-l-primary bg-primary/[0.06] px-5 py-4 mb-6">
+            <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
               <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="h-[18px] w-[18px] text-primary shrink-0" aria-hidden="true" />
+                <img
+                  src="/cbiq-mark.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={20}
+                  height={20}
+                  className="h-5 w-5 shrink-0"
+                />
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
               </div>
               <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{pillarNarrative}</p>
