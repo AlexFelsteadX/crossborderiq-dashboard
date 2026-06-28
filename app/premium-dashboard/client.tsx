@@ -581,6 +581,57 @@ function BreakdownSection({
   onToggle: () => void
   isFiltered: boolean
 }) {
+  // Per-section headline — comments ONLY on directional questions (where
+  // ahead/behind is meaningful via isDirectionalRow). Descriptive sections
+  // produce no summary at all.
+  const directionalSummary = (() => {
+    if (!isFiltered) return null
+    const NOTABLE = 0.1
+    const LOW_BASE = 5
+    let bestAhead: { label: string; gap: number } | null = null
+    let bestBehind: { label: string; gap: number } | null = null
+    for (const q of questions) {
+      if (q.confidence === "suppressed") continue
+      // Whole-question directional codes read best as the question topic;
+      // answer-specific cases (E10/E16) read best as the answer option.
+      const wholeQuestionDirectional = isDirectionalRow(q.qCode, "__never_matches__")
+      for (const a of q.answers) {
+        if (a.segN < LOW_BASE) continue
+        if (!isDirectionalRow(q.qCode, a.option)) continue
+        const gap = a.segPct - a.overallPct
+        const label = wholeQuestionDirectional ? q.questionLabel : a.option
+        if (gap >= NOTABLE && (!bestAhead || gap > bestAhead.gap)) bestAhead = { label, gap }
+        if (gap <= -NOTABLE && (!bestBehind || gap < bestBehind.gap)) bestBehind = { label, gap }
+      }
+    }
+    if (!bestAhead && !bestBehind) return null
+    return { bestAhead, bestBehind }
+  })()
+
+  const summaryNode = directionalSummary
+    ? directionalSummary.bestAhead && directionalSummary.bestBehind
+      ? (
+          <>
+            In this area, you&apos;re ahead of similar organizations on{" "}
+            <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span> but behind on{" "}
+            <span className="font-medium text-amber-400">{directionalSummary.bestBehind.label}</span>.
+          </>
+        )
+      : directionalSummary.bestAhead
+        ? (
+            <>
+              In this area, you&apos;re ahead of similar organizations, most notably on{" "}
+              <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>.
+            </>
+          )
+        : (
+            <>
+              In this area, you&apos;re behind similar organizations, most notably on{" "}
+              <span className="font-medium text-amber-400">{directionalSummary.bestBehind!.label}</span>.
+            </>
+          )
+    : null
+
   return (
     <section
       className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
@@ -609,6 +660,9 @@ function BreakdownSection({
       </button>
       {isOpen && (
         <div className="px-5 pb-5 pt-1">
+          {summaryNode && (
+            <p className="text-sm text-slate-400 leading-relaxed mb-4 text-pretty">{summaryNode}</p>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {questions.map((q) => (
               <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
