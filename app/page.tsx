@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
@@ -453,53 +452,19 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {/*
-              NOTE: "Regional intelligence breakdown" card is hidden until we have a regional
-              screenshot. Restore it by adding this entry back to the array below:
-              { caption: "Regional intelligence breakdown", src: "...", alt: "..." }
-            */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-              {[
-                {
-                  title: "Global Workforce Intelligence™ Premium Dashboard",
-                  description:
-                    "Benchmark your workforce strategy, AI adoption and program against 1,500+ peers — by region, industry and company size.",
-                  src: "/images/dashboard-benchmark.png",
-                  alt: "Premium benchmarking filters with a 2025–2026 breakdown and Operational Pressure Index showing top barriers to achieving priorities",
-                },
-                {
-                  title: "Vendor Intelligence™ Premium Dashboard",
-                  description:
-                    "Track where market demand is emerging across the global workforce market — aggregated intelligence, never lead lists.",
-                  src: "/images/dashboard-vendor.png",
-                  alt: "Vendor Intelligence Premium Dashboard with a Market Opportunity Score, transformation and AI activity metrics, and service demand intelligence",
-                },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="rounded-xl border border-primary/20 bg-brand-navy-2 overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-                    {/* Device frame chrome */}
-                    <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-primary/10 bg-brand-navy/60">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
-                    </div>
-                    {/* Showcase screenshot */}
-                    <div className="aspect-[16/10] m-3 rounded-lg overflow-hidden bg-brand-navy/40 relative">
-                      <Image
-                        src={item.src || "/placeholder.svg"}
-                        alt={item.alt}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        className="object-cover object-top"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4 text-center">
-                    <p className="text-sm font-bold text-slate-100">{item.title}</p>
-                    <p className="text-sm text-slate-300 mt-1">{item.description}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="w-full max-w-[560px] mx-auto">
+              <div className="aspect-square rounded-xl border border-primary/20 bg-brand-navy-2 overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+                <video
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                >
+                  <source src="/cbiq-platform-tour.mp4" type="video/mp4" />
+                </video>
+              </div>
             </div>
           </div>
         </section>
