@@ -66,13 +66,6 @@ interface GroupedQuestion {
   answers: { answer_option: string; pct: number }[]
 }
 
-interface ServiceDemandRow {
-  service: string
-  pct: number
-  base_n: number
-  is_reportable: boolean
-}
-
 interface ServiceInterestRow {
   service: string
   pct: number
@@ -726,7 +719,6 @@ export function VendorPremiumDashboardClient() {
   const [yoyData, setYoyData] = useState<YoYRow[]>([])
   const [currentCommercial, setCurrentCommercial] = useState<CommercialCurrentRow[]>([])
   const [earlierCommercial, setEarlierCommercial] = useState<CommercialEarlierRow[]>([])
-  const [serviceDemand, setServiceDemand] = useState<ServiceDemandRow[]>([])
   const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
   const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -895,7 +887,7 @@ export function VendorPremiumDashboardClient() {
   }, [supabase])
   
   // ---------------------------------------------------------------------------
-  // FETCH FILTERED DATA (Service Demand, Demand Pipeline, Commercial Questions)
+  // FETCH FILTERED DATA (Service Interest, Demand Pipeline)
   // ---------------------------------------------------------------------------
   
   useEffect(() => {
@@ -904,22 +896,6 @@ export function VendorPremiumDashboardClient() {
       setError(null)
       
       try {
-        // Call f_service_demand RPC with all three filters
-        const { data: serviceRows, error: serviceError } = await supabase
-          .rpc('f_service_demand', { 
-            p_region_group: selectedRegion,
-            p_industry_group: selectedIndustry,
-            p_size_band: selectedSize
-          })
-        
-        if (serviceError) {
-          console.log("[v0] Service demand RPC error:", serviceError)
-        } else {
-          // Sort by pct descending
-          const sorted = (serviceRows || []).sort((a: ServiceDemandRow, b: ServiceDemandRow) => b.pct - a.pct)
-          setServiceDemand(sorted)
-        }
-        
         // Call f_service_interest RPC with only region filter
         const { data: interestRows, error: interestError } = await supabase
           .rpc('f_service_interest', { 
@@ -1477,7 +1453,9 @@ export function VendorPremiumDashboardClient() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
                 <p className="text-xs text-slate-500">
-                  Filters apply to Service Demand, Demand Pipeline and Commercial Intelligence Breakdown.
+                  Filters apply to White Space, Where Demand Is Heading, Current Outsourcing Baseline and the
+                  segment count shown here. Market Opportunity Score, Year-on-Year Trends and Commercial Intelligence
+                  Breakdowns are always market-wide.
                 </p>
                 <p className="text-sm font-medium text-slate-300">
                   {demandLoading ? (
