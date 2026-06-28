@@ -164,6 +164,81 @@ function isDirectionalRow(qCode: string, answerOption: string): boolean {
   return false
 }
 
+// DISPLAY-ONLY: editorial statement labels for breakdown question headers, keyed
+// by question code. Consulted ONLY at render time for the header text — never for
+// matching, sorting, directionality, summaries, or any data lookup.
+const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
+  Q6: "Whether Global Mobility is set up as a Centre of Excellence",
+  Q8: "The role of the Global Mobility function",
+  Q10: "How the Global Mobility function is structured",
+  Q12: "Where Global Mobility sits in the organization",
+  Q14: "Global Mobility team size",
+  Q15: "How Global Mobility resourcing has changed in the past 12 months",
+  Q16: "Whether Global Mobility and the talent function are aligning more closely",
+  Q17: "How the role of Global Mobility professionals is evolving",
+  Q18: "The emerging skills Global Mobility professionals will need",
+  Q19: "Whether organizations have a defined Global Mobility strategy",
+  Q20: "How well Global Mobility strategy aligns with organizational strategy",
+  Q21: "Whether Global Mobility is embedded in the Employee Value Proposition",
+  Q22: "Whether the scope and complexity of Global Mobility is expected to grow",
+  Q23: "How far Global Mobility programs embrace ESG goals and practices",
+  Q24: "Top Global Mobility goals for 2025",
+  Q25: "Top Global Mobility goals for 2026",
+  Q26: "The top barriers to achieving Global Mobility priorities in 2026",
+  Q28: "Whether organizations measure Global Mobility ROI",
+  Q29: "How Global Mobility ROI is measured",
+  Q30: "How Global Mobility is used in talent development programs",
+  Q31: "The policy types organizations hold within their Global Mobility program",
+  Q32: "Whether organizations are reviewing or redesigning their Global Mobility policies",
+  Q33: "Which policies are being reviewed or redesigned",
+  Q34: "Whether organizations are focused on introducing more policy flexibility",
+  Q35: "How organizations structure their Global Mobility policies",
+  Q36: "The flexible options offered for long-term assignments",
+  Q37: "The move types applicable to programs in the coming 12 months",
+  Q38: "The flexible benefits organizations offer employees",
+  Q39: "How move type volumes are expected to change in the coming 12 months",
+  Q40: "Whether programs use assignment management technology",
+  Q41: "Which assignment management systems are in use",
+  Q43: "Whether organizations are considering purchasing assignment management technology",
+  Q46: "Whether Global Mobility is seen as becoming more human-centric or more AI-led",
+  Q47: "The main barriers to using technology in Global Mobility programs",
+  Q49: "The tasks organizations outsource to vendor partners",
+  Q51: "How vendor partners contribute to Global Mobility success",
+  Q52: "Whether organizations have recently run, or are planning, an RFP",
+  Q53: "The reasons organizations go to RFP",
+  Q55: "The biggest challenges organizations face with RFPs",
+  Q57: "Whether organizations support International Remote Work",
+  Q58: "Whether organizations have a formal International Remote Work policy",
+  Q59: "Whether organizations plan to develop a formal International Remote Work policy",
+  Q60: "The situations in which International Remote Work is permitted",
+  Q62: "Whether legal working rights are required in the International Remote Work location",
+  Q63: "Whether a maximum period applies to International Remote Work",
+  Q64: "The maximum period permitted for International Remote Work",
+  Q66: "Whether organizations have a formal International Remote Work approval system",
+  Q67: "Whether organizations track their International Remote Work population",
+  Q68: "Whether organizations analyze International Remote Work data for talent attraction and retention",
+  Q69: "The analysis conducted on International Remote Work programs",
+  Q71: "Whether organizations have a Business Traveller policy",
+  Q72: "Who owns the Business Traveller program",
+  Q73: "Annual Business Travel trip volumes",
+  E6: "The leadership expectations rising most for mobility teams",
+  E7: "What is creating the greatest operational pressure for Global Mobility",
+  E8: "The employee expectations rising most significantly",
+  E9: "The current state of organizations' mobility programs",
+  E10: "How organizations are using AI in Global Mobility today",
+  E11: "The areas where organizations are using AI",
+  E13: "Where organizations expect the greatest operational investment over the next 12\u201318 months",
+  E14: "Annual long-term assignment and permanent transfer volumes",
+  E15: "Annual short-term assignment and business traveller volumes",
+  E16: "How organizations use technology to manage Global Mobility",
+}
+
+// Mirrors isDirectionalRow's case-normalisation (q_code casing is inconsistent).
+function displayQuestionLabel(qCode: string, fallbackLabel: string): string {
+  const code = (qCode ?? "").toUpperCase().trim()
+  return BREAKDOWN_STATEMENT_LABELS[code] ?? fallbackLabel
+}
+
 const DEFAULT_FILTERS: Filters = {
   industry: null,
   region: null,
@@ -391,7 +466,9 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     return (
       <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
+          <h4 className="text-sm font-medium text-slate-200 leading-tight">
+          {displayQuestionLabel(q.qCode, q.questionLabel)}
+        </h4>
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
@@ -443,7 +520,9 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   return (
     <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
       <div className="flex items-start justify-between gap-3 mb-1">
-        <h4 className="text-sm font-medium text-slate-200 leading-tight">{q.questionLabel}</h4>
+        <h4 className="text-sm font-medium text-slate-200 leading-tight">
+          {displayQuestionLabel(q.qCode, q.questionLabel)}
+        </h4>
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         {SHOW_COUNTS && (
