@@ -125,17 +125,20 @@ export default async function HomePage() {
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                    <Link href="/workforce-intelligence">
-                      View Intelligence
+                    <Link href="/mobility-maturity-scorecard">
+                      Get your free score
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
-                    <Link href="/pricing#free-access">
-                      Get free access
+                    <Link href="/workforce-intelligence">
+                      Explore the free dashboard
                     </Link>
                   </Button>
                 </div>
+                <p className="text-sm text-slate-400 mt-4 text-center lg:text-left">
+                  See how your mobility program compares — free, 3-minute benchmark.
+                </p>
               </div>
 
               {/* Right: Strategic Mobility Index Hero Display */}
@@ -501,7 +504,13 @@ export default async function HomePage() {
               })}
             </div>
 
-            <div className="text-center mt-10">
+            <div className="text-center mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button className="gap-2 bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
+                <Link href="/mobility-maturity-scorecard">
+                  Get your score
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
               <Button variant="outline" className="gap-2 border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                 <Link href="/workforce-intelligence">
                   Explore the Full Index
@@ -797,15 +806,20 @@ export default async function HomePage() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]" asChild>
-                    <Link href="/workforce-intelligence">
-                      View Intelligence
+                    <Link href="/mobility-maturity-scorecard">
+                      Get your free score
                       <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/40 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
+                    <Link href="/workforce-intelligence">
+                      Explore the free dashboard
                     </Link>
                   </Button>
                   {/* Hide "Contribute Data" for paid tiers (premium/vendor) — they already have full access.
                       Free users and logged-out visitors keep it. */}
                   {!hasFullAccess && (
-                    <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/40 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
+                    <Button size="lg" variant="ghost" className="gap-2 px-8 h-12 text-base text-slate-300 hover:bg-primary/10 hover:text-slate-50" asChild>
                       <Link href="/contribute">
                         Contribute Data
                       </Link>
