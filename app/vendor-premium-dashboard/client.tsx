@@ -1426,12 +1426,7 @@ export function VendorPremiumDashboardClient() {
                   </select>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
-                <p className="text-xs text-slate-500">
-                  Filters apply to White Space, Where Demand Is Heading, Current Outsourcing Baseline and the
-                  segment count shown here. Market Opportunity Score, Year-on-Year Trends and Commercial Intelligence
-                  Breakdowns are always market-wide.
-                </p>
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
                 <p className="text-sm font-medium text-slate-300">
                   {demandLoading ? (
                     <span className="text-slate-500">Counting organisations…</span>
