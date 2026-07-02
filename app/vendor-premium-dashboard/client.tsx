@@ -1723,6 +1723,43 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
+            {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
+            {/* =================================================================== */}
+            
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Near-term buying activity and vendor review intentions. Based on all responses across the 2022–2026 waves.
+              </p>
+              
+              {demandPipeline.length === 0 ? (
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No demand pipeline data available.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {demandPipeline.map((row, idx) => (
+                    <div key={idx} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5">
+                      <p className="text-sm font-medium text-slate-200 mb-3">{row.signal}</p>
+                      {row.is_reportable ? (
+                        <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
+                      ) : (
+                        <p className="text-sm text-slate-400 italic">��</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* =================================================================== */}
             {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
             {/* =================================================================== */}
 
@@ -1837,43 +1874,6 @@ export function VendorPremiumDashboardClient() {
                 loading={demandLoading}
                 isFiltered={isFiltered}
               />
-            </div>
-
-            {/* =================================================================== */}
-            {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
-            {/* =================================================================== */}
-            
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Near-term buying activity and vendor review intentions. Based on all responses across the 2022–2026 waves.
-              </p>
-              
-              {demandPipeline.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No demand pipeline data available.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {demandPipeline.map((row, idx) => (
-                    <div key={idx} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5">
-                      <p className="text-sm font-medium text-slate-200 mb-3">{row.signal}</p>
-                      {row.is_reportable ? (
-                        <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
-                      ) : (
-                        <p className="text-sm text-slate-400 italic">��</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* =================================================================== */}
