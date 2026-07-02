@@ -1506,6 +1506,91 @@ export function VendorPremiumDashboardClient() {
         {!loading && !error && (
           <>
             {/* =================================================================== */}
+            {/* MARKET OPPORTUNITY SCORE (supporting metric)                       */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-6">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Score Gauge - Matching homepage ring style */}
+                <div className="flex flex-col items-center justify-center">
+                  <div className="relative w-44 h-44">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                      {/* Background track - muted dark */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="#1a3344" 
+                        strokeWidth="14" 
+                      />
+                      {/* Progress arc - bright teal */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="url(#mosGradient)" 
+                        strokeWidth="14" 
+                        strokeDasharray={534}
+                        strokeDashoffset={534 * (1 - (marketOpportunity?.market_opportunity_score || 0) / 100)}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                        filter="url(#mosGlow)"
+                      />
+                      {/* Gradient and glow definitions */}
+                      <defs>
+                        <linearGradient id="mosGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="var(--brand-teal)" />
+                          <stop offset="100%" stopColor="#2dd4bf" />
+                        </linearGradient>
+                        <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+                        {marketOpportunity?.market_opportunity_score || 0}%
+                      </span>
+                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supporting Metrics */}
+                <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                  {[
+                    { label: "Transformation Activity", value: marketOpportunity?.transformation_pct },
+                    { label: "Operational Pressure", value: marketOpportunity?.operational_pressure_pct },
+                    { label: "AI Activity", value: marketOpportunity?.ai_activity_pct },
+                    { label: "Technology Intent", value: marketOpportunity?.tech_intent_pct },
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                      <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
+                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
+                      <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
+                        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
+                The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
+              </p>
+            </div>
+
+            {/* =================================================================== */}
             {/* FILTERS FOR SERVICE DEMAND, DEMAND PIPELINE & COMMERCIAL BREAKDOWN */}
             {/* =================================================================== */}
             
@@ -1647,91 +1732,6 @@ export function VendorPremiumDashboardClient() {
               error={whitespaceError}
               isFiltered={isFiltered}
             />
-
-            {/* =================================================================== */}
-            {/* MARKET OPPORTUNITY SCORE (supporting metric)                       */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Score Gauge - Matching homepage ring style */}
-                <div className="flex flex-col items-center justify-center">
-                  <div className="relative w-44 h-44">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                      {/* Background track - muted dark */}
-                      <circle 
-                        cx="100" cy="100" r="85" 
-                        fill="none" 
-                        stroke="#1a3344" 
-                        strokeWidth="14" 
-                      />
-                      {/* Progress arc - bright teal */}
-                      <circle 
-                        cx="100" cy="100" r="85" 
-                        fill="none" 
-                        stroke="url(#mosGradient)" 
-                        strokeWidth="14" 
-                        strokeDasharray={534}
-                        strokeDashoffset={534 * (1 - (marketOpportunity?.market_opportunity_score || 0) / 100)}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000"
-                        filter="url(#mosGlow)"
-                      />
-                      {/* Gradient and glow definitions */}
-                      <defs>
-                        <linearGradient id="mosGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="var(--brand-teal)" />
-                          <stop offset="100%" stopColor="#2dd4bf" />
-                        </linearGradient>
-                        <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
-                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                          <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                          </feMerge>
-                        </filter>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                        {marketOpportunity?.market_opportunity_score || 0}%
-                      </span>
-                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Supporting Metrics */}
-                <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-                  {[
-                    { label: "Transformation Activity", value: marketOpportunity?.transformation_pct },
-                    { label: "Operational Pressure", value: marketOpportunity?.operational_pressure_pct },
-                    { label: "AI Activity", value: marketOpportunity?.ai_activity_pct },
-                    { label: "Technology Intent", value: marketOpportunity?.tech_intent_pct },
-                  ].map((metric) => (
-                    <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
-                      <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
-                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
-                      <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
-                        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
-                The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
-              </p>
-            </div>
 
             {/* =================================================================== */}
             {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
