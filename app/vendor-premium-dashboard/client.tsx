@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { CircularGauge, formatPct } from "@/components/dashboard-ui"
 import { createClient } from "@/lib/supabase/client"
 
 // =============================================================================
@@ -1438,7 +1437,7 @@ export function VendorPremiumDashboardClient() {
       
       <GlobalNav />
       
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
@@ -1655,16 +1654,51 @@ export function VendorPremiumDashboardClient() {
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Score Gauge - shared CircularGauge (matches premium dashboard) */}
+                {/* Score Gauge - Matching homepage ring style */}
                 <div className="flex flex-col items-center justify-center">
-                  <CircularGauge
-                    value={marketOpportunity?.market_opportunity_score || 0}
-                    max={100}
-                    size={176}
-                    stroke={14}
-                    label={formatPct((marketOpportunity?.market_opportunity_score || 0) / 100)}
-                    sublabel="Market Opportunity"
-                  />
+                  <div className="relative w-44 h-44">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                      {/* Background track - muted dark */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="#1a3344" 
+                        strokeWidth="14" 
+                      />
+                      {/* Progress arc - bright teal */}
+                      <circle 
+                        cx="100" cy="100" r="85" 
+                        fill="none" 
+                        stroke="url(#mosGradient)" 
+                        strokeWidth="14" 
+                        strokeDasharray={534}
+                        strokeDashoffset={534 * (1 - (marketOpportunity?.market_opportunity_score || 0) / 100)}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                        filter="url(#mosGlow)"
+                      />
+                      {/* Gradient and glow definitions */}
+                      <defs>
+                        <linearGradient id="mosGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="var(--brand-teal)" />
+                          <stop offset="100%" stopColor="#2dd4bf" />
+                        </linearGradient>
+                        <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+                        {marketOpportunity?.market_opportunity_score || 0}%
+                      </span>
+                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Supporting Metrics */}
@@ -1677,7 +1711,7 @@ export function VendorPremiumDashboardClient() {
                   ].map((metric) => (
                     <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
                       <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
-                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{formatPct((metric.value ?? 0) / 100)}</p>
+                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
                       <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
                         <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
                       </div>
