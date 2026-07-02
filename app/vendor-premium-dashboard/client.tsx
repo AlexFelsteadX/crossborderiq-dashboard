@@ -1745,11 +1745,11 @@ export function VendorPremiumDashboardClient() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
                 <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
+                  Filtered
                 </span>
               </div>
               <p className="text-sm text-slate-400 mb-6">
-                Near-term buying activity and vendor review intentions. Based on all responses across the 2022–2026 waves.
+                Near-term buying activity and vendor review intentions for the selected region, industry, and size segment.
               </p>
               
               {demandPipeline.length === 0 ? (
