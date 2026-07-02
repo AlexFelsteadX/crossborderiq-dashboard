@@ -1789,69 +1789,6 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
-            {/* =================================================================== */}
-
-            <WhitespacePanel
-              rows={whitespace}
-              loading={demandLoading}
-              error={whitespaceError}
-              isFiltered={isFiltered}
-            />
-
-            {/* =================================================================== */}
-            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
-            {/* =================================================================== */}
-
-            <MoveTypeDemandCard rows={currentCommercial} />
-
-            {/* =================================================================== */}
-            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">
-                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
-                </h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Forward-looking market signal — the forces buyers expect to reshape Global Mobility over the next three years.
-              </p>
-
-              {reshapeSignals.items.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No data available.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {reshapeSignals.items.map((item, idx) => {
-                    const pctDisplay = Math.round(item.pct)
-                    return (
-                      <div key={idx}>
-                        <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                          <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
-                          <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                        </div>
-                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* =================================================================== */}
             {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
             {/* =================================================================== */}
             
@@ -1925,6 +1862,69 @@ export function VendorPremiumDashboardClient() {
               <p className="text-xs text-slate-500 mt-6 italic">
                 Stated service interest is market-wide and does not vary by segment.
               </p>
+            </div>
+
+            {/* =================================================================== */}
+            {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
+            {/* =================================================================== */}
+
+            <WhitespacePanel
+              rows={whitespace}
+              loading={demandLoading}
+              error={whitespaceError}
+              isFiltered={isFiltered}
+            />
+
+            {/* =================================================================== */}
+            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
+            {/* =================================================================== */}
+
+            <MoveTypeDemandCard rows={currentCommercial} />
+
+            {/* =================================================================== */}
+            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">
+                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
+                </h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Forward-looking market signal — the forces buyers expect to reshape Global Mobility over the next three years.
+              </p>
+
+              {reshapeSignals.items.length === 0 ? (
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No data available.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {reshapeSignals.items.map((item, idx) => {
+                    const pctDisplay = Math.round(item.pct)
+                    return (
+                      <div key={idx}>
+                        <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                          <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
+                          <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                        </div>
+                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* =================================================================== */}
