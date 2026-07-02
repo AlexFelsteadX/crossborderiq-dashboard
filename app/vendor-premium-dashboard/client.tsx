@@ -440,7 +440,7 @@ function QuestionCard({
         {/* Direction legend */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
           {DIRECTION_ORDER.map((dir) => (
-            <span key={dir} className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+            <span key={dir} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: DIRECTION_COLORS[dir] }}
@@ -453,10 +453,10 @@ function QuestionCard({
         <div className="space-y-3">
           {matrixRows.map((row) => (
             <div key={row.prefix} className="grid grid-cols-[9rem_1fr_4rem] items-center gap-3">
-              <span className="text-xs text-slate-300 truncate" title={row.prefix}>
+              <span className="text-sm text-slate-300 truncate" title={row.prefix}>
                 {row.prefix}
               </span>
-              <div className="flex h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
+              <div className="flex h-4 w-full overflow-hidden rounded-full bg-[#1a3344]">
                 {row.segments
                   .filter((s) => s.width > 0)
                   .map((s) => (
@@ -468,7 +468,7 @@ function QuestionCard({
                     />
                   ))}
               </div>
-              <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
+              <span className="text-sm font-medium text-slate-200 text-right tabular-nums">
                 {netLabel(row.net)}
               </span>
             </div>
@@ -515,13 +515,13 @@ function QuestionCard({
           }
           return (
             <div key={idx}>
-              <div className="flex items-start justify-between gap-2 text-xs mb-1">
+              <div className="flex items-start justify-between gap-2 text-sm mb-1">
                 <span className="text-slate-400 break-words flex-1 min-w-0">{optionLabel}</span>
-                <span className="text-slate-200 font-medium shrink-0">{pctDisplay}%</span>
+                <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
               </div>
-              <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+              <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(pctDisplay, 100)}%` }}
                 />
               </div>
