@@ -427,7 +427,7 @@ function QuestionCard({
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
     return (
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="mb-1 flex items-start justify-between gap-2">
           <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
@@ -435,7 +435,7 @@ function QuestionCard({
             </span>
           )}
         </div>
-        <p className="text-[10px] text-slate-500 mb-3">{caption}</p>
+        <p className="text-[11px] text-slate-500 mb-3">{caption}</p>
 
         {/* Direction legend */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4">
@@ -480,7 +480,7 @@ function QuestionCard({
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="mb-1 flex items-start justify-between gap-2">
           <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
@@ -488,9 +488,9 @@ function QuestionCard({
             </span>
           )}
         </div>
-        <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
+        <p className="text-[11px] text-slate-500 mb-3">{caption}</p>
       {agreementSummary && (
-        <div className="mb-4 mt-2 grid grid-cols-3 gap-2">
+        <div className="mb-4 grid grid-cols-3 gap-2">
           {agreementSummary.map((s) => (
             <div
               key={s.label}
@@ -502,7 +502,7 @@ function QuestionCard({
           ))}
         </div>
       )}
-      <div className="space-y-2 mt-2">
+      <div className="space-y-2">
         {sortedAnswers.map((answer, idx) => {
           // pct from f_commercial_breakdown is ALREADY a whole number (86 = 86%)
           const pctDisplay = Math.round(answer.pct)
@@ -1967,7 +1967,7 @@ export function VendorPremiumDashboardClient() {
                           >
                             <div className="flex items-center gap-3">
                               <h3 className="text-base font-semibold text-slate-100">{pillarName}</h3>
-                              <span className="text-xs text-slate-500">({visibleQuestions.length} questions)</span>
+                              <span className="text-xs text-slate-500">({visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"})</span>
                             </div>
                             <ChevronDown 
                               className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
@@ -2039,7 +2039,7 @@ export function VendorPremiumDashboardClient() {
                             <h3 className="text-sm font-medium text-slate-300">
                               {study} · {sourceYear}
                             </h3>
-                            <span className="text-xs text-slate-500">({questions.length} questions)</span>
+                            <span className="text-xs text-slate-500">({questions.length} {questions.length === 1 ? "question" : "questions"})</span>
                           </div>
                           <ChevronDown
                             className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
