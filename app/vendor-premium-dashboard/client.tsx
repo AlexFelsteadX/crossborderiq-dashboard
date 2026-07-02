@@ -1751,7 +1751,7 @@ export function VendorPremiumDashboardClient() {
                       {row.is_reportable ? (
                         <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
                       ) : (
-                        <p className="text-sm text-slate-400 italic">��</p>
+                        <p className="text-sm text-slate-400">Not enough data for this segment</p>
                       )}
                     </div>
                   ))}
