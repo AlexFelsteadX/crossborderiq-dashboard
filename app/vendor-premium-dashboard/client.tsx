@@ -686,6 +686,12 @@ function DemandColumn({
         </span>
       </div>
 
+      {showComparison && (
+        <p className="text-xs text-slate-500">
+          Teal bar = your selected segment. Vertical marker = market-wide benchmark.
+        </p>
+      )}
+
       {loading ? (
         <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
           <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
