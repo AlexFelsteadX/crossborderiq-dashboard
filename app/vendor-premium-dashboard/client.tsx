@@ -1272,15 +1272,7 @@ export function VendorPremiumDashboardClient() {
         console.log("[v0] Vendor breakdown RPC error:", breakdownRes.error)
         setVendorBreakdown([])
       } else {
-        const breakdownRows = (breakdownRes.data as VendorBreakdownRow[]) ?? []
-        // [v0] TEMP DIAGNOSTIC — remove after checking. Logs the distinct q_code
-        // values returned by get_vendor_breakdown so we can confirm whether "E12"
-        // is present alongside the known "E13" and "Q49".
-        console.log(
-          "[v0] vendorBreakdown distinct q_codes:",
-          Array.from(new Set(breakdownRows.map((r) => r.q_code))).sort(),
-        )
-        setVendorBreakdown(breakdownRows)
+        setVendorBreakdown((breakdownRes.data as VendorBreakdownRow[]) ?? [])
       }
 
       if (whitespaceRes.error) {
