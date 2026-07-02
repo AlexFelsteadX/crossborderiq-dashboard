@@ -1919,6 +1919,9 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-1">
                 <Database className="h-4 w-4 text-slate-500" />
                 <h3 className="text-base font-medium text-slate-300">Current outsourcing baseline</h3>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Filtered
+                </span>
               </div>
               <p className="text-xs text-slate-500 mb-5">
                 What this segment already outsources — the baseline for spotting white space.
