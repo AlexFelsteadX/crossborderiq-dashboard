@@ -110,16 +110,92 @@ interface WhitespaceRow {
 }
 
 // =============================================================================
+// QUESTION HEADING DISPLAY LABELS
+// Mirrors the premium dashboard's displayQuestionLabel pattern: a q_code -> label
+// override for cleaner headings, always falling back to the raw question_label.
+// =============================================================================
+
+const VENDOR_BREAKDOWN_LABELS: Record<string, string> = {
+  E7: "Greatest operational pressures on mobility teams",
+  E9: "How programs describe their current state",
+  E10: "Current use of AI in mobility",
+  E11: "Where mobility programs apply AI",
+  E12: "Forces expected to reshape mobility (next 3 years)",
+  E13: "Where mobility is investing (next 12 to 18 months)",
+  E14: "Long-term assignment and transfer volumes",
+  E15: "Short-term assignment and business-traveler volumes",
+  E16: "Mobility technology adoption",
+  Q6: "Mobility set up as a Center of Excellence",
+  Q8: "The role of the mobility function",
+  Q10: "How the mobility function is structured",
+  Q12: "Where mobility sits in the organization",
+  Q14: "Mobility team size",
+  Q15: "Change in mobility resourcing (past 12 months)",
+  Q16: "Talent and mobility alignment",
+  Q17: "How the mobility role is evolving",
+  Q18: "Emerging skills mobility teams will need",
+  Q22: "Expected growth in mobility scope and complexity",
+  Q23: "ESG adoption in mobility programs",
+  Q24: "Top mobility program goals (2025)",
+  Q25: "Top mobility program goals (2026)",
+  Q26: "Top barriers to mobility priorities (2026)",
+  Q30: "Mobility in talent development programs",
+  Q31: "Policy types in use",
+  Q32: "Programs reviewing or redesigning policy",
+  Q33: "Which policies are under review",
+  Q34: "Focus on policy flexibility",
+  Q36: "Flexible options for long-term assignments",
+  Q38: "Employee support offerings",
+  Q39: "Expected change in move-type volumes (12 months)",
+  Q40: "Assignment management technology in use",
+  Q41: "Assignment management systems in use",
+  Q43: "Intent to adopt assignment management technology",
+  Q44: "AI tool adoption in mobility",
+  Q46: "Human-centric vs AI-led: where mobility is heading",
+  Q47: "Main barriers to mobility technology",
+  Q49: "What mobility teams outsource today",
+  Q51: "How vendor partners add value",
+  Q52: "Recent and planned RFP activity",
+  Q53: "Why programs go to RFP",
+  Q55: "Biggest challenges with RFPs",
+  Q57: "Support for International Remote Work",
+  Q58: "Formal International Remote Work policy in place",
+  Q59: "Plans to develop an International Remote Work policy",
+  Q60: "When International Remote Work is permitted",
+  Q62: "International Remote Work: right-to-work requirement",
+  Q63: "International Remote Work: duration limits",
+  Q64: "International Remote Work: maximum period applied",
+  Q66: "International Remote Work: formal approval process",
+  Q67: "Tracking the International Remote Work population",
+  Q68: "International Remote Work: data analysis for talent goals",
+  Q69: "Types of International Remote Work analysis conducted",
+  Q71: "Business Traveler policy in place",
+  Q72: "Ownership of the Business Traveler program",
+  Q73: "Annual business travel trip volumes",
+  Q74: "Expected business travel volumes (next 12 months)",
+  Q75: "Compliance day-threshold for business travel",
+  Q76: "Greatest business travel risks and exposure",
+  Q77: "Business travel insights leaders want",
+}
+
+function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: string): string {
+  if (!qCode) return fallbackLabel
+  return VENDOR_BREAKDOWN_LABELS[qCode.toUpperCase()] ?? fallbackLabel
+}
+
+// =============================================================================
 // QUESTION CARD COMPONENT (styled to match homepage theme)
 // =============================================================================
 
 function QuestionCard({ 
+  qCode,
   questionLabel,
   caption,
   baseN,
   answers,
   subtag,
 }: { 
+  qCode?: string
   questionLabel: string
   caption: string
   baseN: number
@@ -237,7 +313,7 @@ function QuestionCard({
     return (
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         <div className="mb-3 flex items-start justify-between gap-2">
-          <p className="text-sm text-slate-200">{questionLabel}</p>
+          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
               {subtag}
@@ -289,15 +365,15 @@ function QuestionCard({
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <p className="text-sm text-slate-200">{questionLabel}</p>
-        {subtag && (
-          <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
-            {subtag}
-          </span>
-        )}
-      </div>
-      <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
+          {subtag && (
+            <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+              {subtag}
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-500 mb-1">{caption}</p>
       {agreementSummary && (
         <div className="mb-4 mt-2 grid grid-cols-3 gap-2">
           {agreementSummary.map((s) => (
@@ -1793,9 +1869,10 @@ export function VendorPremiumDashboardClient() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {visibleQuestions.map((q, idx) => (
                                   <QuestionCard
-                                    key={`${pillarName}-${idx}`}
-                                    questionLabel={q.questionLabel}
-                                    caption="Global Workforce Deployment · % of respondents"
+              key={`${pillarName}-${idx}`}
+                        qCode={q.qCode}
+                        questionLabel={q.questionLabel}
+                        caption="Global Workforce Deployment · % of respondents"
                                     baseN={q.baseN}
                                     answers={q.answers}
                                   />
@@ -1858,9 +1935,10 @@ export function VendorPremiumDashboardClient() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {questions.map((q, idx) => (
                                 <QuestionCard
-                                  key={`${studyKey}-${idx}`}
-                                  questionLabel={q.questionLabel}
-                                  caption={study}
+              key={`${studyKey}-${idx}`}
+                        qCode={q.qCode}
+                        questionLabel={q.questionLabel}
+                        caption={study}
                                   baseN={q.baseN}
                                   answers={q.answers}
                                   subtag={q.vendorPillar}
