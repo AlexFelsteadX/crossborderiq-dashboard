@@ -252,7 +252,6 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
   const nets = computeMoveTypeNets(q39.map((r) => ({ answer_option: r.answer_option, pct: r.pct })))
   if (nets.length === 0) return null
 
-  const baseN = Math.max(0, ...q39.map((r) => r.base_n || 0))
   const maxAbs = Math.max(1, ...nets.map((n) => Math.abs(n.net)))
 
   const netLabel = (net: number) =>
@@ -293,10 +292,6 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
           </div>
         ))}
       </div>
-
-      <p className="text-xs text-slate-500 mt-6">
-        Based on {baseN} responses. Market-wide, not filtered by segment.
-      </p>
     </div>
   )
 }
@@ -1865,7 +1860,7 @@ export function VendorPremiumDashboardClient() {
                       {row.is_reportable ? (
                         <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
                       ) : (
-                        <p className="text-sm text-slate-400 italic">—</p>
+                        <p className="text-sm text-slate-400 italic">��</p>
                       )}
                     </div>
                   ))}
