@@ -728,6 +728,12 @@ function DemandColumn({
           Not enough organisations in this segment — showing market-wide
         </p>
       )}
+
+      {/* Quiet segment base count. Only shown when segment figures are actually
+          displayed (not suppressed) so it never contradicts the market-wide note. */}
+      {!suppressed && segBaseN > 0 && (
+        <p className="text-[11px] text-slate-500">Based on {segBaseN} organisations</p>
+      )}
     </div>
   )
 }
