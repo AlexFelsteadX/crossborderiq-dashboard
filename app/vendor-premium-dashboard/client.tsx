@@ -1985,7 +1985,7 @@ export function VendorPremiumDashboardClient() {
                                 </p>
                               )}
                               
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className={`grid grid-cols-1 gap-4 ${visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
                                 {visibleQuestions.map((q, idx) => (
                                   <QuestionCard
               key={`${pillarName}-${idx}`}
