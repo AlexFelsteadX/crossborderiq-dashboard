@@ -184,6 +184,124 @@ function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: str
 }
 
 // =============================================================================
+// MOVE-TYPE NET DEMAND (Q39) — shared net formula
+// Replicates the exact per-move-type net used inside QuestionCard so the promoted
+// summary card and the pillar breakdown always show identical net values:
+//   net = Increase% − Decrease%, each normalized over that move type's four
+//   buckets (Increase + Remain the same + Decrease + Not applicable).
+// =============================================================================
+
+const Q39_DIRECTION_ORDER = ["Increase", "Remain the same", "Decrease", "Not applicable"] as const
+type Q39Direction = (typeof Q39_DIRECTION_ORDER)[number]
+
+function q39CanonDirection(suffix: string): Q39Direction | null {
+  switch (suffix.trim().toLowerCase()) {
+    case "increase":
+      return "Increase"
+    case "remain the same":
+      return "Remain the same"
+    case "decrease":
+      return "Decrease"
+    case "not applicable":
+      return "Not applicable"
+    default:
+      return null
+  }
+}
+
+function q39SplitOption(option: string): { prefix: string; direction: Q39Direction } | null {
+  const idx = option.lastIndexOf(": ")
+  if (idx === -1) return null
+  const dir = q39CanonDirection(option.slice(idx + 2))
+  if (!dir) return null
+  return { prefix: option.slice(0, idx).trim(), direction: dir }
+}
+
+function computeMoveTypeNets(answers: { answer_option: string; pct: number }[]): { prefix: string; net: number }[] {
+  const groups = new Map<string, Record<Q39Direction, number>>()
+  const order: string[] = []
+  for (const a of answers) {
+    const parts = q39SplitOption(a.answer_option)
+    if (!parts) continue
+    if (!groups.has(parts.prefix)) {
+      groups.set(parts.prefix, { Increase: 0, "Remain the same": 0, Decrease: 0, "Not applicable": 0 })
+      order.push(parts.prefix)
+    }
+    // pct is already a whole number (0–100).
+    groups.get(parts.prefix)![parts.direction] += a.pct
+  }
+  return order
+    .map((prefix) => {
+      const sums = groups.get(prefix)!
+      const total = sums.Increase + sums["Remain the same"] + sums.Decrease + sums["Not applicable"]
+      const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0)
+      const net = Math.round(pct(sums.Increase) - pct(sums.Decrease))
+      return { prefix, net }
+    })
+    .sort((a, b) => b.net - a.net)
+}
+
+// =============================================================================
+// WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary — promoted view)
+// =============================================================================
+
+function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
+  const q39 = rows.filter((r) => r.q_code === "Q39")
+  if (q39.length === 0) return null
+
+  const nets = computeMoveTypeNets(q39.map((r) => ({ answer_option: r.answer_option, pct: r.pct })))
+  if (nets.length === 0) return null
+
+  const baseN = Math.max(0, ...q39.map((r) => r.base_n || 0))
+  const maxAbs = Math.max(1, ...nets.map((n) => Math.abs(n.net)))
+
+  const netLabel = (net: number) =>
+    net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
+  const barColor = (net: number) => (net > 0 ? "#2dd4bf" : net < 0 ? "#D85A30" : "#888780")
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+      <div className="flex items-center gap-2 mb-1">
+        <TrendingUp className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-semibold text-slate-100">Where Global Mobility demand is heading</h2>
+        <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+          Market-wide
+        </span>
+      </div>
+      <p className="text-sm text-slate-400 mb-6">
+        Net expected change in move-type volumes over the next 12 months
+      </p>
+
+      <div className="space-y-3">
+        {nets.map((row) => (
+          <div key={row.prefix} className="grid grid-cols-[10rem_1fr_4rem] items-center gap-3">
+            <span className="text-xs text-slate-300 truncate" title={row.prefix}>
+              {row.prefix}
+            </span>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${(Math.abs(row.net) / maxAbs) * 100}%`,
+                  backgroundColor: barColor(row.net),
+                }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-200 text-right tabular-nums">
+              {netLabel(row.net)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-slate-500 mt-6">
+        Based on {baseN} responses. Market-wide, not filtered by segment.
+      </p>
+    </div>
+  )
+}
+
+// =============================================================================
 // QUESTION CARD COMPONENT (styled to match homepage theme)
 // =============================================================================
 
@@ -1611,6 +1729,12 @@ export function VendorPremiumDashboardClient() {
                 The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
               </p>
             </div>
+
+            {/* =================================================================== */}
+            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
+            {/* =================================================================== */}
+
+            <MoveTypeDemandCard rows={currentCommercial} />
 
             {/* =================================================================== */}
             {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
