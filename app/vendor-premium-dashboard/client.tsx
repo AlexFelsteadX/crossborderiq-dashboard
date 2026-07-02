@@ -970,7 +970,11 @@ function WhitespacePanel({
 
 export function VendorPremiumDashboardClient() {
   const supabase = createClient()
-  
+
+  // Year-on-Year Trends section is intentionally gated off for now.
+  // Flip to true to restore the section (its data, logic, and markup are all still in place).
+  const SHOW_YOY = false
+
   // State
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
   const [yoyData, setYoyData] = useState<YoYRow[]>([])
@@ -1880,6 +1884,7 @@ export function VendorPremiumDashboardClient() {
             {/* SECTION 2: YEAR-ON-YEAR TRENDS - PRESERVES GREEN/RED */}
             {/* =================================================================== */}
             
+            {SHOW_YOY && (
             <div className="mb-12 pb-10 border-b border-slate-700/50">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
@@ -1924,6 +1929,7 @@ export function VendorPremiumDashboardClient() {
                 </>
               )}
             </div>
+            )}
 
             {/* =================================================================== */}
             {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
