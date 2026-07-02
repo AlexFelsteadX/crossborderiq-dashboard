@@ -650,6 +650,7 @@ function DemandColumn({
   barColor,
   loading,
   isFiltered,
+  badge,
 }: {
   title: string
   subtitle: string
@@ -659,6 +660,7 @@ function DemandColumn({
   barColor: string
   loading: boolean
   isFiltered: boolean
+  badge?: string
 }) {
   const suppressed = confidence === "suppressed"
   // The market benchmark only differs from the segment figure when a filter is active.
@@ -668,7 +670,14 @@ function DemandColumn({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-slate-100 mb-1">{title}</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
+          {badge && (
+            <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+              {badge}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-slate-400">{subtitle}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -1860,6 +1869,7 @@ export function VendorPremiumDashboardClient() {
                   barColor="#2dd4bf"
                   loading={demandLoading}
                   isFiltered={isFiltered}
+                  badge="Filtered"
                 />
 
                 {/* Co-headline B: Stated service interest (SI1, market-wide — not filtered) */}
