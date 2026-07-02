@@ -1923,7 +1923,7 @@ export function VendorPremiumDashboardClient() {
               </div>
               
               <p className="text-xs text-slate-500 mt-6 italic">
-                Emerging demand: teal bars = your selected segment · marker = market-wide benchmark. Stated interest is market-wide.
+                Stated service interest is market-wide and does not vary by segment.
               </p>
             </div>
 
