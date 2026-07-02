@@ -1437,7 +1437,7 @@ export function VendorPremiumDashboardClient() {
       
       <GlobalNav />
       
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
+          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
