@@ -256,7 +256,10 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
 
   const netLabel = (net: number) =>
     net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
-  const barColor = (net: number) => (net > 0 ? "#2dd4bf" : net < 0 ? "#D85A30" : "#888780")
+  // Colour by sign: positive = brand teal, negative = the YoY red family (red-500),
+  // zero = muted. Reuses existing colour values; no new hex introduced.
+  const barColorClass = (net: number) =>
+    net > 0 ? "bg-[#2dd4bf]" : net < 0 ? "bg-red-500" : "bg-[#888780]"
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
@@ -279,10 +282,9 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
             </span>
             <div className="h-3 w-full overflow-hidden rounded-full bg-[#1a3344]">
               <div
-                className="h-full rounded-full transition-all duration-500"
+                className={`h-full rounded-full transition-all duration-500 ${barColorClass(row.net)}`}
                 style={{
                   width: `${(Math.abs(row.net) / maxAbs) * 100}%`,
-                  backgroundColor: barColor(row.net),
                 }}
               />
             </div>
