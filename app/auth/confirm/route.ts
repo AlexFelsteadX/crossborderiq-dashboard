@@ -13,6 +13,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash })
 
     if (!error) {
+      try {
+        await supabase.rpc('activate_trial')
+      } catch {
+        // never block auth on trial activation
+      }
       // Resolve `next` against the request origin and only allow same-origin
       // redirects to avoid open-redirect vulnerabilities.
       const redirectUrl = new URL(next, origin)

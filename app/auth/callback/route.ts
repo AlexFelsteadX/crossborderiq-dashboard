@@ -14,6 +14,11 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      try {
+        await supabase.rpc('activate_trial')
+      } catch {
+        // never block auth on trial activation
+      }
       return NextResponse.redirect(`${origin}${safeNext}`)
     }
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
@@ -27,6 +32,11 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
 
   if (user) {
+    try {
+      await supabase.rpc('activate_trial')
+    } catch {
+      // never block auth on trial activation
+    }
     return NextResponse.redirect(`${origin}${safeNext}`)
   }
 
