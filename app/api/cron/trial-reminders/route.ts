@@ -1,6 +1,6 @@
 // app/api/cron/trial-reminders/route.ts
 import { sendEmail } from "@/lib/email";
-import { trialReminder10dEmail, trialReminder3dEmail, trialWinbackEmail } from "@/lib/trial-emails";
+import { trialReminder10dEmail, trialReminder3dEmail, trialWinbackEmail, trialStragglerNudgeEmail } from "@/lib/trial-emails";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   const now = new Date();
   const iso = (d: Date) => d.toISOString();
   const plus = (days: number) => iso(new Date(now.getTime() + days * 86400000));
-  let sent10 = 0, sent3 = 0, sentWin = 0;
+  let sent10 = 0, sent3 = 0, sentWin = 0, sentNudge = 0;
 
   // 10-day: trial has between 3 and 10 days left, not yet reminded
   const { data: tenDay } = await supabase.from("memberships")
@@ -71,5 +71,22 @@ export async function GET(req: Request) {
     sentWin++;
   }
 
-  return Response.json({ ok: true, sent10, sent3, sentWin });
+  // Straggler nudge: eligible-but-unclaimed benchmark grants, older than 2 days, not yet nudged
+  const { data: stragglers } = await supabase.from("premium_trial_grants")
+    .select("id,email,owner")
+    .eq("status", "eligible")
+    .is("claimed_at", null)
+    .gt("claim_deadline", iso(now))
+    .lt("granted_at", plus(-2))
+    .is("nudge_sent_at", null)
+    .in("owner", ["CD", "CK", "AP", "pricing"]);
+  for (const row of (stragglers ?? [])) {
+    if (!row.email) continue;
+    const { subject, html } = trialStragglerNudgeEmail();
+    await sendEmail({ to: row.email, subject, html });
+    await supabase.from("premium_trial_grants").update({ nudge_sent_at: iso(now) }).eq("id", row.id);
+    sentNudge++;
+  }
+
+  return Response.json({ ok: true, sent10, sent3, sentWin, sentNudge });
 }
