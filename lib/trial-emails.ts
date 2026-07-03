@@ -61,3 +61,15 @@ export function trialWinbackEmail(extendToken: string) {
     }),
   };
 }
+
+export function trialStragglerNudgeEmail() {
+  return {
+    subject: "Your CBIQ Premium is still waiting",
+    html: shell({
+      heading: "You haven't unlocked your Premium yet",
+      body: "You completed the benchmark, so your 14 days of CBIQ Premium is ready and waiting. It takes one click to unlock. Head to the sign-in page, enter your email, and we'll send you a fresh secure link, no password needed.",
+      ctaLabel: "Unlock my Premium",
+      ctaUrl: `${APP}/login`,
+    }),
+  };
+}
