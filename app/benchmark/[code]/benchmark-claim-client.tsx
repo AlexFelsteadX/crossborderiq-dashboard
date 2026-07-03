@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { PopupButton } from "@typeform/embed-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Mail, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
+import { Mail, ArrowLeft, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
 
 export function BenchmarkClaimClient({
   formId,
@@ -24,6 +24,46 @@ export function BenchmarkClaimClient({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendMsg, setResendMsg] = useState<string | null>(null)
+
+  // Tick down the resend cooldown once per second while it is active.
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
+
+  // Shared magic-link send used by both the initial claim and the resend button.
+  const sendMagicLink = (targetEmail: string) =>
+    supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${window.location.origin}/claim/activate`,
+      },
+    })
+
+  const handleResend = async () => {
+    if (resendLoading || resendCooldown > 0) return
+    setResendLoading(true)
+    setResendMsg(null)
+
+    try {
+      const { error: otpError } = await sendMagicLink(email.trim())
+      if (otpError) {
+        setResendMsg("We couldn't resend the link. Please try again.")
+      } else {
+        setResendMsg("Link resent")
+        setResendCooldown(45)
+      }
+    } catch {
+      setResendMsg("We couldn't resend the link. Please try again.")
+    }
+
+    setResendLoading(false)
+  }
 
   const handleClaim = async () => {
     const trimmedEmail = email.trim()
@@ -56,13 +96,7 @@ export function BenchmarkClaimClient({
         return
       }
 
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: trimmedEmail,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/claim/activate`,
-        },
-      })
+      const { error: otpError } = await sendMagicLink(trimmedEmail)
 
       if (otpError) {
         setError("We couldn't send your secure link. Please try again.")
@@ -133,11 +167,47 @@ export function BenchmarkClaimClient({
               Start the benchmark
             </PopupButton>
           ) : sent ? (
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-green-500">
-                Check your inbox — we&apos;ve sent a secure link to start your 14 days of Premium.
-              </p>
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3 text-left">
+                <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-100 mb-1">Almost there, check your inbox</h2>
+                  <p className="text-sm text-slate-400 text-pretty">
+                    We&apos;ve emailed a secure link to{" "}
+                    <span className="font-medium text-slate-200">{email.trim()}</span> to unlock your 14 days of
+                    Premium. Open it and you&apos;re in, it takes about 10 seconds. The email is from CBIQ
+                    (crossborderiq@gemevents.co); if it&apos;s not there in a minute, check spam.
+                  </p>
+                </div>
+              </div>
+
+              {resendMsg && <p className="text-xs text-slate-400 text-center">{resendMsg}</p>}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResend}
+                disabled={resendLoading || resendCooldown > 0}
+                className="w-full border-primary/20 bg-transparent text-slate-200 hover:bg-primary/10 hover:text-slate-100"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {resendCooldown > 0
+                  ? `Resend available in ${resendCooldown}s`
+                  : resendLoading
+                    ? "Resending..."
+                    : "Resend the link"}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSent(false)
+                  setResendMsg(null)
+                }}
+                className="w-full text-sm text-slate-400 hover:text-slate-100 transition-colors"
+              >
+                Change email
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
