@@ -107,6 +107,9 @@ export default function SurveyPage() {
                   We&apos;ve sent a secure sign-in link to your email. Click it to unlock your 14 days of full Premium
                   access. The link is single use and arrives within a minute or two.
                 </p>
+                <p className="text-xs text-slate-500 text-pretty mt-2">
+                  Free for 14 days. No card, no payment, no charge, now or after.
+                </p>
               </>
             ) : (
               <>
