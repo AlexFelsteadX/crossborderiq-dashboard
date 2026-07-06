@@ -121,14 +121,19 @@ export default function SurveyPage() {
           </div>
 
           {step === "intro" ? (
-            <PopupButton
-              id={SURVEY_FORM_ID}
-              size={100}
-              onSubmit={() => setStep("claim")}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Start the survey
-            </PopupButton>
+            <>
+              <PopupButton
+                id={SURVEY_FORM_ID}
+                size={100}
+                onSubmit={() => setStep("claim")}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Start the survey
+              </PopupButton>
+              <p className="text-xs text-slate-500 text-center text-pretty mt-3">
+                Free for 14 days. No card, no payment, no charge, now or after.
+              </p>
+            </>
           ) : sent ? (
             <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
