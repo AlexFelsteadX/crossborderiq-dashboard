@@ -1071,6 +1071,30 @@ export function PremiumDashboardClient() {
     pillarNarrative = "Your mobility maturity is broadly in line with similar organizations across all pillars."
   }
 
+  // Market-only observational read shown when NO segment filter is active.
+  // Purely descriptive of the benchmark itself — no "you", no ahead/behind,
+  // no seg_pct comparison. Built from values already in state.
+  const rankablePillars = primaryPillars
+    .filter((p) => !resolve(p.confidence, p.seg_pct, p.overall_pct).isFallback)
+    .slice()
+    .sort((a, b) => b.overall_pct - a.overall_pct)
+  const topPillar = rankablePillars[0]
+  const bottomPillar = rankablePillars[rankablePillars.length - 1]
+  const marketRead = mmi ? (
+    <>
+      Across the benchmark, Global Mobility maturity sits in the {maturityBand(Math.round(mmi.overall_index))} band (
+      {Math.round(mmi.overall_index)}/100).
+      {rankablePillars.length >= 2 && (
+        <>
+          {" "}
+          The market scores highest on{" "}
+          <span className="font-medium text-slate-100">{topPillar.short_name}</span> and lowest on{" "}
+          <span className="font-medium text-slate-100">{bottomPillar.short_name}</span>.
+        </>
+      )}
+    </>
+  ) : null
+
   // 2025 is a lighter event-wave view: no MMI, no remote tile, no YoY.
   const is2025 = filters.year === 2025
 
@@ -1328,6 +1352,22 @@ export function PremiumDashboardClient() {
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
               </div>
               <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{pillarNarrative}</p>
+            </div>
+          )}
+          {!isFiltered && marketRead && (
+            <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <img
+                  src="/cbiq-mark.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={20}
+                  height={20}
+                  className="h-5 w-5 shrink-0"
+                />
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
+              </div>
+              <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{marketRead}</p>
             </div>
           )}
           <h2 className="text-lg font-semibold text-slate-200 mb-6">Pillar snapshot</h2>
