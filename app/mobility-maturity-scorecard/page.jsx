@@ -755,13 +755,13 @@ function TrialCTA({ onUnlock }) {
         </div>
         <div className="text-[20px] font-bold text-white tracking-tight mt-3">See the full picture</div>
         <div className="text-[13.5px] text-[#cdd8de] mt-2 leading-relaxed">
-          You&apos;ve just seen four areas. The full benchmark covers all eight pillars, shows exactly
+          You&apos;ve just seen four areas. The full benchmark covers all seven pillars, shows exactly
           how you compare to your peers in depth, and unlocks <span className="font-semibold text-white">14 days of Premium access</span>.
           It takes a few minutes — and it&apos;s <span className="font-semibold text-white">completely free</span>.
         </div>
         <ul className="mt-3.5 space-y-1.5">
           {[
-            "Your full eight-pillar maturity profile",
+            "Your full seven-pillar maturity profile",
             "In-depth peer comparison and year-on-year trends",
             "14-day Premium trial — free, no card required",
           ].map((item) => (
