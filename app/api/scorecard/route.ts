@@ -154,6 +154,8 @@ export async function POST(req: Request) {
       industry,
       region,
       size_band: size,
+      long_term_band: longTerm,
+      traveller_band: shortTerm,
       contributed,
     });
     if (leadErr) console.error("[scorecard] lead insert failed", leadErr);

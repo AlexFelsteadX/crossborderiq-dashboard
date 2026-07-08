@@ -353,26 +353,46 @@ function Result({ segment, answers, onRestart }) {
   const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   // Pull the peer cohort from Supabase when the result screen mounts.
-  // v1: industry only; region/size left null. Score is computed locally and
-  // renders immediately — only the peer line and breakdown wait on this.
+  // Laddered match: (industry + region + size) → (industry only) → (overall),
+  // stepping down whenever a cell is thin (<20 responses) so the peer line stays
+  // relevant. Score is computed locally and renders immediately — only the peer
+  // line and breakdown wait on this.
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
     const call = (p) => supabase.rpc("get_scorecard_cohort", p)
+    const pick = (res) => (Array.isArray(res.data) ? res.data[0] : res.data)
+    const thin = (r) => !r || (typeof r.base_n === "number" && r.base_n < 20)
     async function load() {
       try {
-        const first = await call({ p_industry: segment.industry || null, p_region: null, p_size: null })
-        if (first.error) throw first.error
-        let row = Array.isArray(first.data) ? first.data[0] : first.data
+        // Tier 1: the precise cell (industry + region + size).
+        const precise = await call({
+          p_industry: segment.industry || null,
+          p_region: segment.region || null,
+          p_size: segment.size || null,
+        })
+        if (precise.error) throw precise.error
+        let row = pick(precise)
         let usedOverall = false
-        // Thin-base guard: under 20 responses, fall back to the overall cohort.
-        if (row && typeof row.base_n === "number" && row.base_n < 20) {
+
+        // Tier 2: fall back to the industry-only cohort if the precise cell is thin.
+        if (thin(row)) {
+          const byIndustry = await call({ p_industry: segment.industry || null, p_region: null, p_size: null })
+          if (!byIndustry.error) {
+            const irow = pick(byIndustry)
+            if (irow) row = irow
+          }
+        }
+
+        // Tier 3: fall back to the overall cohort if still thin.
+        if (thin(row)) {
           const overall = await call({ p_industry: null, p_region: null, p_size: null })
           if (!overall.error) {
-            const orow = Array.isArray(overall.data) ? overall.data[0] : overall.data
+            const orow = pick(overall)
             if (orow) { row = orow; usedOverall = true }
           }
         }
+
         if (!cancelled) setCohort({ loading: false, error: !row, row: row || null, usedOverall })
       } catch {
         if (!cancelled) setCohort({ loading: false, error: true, row: null, usedOverall: false })
@@ -380,7 +400,7 @@ function Result({ segment, answers, onRestart }) {
     }
     load()
     return () => { cancelled = true }
-  }, [segment.industry])
+  }, [segment.industry, segment.region, segment.size])
 
   useEffect(() => {
     if (reduce) { setProg(1); return }
