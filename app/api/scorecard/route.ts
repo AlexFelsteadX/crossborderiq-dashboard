@@ -83,6 +83,10 @@ export async function POST(req: Request) {
   // 3) Validate shape
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  // Optional lead fields — blank/missing becomes null (false for the checkbox).
+  const firstName = typeof body.firstName === "string" && body.firstName.trim() ? body.firstName.trim() : null;
+  const companyName = typeof body.companyName === "string" && body.companyName.trim() ? body.companyName.trim() : null;
+  const marketingOptIn = body.marketingOptIn === true;
   const { industry, region, size, longTerm, shortTerm } = body.segment ?? {};
   const q19 = Number(body.q19), q20 = Number(body.q20), q22 = Number(body.q22);
   const e10i = Number(body.e10Index), e16i = Number(body.e16Index);
@@ -156,6 +160,9 @@ export async function POST(req: Request) {
       size_band: size,
       long_term_band: longTerm,
       traveller_band: shortTerm,
+      first_name: firstName,
+      company: companyName,
+      marketing_opt_in: marketingOptIn,
       contributed,
     });
     if (leadErr) console.error("[scorecard] lead insert failed", leadErr);
