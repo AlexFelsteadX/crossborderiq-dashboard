@@ -442,12 +442,15 @@ function Result({ segment, answers, onRestart }) {
 
   // Reveal immediately on a valid email; fire the trusted write in the background.
   // We never block the un-blur on the server response.
-  const handleUnlock = ({ email, companyWebsite }) => {
+  const handleUnlock = ({ email, firstName, companyName, marketingOptIn, companyWebsite }) => {
     setUnlocked(true)
     const e10Index = CHOICE_Q[0].options.findIndex((o) => o.t === answers.E10)
     const e16Index = CHOICE_Q[1].options.findIndex((o) => o.t === answers.E16)
     const payload = {
       email,
+      firstName,
+      companyName,
+      marketingOptIn,
       segment: {
         industry: segment.industry,
         region: segment.region,
@@ -771,13 +774,16 @@ function LockedBreakdown({ legs, peers, unlocked }) {
 
 function TrialCTA({ onUnlock }) {
   const [email, setEmail] = useState("")
+  const [firstName, setFirstName] = useState("") // optional
+  const [companyName, setCompanyName] = useState("") // optional (real company field — not the honeypot)
+  const [marketingOptIn, setMarketingOptIn] = useState(false) // optional, unticked by default
   const [company, setCompany] = useState("") // honeypot — must stay empty for real users
   const [sent, setSent] = useState(false)
   const ok = /\S+@\S+\.\S+/.test(email)
   const submit = () => {
     if (!ok) return
     setSent(true)
-    onUnlock({ email, companyWebsite: company })
+    onUnlock({ email, firstName, companyName, marketingOptIn, companyWebsite: company })
   }
   if (sent) {
     return (
@@ -820,6 +826,18 @@ function TrialCTA({ onUnlock }) {
       </div>
       <div className="flex gap-2 mt-4 flex-wrap">
         <input
+          value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name (optional)" type="text"
+          autoComplete="given-name"
+          className="flex-1 min-w-[180px] h-[46px] rounded-lg border border-white/15 bg-background/40 px-3.5 text-[15px] text-foreground placeholder:text-muted-foreground outline-none focus:border-brand-teal"
+        />
+        <input
+          value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company (optional)" type="text"
+          autoComplete="organization"
+          className="flex-1 min-w-[180px] h-[46px] rounded-lg border border-white/15 bg-background/40 px-3.5 text-[15px] text-foreground placeholder:text-muted-foreground outline-none focus:border-brand-teal"
+        />
+      </div>
+      <div className="flex gap-2 mt-2 flex-wrap">
+        <input
           value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" type="email"
           className="flex-1 min-w-[180px] h-[46px] rounded-lg border border-white/15 bg-background/40 px-3.5 text-[15px] text-foreground placeholder:text-muted-foreground outline-none focus:border-brand-teal"
         />
@@ -843,6 +861,17 @@ function TrialCTA({ onUnlock }) {
           Unlock <ArrowRight size={16} />
         </button>
       </div>
+      <label className="flex items-start gap-2.5 mt-3.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={marketingOptIn}
+          onChange={(e) => setMarketingOptIn(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/25 bg-background/40 accent-brand-teal cursor-pointer"
+        />
+        <span className="text-[12.5px] text-[#b8c4cb] leading-relaxed">
+          Yes, I&apos;d like CBIQ to email me benchmark insights and updates.
+        </span>
+      </label>
       <div className="text-[11.5px] text-[#8a9aa2] mt-2.5">Anonymized and aggregated. Contact details never shared with vendors.</div>
     </div>
   )
