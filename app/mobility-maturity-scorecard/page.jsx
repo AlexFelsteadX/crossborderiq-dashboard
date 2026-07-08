@@ -347,55 +347,59 @@ function Result({ segment, answers, onRestart }) {
   const r = computeResult(answers)
   const a = archetype(r.score)
   const [prog, setProg] = useState(0)
-  const [cohort, setCohort] = useState({ loading: true, error: false, row: null, usedOverall: false })
+  const [cohort, setCohort] = useState({ loading: true, error: false, row: null, tier: "overall" })
   const [unlocked, setUnlocked] = useState(false)
   const [showShare, setShowShare] = useState(false)
   const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   // Pull the peer cohort from Supabase when the result screen mounts.
-  // Laddered match: (industry + region + size) → (industry only) → (overall),
-  // stepping down whenever a cell is thin (<20 responses) so the peer line stays
-  // relevant. Score is computed locally and renders immediately — only the peer
-  // line and breakdown wait on this.
+  // The RPC filters exactly on whatever it's given and has NO internal fallback,
+  // so a narrow industry×region×size cell can return a handful of people. We do
+  // the fallback here: try tightest-first and widen until a cohort clears the
+  // base threshold (>= 20 responses with a non-zero spread), so the percentile is
+  // never computed off a tiny cell. Tiers, most to least specific:
+  //   isr = industry + region + size → ir = industry + region → i = industry → overall
+  // Score is computed locally and renders immediately — only the peer line and
+  // breakdown wait on this.
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
     const call = (p) => supabase.rpc("get_scorecard_cohort", p)
     const pick = (res) => (Array.isArray(res.data) ? res.data[0] : res.data)
-    const thin = (r) => !r || (typeof r.base_n === "number" && r.base_n < 20)
+    // A tier "clears" only if it has enough responses AND a usable spread; a
+    // zero-SD cell can't yield a percentile, so we keep widening past it.
+    const clears = (r) =>
+      !!r && typeof r.base_n === "number" && r.base_n >= 20 && typeof r.mmi_sd === "number" && r.mmi_sd > 0
+    const ind = segment.industry || null
+    const reg = segment.region || null
+    const siz = segment.size || null
     async function load() {
       try {
-        // Tier 1: the precise cell (industry + region + size).
-        const precise = await call({
-          p_industry: segment.industry || null,
-          p_region: segment.region || null,
-          p_size: segment.size || null,
-        })
-        if (precise.error) throw precise.error
-        let row = pick(precise)
-        let usedOverall = false
-
-        // Tier 2: fall back to the industry-only cohort if the precise cell is thin.
-        if (thin(row)) {
-          const byIndustry = await call({ p_industry: segment.industry || null, p_region: null, p_size: null })
-          if (!byIndustry.error) {
-            const irow = pick(byIndustry)
-            if (irow) row = irow
-          }
+        const tiers = [
+          { tier: "isr", p: { p_industry: ind, p_region: reg, p_size: siz } },
+          { tier: "ir", p: { p_industry: ind, p_region: reg, p_size: null } },
+          { tier: "i", p: { p_industry: ind, p_region: null, p_size: null } },
+        ]
+        let row = null
+        let tier = "overall"
+        for (const t of tiers) {
+          const res = await call(t.p)
+          if (res.error) continue
+          const r = pick(res)
+          if (clears(r)) { row = r; tier = t.tier; break }
         }
-
-        // Tier 3: fall back to the overall cohort if still thin.
-        if (thin(row)) {
+        // Terminal fallback: the overall benchmark. Used whenever no specific
+        // tier clears — the percentile guard (mmi_sd > 0) still applies downstream.
+        if (!row) {
           const overall = await call({ p_industry: null, p_region: null, p_size: null })
           if (!overall.error) {
             const orow = pick(overall)
-            if (orow) { row = orow; usedOverall = true }
+            if (orow) { row = orow; tier = "overall" }
           }
         }
-
-        if (!cancelled) setCohort({ loading: false, error: !row, row: row || null, usedOverall })
+        if (!cancelled) setCohort({ loading: false, error: !row, row: row || null, tier })
       } catch {
-        if (!cancelled) setCohort({ loading: false, error: true, row: null, usedOverall: false })
+        if (!cancelled) setCohort({ loading: false, error: true, row: null, tier: "overall" })
       }
     }
     load()
@@ -424,9 +428,17 @@ function Result({ segment, answers, onRestart }) {
   const pct = hasPct
     ? Math.max(1, Math.min(99, Math.round(cdf((r.score - row.mmi) / row.mmi_sd) * 100)))
     : null
-  const cohortLabel = cohort.usedOverall
-    ? "Global Mobility and HR leaders in the CBIQ benchmark"
-    : `Global Mobility and HR leaders in the ${segment.industry || "your"} sector in the CBIQ benchmark`
+  // Label honestly reflects how specific the matched cohort actually is.
+  const sectorName = segment.industry || "your"
+  const cohortScope =
+    cohort.tier === "isr"
+      ? `in the ${sectorName} sector, in your region and size band,`
+      : cohort.tier === "ir"
+        ? `in the ${sectorName} sector and your region`
+        : cohort.tier === "i"
+          ? `in the ${sectorName} sector`
+          : "" // overall
+  const cohortLabel = `Global Mobility and HR leaders ${cohortScope} in the CBIQ benchmark`.replace(/\s+/g, " ").trim()
 
   // Reveal immediately on a valid email; fire the trusted write in the background.
   // We never block the un-blur on the server response.
@@ -530,7 +542,7 @@ function Result({ segment, answers, onRestart }) {
           pct={pct}
           hasPct={hasPct}
           industry={segment.industry}
-          usedOverall={cohort.usedOverall}
+          usedOverall={cohort.tier === "overall"}
           onClose={() => setShowShare(false)}
         />
       )}
