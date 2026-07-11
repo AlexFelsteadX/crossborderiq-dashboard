@@ -22,6 +22,7 @@ export function GlobalFooter() {
           <div>
             <h4 className="text-sm font-medium text-foreground mb-3">Company</h4>
             <ul className="space-y-2 text-xs text-muted-foreground">
+              <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
               <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
               <li><Link href="/faqs" className="hover:text-foreground transition-colors">FAQs</Link></li>
               <li><a href="mailto:crossborderiq@gemevents.co?subject=CBIQ%20enquiry" className="hover:text-foreground transition-colors">crossborderiq@gemevents.co</a></li>
