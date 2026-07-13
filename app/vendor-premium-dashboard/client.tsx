@@ -1740,11 +1740,11 @@ export function VendorPremiumDashboardClient() {
               <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
                 <p className="text-sm font-medium text-slate-300">
                   {demandLoading ? (
-                    <span className="text-slate-500">Counting organisations…</span>
+                    <span className="text-slate-500">Counting responses…</span>
                   ) : (
                     <>
-                      Showing{" "}
-                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organisations
+                      Based on{" "}
+                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> responses
                     </>
                   )}
                 </p>
