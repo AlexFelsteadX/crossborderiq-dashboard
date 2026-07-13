@@ -1168,20 +1168,16 @@ export function PremiumDashboardClient() {
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
             </div>
             <div className="flex items-center gap-3">
-              {SHOW_COUNTS ? (
-                <span className="text-sm text-slate-300 inline-flex items-center gap-2">
-                  {loadingMain ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                  ) : null}
-                  Showing{" "}
-                  <strong className="text-primary">
-                    {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
-                  </strong>{" "}
-                  organisations
-                </span>
-              ) : (
-                loadingMain && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-              )}
+              <span className="text-sm text-slate-300 inline-flex items-center gap-2">
+                {loadingMain ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                ) : null}
+                Based on{" "}
+                <strong className="text-primary">
+                  {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
+                </strong>{" "}
+                responses
+              </span>
               <Button
                 variant="outline"
                 size="sm"
