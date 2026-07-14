@@ -164,6 +164,16 @@ function isDirectionalRow(qCode: string, answerOption: string): boolean {
   return false
 }
 
+// Pillars where above-market does NOT mean "better", so ahead/behind language is
+// invalid. Show a neutral factual gap instead. Matched by name string, as pillars
+// carry no code.
+const NEUTRAL_PILLAR_MATCHERS = [/operational pressure/i, /leadership expectation/i]
+
+function isDirectionalPillar(p: { pillar: string; short_name: string }): boolean {
+  const hay = `${p.pillar} ${p.short_name}`
+  return !NEUTRAL_PILLAR_MATCHERS.some((re) => re.test(hay))
+}
+
 // DISPLAY-ONLY: editorial statement labels for breakdown question headers, keyed
 // by question code. Consulted ONLY at render time for the header text — never for
 // matching, sorting, directionality, summaries, or any data lookup.
@@ -1037,10 +1047,12 @@ export function PremiumDashboardClient() {
     ))
   const aheadPillars = primaryPillars
     .filter((p) => !resolve(p.confidence, p.seg_pct, p.overall_pct).isFallback)
+    .filter(isDirectionalPillar)
     .filter((p) => Math.round((p.seg_pct - p.overall_pct) * 100) >= 2)
     .map((p) => p.short_name)
   const behindPillars = primaryPillars
     .filter((p) => !resolve(p.confidence, p.seg_pct, p.overall_pct).isFallback)
+    .filter(isDirectionalPillar)
     .filter((p) => Math.round((p.seg_pct - p.overall_pct) * 100) <= -2)
     .map((p) => p.short_name)
   let pillarNarrative: React.ReactNode
@@ -1399,13 +1411,34 @@ export function PremiumDashboardClient() {
                         const diffPts = Math.round((p.seg_pct - p.overall_pct) * 100)
                         const ahead = diffPts >= 2
                         const behind = diffPts <= -2
+                        const directional = isDirectionalPillar(p)
                         const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                        const tone = ahead ? "text-emerald-400" : behind ? "text-amber-400" : "text-slate-400"
+                        // Neutral pillars (e.g. Operational Pressure, Leadership Expectations):
+                        // above-market isn't "better", so never colour green/amber and never
+                        // say ahead/behind — show the factual gap in muted grey.
+                        const tone = directional
+                          ? ahead
+                            ? "text-emerald-400"
+                            : behind
+                              ? "text-amber-400"
+                              : "text-slate-400"
+                          : "text-slate-400"
+                        const label = directional
+                          ? ahead
+                            ? `${Math.abs(diffPts)} pts ahead`
+                            : behind
+                              ? `${Math.abs(diffPts)} pts behind`
+                              : "In line"
+                          : ahead
+                            ? `${Math.abs(diffPts)} pts above market`
+                            : behind
+                              ? `${Math.abs(diffPts)} pts below market`
+                              : "In line with market"
                         return (
                           <div className="mt-2.5 flex flex-col items-center gap-1 rounded-md bg-slate-800/40 px-2 py-1">
                             <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
                               <Icon className="h-4 w-4" aria-hidden="true" />
-                              {ahead ? `${Math.abs(diffPts)} pts ahead` : behind ? `${Math.abs(diffPts)} pts behind` : "In line"}
+                              {label}
                             </span>
                             <span className="text-xs text-slate-400">Market: {formatPct(p.overall_pct)}</span>
                           </div>
