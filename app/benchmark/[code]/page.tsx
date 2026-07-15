@@ -1,14 +1,13 @@
 import type { Metadata } from "next"
 import { BenchmarkClaimClient } from "./benchmark-claim-client"
 
-// Rep-specific Typeform form IDs. Unknown codes fall back to Artem's form.
+// All reps share the launch survey; per-rep attribution rides on the URL code, not the form.
 const FORM_MAP: Record<string, string> = {
-  CD: "hLVNuaJi", // Charlie
-  CK: "C1fH1an9", // Catherine
-  AP: "GkAq0nvz", // Artem
+  CD: "Prh8ID6o", // Charlie
+  CK: "Prh8ID6o", // Catherine
+  AP: "Prh8ID6o", // Artem
 }
-
-const FALLBACK_FORM_ID = "GkAq0nvz"
+const FALLBACK_FORM_ID = "Prh8ID6o"
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
