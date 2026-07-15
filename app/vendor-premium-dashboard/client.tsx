@@ -1076,6 +1076,7 @@ export function VendorPremiumDashboardClient() {
     { value: "Retail & Consumer", label: "Retail & Consumer" },
     { value: "Healthcare & Life Sciences", label: "Healthcare & Life Sciences" },
     { value: "Energy & Utilities", label: "Energy & Utilities" },
+    { value: "Media & Entertainment", label: "Media & Entertainment" },
   ]
 
   const sizeOptions = [
