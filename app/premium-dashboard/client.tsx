@@ -114,6 +114,7 @@ const INDUSTRY_OPTIONS = [
   "Retail & Consumer",
   "Healthcare & Life Sciences",
   "Energy & Utilities",
+  "Media & Entertainment",
 ]
 const REGION_OPTIONS = ["Americas", "Europe (Inc. UK & Ireland)", "Middle East", "Asia-Pacific (APAC & Australia)"]
 const SIZE_OPTIONS = [
