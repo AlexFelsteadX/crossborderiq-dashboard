@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { THEME_ORDER, themeForPillar, type WorkforceTheme } from "@/lib/workforce-themes"
 
 // =============================================================================
 // TYPES — same shapes returned by the five premium RPCs (mirrors the dashboard)
@@ -51,6 +52,7 @@ interface BreakdownRow {
 interface GroupedQuestion {
   qCode: string
   questionLabel: string
+  theme: WorkforceTheme
   answers: { option: string; segPct: number }[]
 }
 
@@ -81,14 +83,33 @@ function ReportBody() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
-  // Detailed breakdown is opt-in: only rendered when ?breakdown=1 is present.
-  const includeBreakdown = searchParams.get("breakdown") === "1"
+  // Detailed sections are opt-in: ?themes is a comma-separated list of theme
+  // names. Only valid THEME_ORDER names count, capped at 2, in THEME_ORDER order.
+  const MAX_THEMES = 2
+  const selectedThemes = useMemo<WorkforceTheme[]>(() => {
+    const raw = searchParams.get("themes")
+    if (!raw) return []
+    const requested = new Set(
+      raw
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+    )
+    return THEME_ORDER.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
+  }, [searchParams])
 
-  // Toggle the breakdown param on screen while preserving all current filters.
-  function toggleBreakdown(next: boolean) {
+  // Toggle a theme on screen while preserving all current filters in the URL.
+  function toggleTheme(theme: WorkforceTheme, next: boolean) {
+    let updated: WorkforceTheme[]
+    if (next) {
+      if (selectedThemes.includes(theme) || selectedThemes.length >= MAX_THEMES) return
+      updated = THEME_ORDER.filter((t) => selectedThemes.includes(t) || t === theme)
+    } else {
+      updated = selectedThemes.filter((t) => t !== theme)
+    }
     const params = new URLSearchParams(searchParams.toString())
-    if (next) params.set("breakdown", "1")
-    else params.delete("breakdown")
+    if (updated.length > 0) params.set("themes", updated.join(","))
+    else params.delete("themes")
     const qs = params.toString()
     router.replace(qs ? `/premium-report?${qs}` : "/premium-report", { scroll: false })
   }
@@ -183,7 +204,12 @@ function ReportBody() {
       const code = row.q_code ?? ""
       let group = map.get(code)
       if (!group) {
-        group = { qCode: code, questionLabel: row.question_label ?? code, answers: [] }
+        group = {
+          qCode: code,
+          questionLabel: row.question_label ?? code,
+          theme: themeForPillar(row.hr_pillar),
+          answers: [],
+        }
         map.set(code, group)
       }
       group.answers.push({ option: row.answer_option, segPct })
@@ -201,14 +227,29 @@ function ReportBody() {
 
       {/* On-screen action bar (hidden in print) */}
       <div className="no-print action-bar">
-        <label className="breakdown-toggle">
-          <input
-            type="checkbox"
-            checked={includeBreakdown}
-            onChange={(e) => toggleBreakdown(e.target.checked)}
-          />
-          Include detailed breakdown
-        </label>
+        <fieldset className="theme-picker">
+          <legend className="theme-picker-legend">Add detailed sections (up to 2)</legend>
+          <div className="theme-picker-list">
+            {THEME_ORDER.map((theme) => {
+              const checked = selectedThemes.includes(theme)
+              const atLimit = selectedThemes.length >= MAX_THEMES
+              return (
+                <label
+                  key={theme}
+                  className={`theme-option${!checked && atLimit ? " disabled" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={!checked && atLimit}
+                    onChange={(e) => toggleTheme(theme, e.target.checked)}
+                  />
+                  {theme}
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
         <button type="button" className="download-btn" onClick={() => window.print()}>
           <Download size={16} aria-hidden="true" />
           Download PDF
@@ -308,34 +349,39 @@ function ReportBody() {
         {/* ---------------------------------------------------------------- */}
         {/* DETAILED BREAKDOWN */}
         {/* ---------------------------------------------------------------- */}
-        {includeBreakdown && !loading && groupedQuestions.length > 0 ? (
-          <section className="section">
-            <h2 className="card-title breakdown-heading">Detailed Breakdown</h2>
-            <div className="breakdown-list">
-              {groupedQuestions.map((q) => (
-                <div className="card breakdown-card" key={q.qCode}>
-                  <h3 className="question-title">{q.questionLabel}</h3>
-                  <div className="answer-list">
-                    {q.answers.map((a, i) => (
-                      <div className="answer-row" key={`${q.qCode}-${i}`}>
-                        <div className="answer-head">
-                          <span className="answer-option">{a.option}</span>
-                          <span className="answer-pct">{a.segPct}%</span>
-                        </div>
-                        <div className="bar-track sm">
-                          <div
-                            className="bar-fill"
-                            style={{ width: `${Math.min(100, Math.max(0, a.segPct))}%` }}
-                          />
-                        </div>
+        {!loading &&
+          selectedThemes.map((theme) => {
+            const themeQuestions = groupedQuestions.filter((q) => q.theme === theme)
+            if (themeQuestions.length === 0) return null
+            return (
+              <section className="section" key={theme}>
+                <h2 className="card-title breakdown-heading">{theme}</h2>
+                <div className="breakdown-list">
+                  {themeQuestions.map((q) => (
+                    <div className="card breakdown-card" key={q.qCode}>
+                      <h3 className="question-title">{q.questionLabel}</h3>
+                      <div className="answer-list">
+                        {q.answers.map((a, i) => (
+                          <div className="answer-row" key={`${q.qCode}-${i}`}>
+                            <div className="answer-head">
+                              <span className="answer-option">{a.option}</span>
+                              <span className="answer-pct">{a.segPct}%</span>
+                            </div>
+                            <div className="bar-track sm">
+                              <div
+                                className="bar-fill"
+                                style={{ width: `${Math.min(100, Math.max(0, a.segPct))}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+              </section>
+            )
+          })}
 
         {!loading && !error && !mmi && pillars.length === 0 ? (
           <p className="loading">No benchmark data is available for this cohort.</p>
@@ -384,21 +430,43 @@ const printStyles = `
   }
   .action-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    gap: 20px;
+    gap: 24px;
+    flex-wrap: wrap;
     padding: 20px 16px 0;
   }
-  .breakdown-toggle {
+  .theme-picker {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 16px 12px;
+    margin: 0;
+    max-width: 620px;
+  }
+  .theme-picker-legend {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #0f172a;
+    padding: 0 6px;
+  }
+  .theme-picker-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+  .theme-option {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
+    gap: 7px;
+    font-size: 13px;
     font-weight: 500;
     color: #0f172a;
     cursor: pointer;
   }
-  .breakdown-toggle input { width: 16px; height: 16px; cursor: pointer; accent-color: ${TEAL}; }
+  .theme-option.disabled { color: #94a3b8; cursor: not-allowed; }
+  .theme-option input { width: 15px; height: 15px; cursor: pointer; accent-color: ${TEAL}; }
+  .theme-option.disabled input { cursor: not-allowed; }
   .download-btn {
     display: inline-flex;
     align-items: center;
