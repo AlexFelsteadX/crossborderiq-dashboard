@@ -305,7 +305,7 @@ export default async function WorkforceIntelligencePage() {
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <Link href="/contributor-dashboard">Contribute to the Survey — Free Access</Link>
+                <a href="https://www.cbiq.ai/survey">Contribute to the Survey — Free Access</a>
               </Button>
             </div>
           </div>
