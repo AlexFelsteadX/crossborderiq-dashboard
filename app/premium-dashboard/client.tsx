@@ -335,6 +335,10 @@ function FilterSelect({
 function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered: boolean }) {
   const suppressed = q.confidence === "suppressed"
 
+  // Agreement-scale cards lead with a summary figure; the full per-point
+  // distribution is kept reachable but secondary, behind this toggle.
+  const [showDistribution, setShowDistribution] = useState(false)
+
   // The overall/benchmark comparison is only meaningful when a segment filter is
   // active. With no filter the segment IS the whole population, so we show a single
   // percentage and hide the "(all X%)" text, the benchmark marker, and its legend.
@@ -470,6 +474,26 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           value: q.answers.filter((a) => Number(a.option) <= 3).reduce((s, a) => s + shownPct(a), 0),
         },
       ]
+    : null
+
+  // Strong-agreement headline for agreement-scale cards: scale points 6-7, the
+  // same "strong agreement" definition the Mobility Maturity Index uses, so the
+  // dashboard stays internally consistent. Comparison mirrors the bar version.
+  const strongAgree = isAgreementScale
+    ? (() => {
+        const segRaw = q.answers
+          .filter((a) => Number(a.option) >= 6)
+          .reduce((s, a) => s + a.segPct, 0)
+        const overallRaw = q.answers
+          .filter((a) => Number(a.option) >= 6)
+          .reduce((s, a) => s + a.overallPct, 0)
+        const shown = Math.round((suppressed ? overallRaw : segRaw) * 100)
+        const overallShown = Math.round(overallRaw * 100)
+        const divergence = Math.round((segRaw - overallRaw) * 100)
+        const notable = showComparison && q.segBaseN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
+        const directional = isDirectionalRow(q.qCode, "7")
+        return { shown, overallShown, divergence, notable, directional }
+      })()
     : null
 
   if (isDirectionMatrix && matrixRows) {
@@ -622,6 +646,40 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </p>
       )}
 
+      {/* Summary-led headline: strong agreement (6-7) as a prominent gauge,
+          matching the dashboard's visual language, with the market comparison
+          in the existing ahead/behind semantic style. */}
+      {strongAgree && (
+        <div className="flex flex-col items-center text-center gap-3 py-2 mb-4">
+          <CircularGauge
+            value={strongAgree.shown}
+            max={100}
+            size={96}
+            stroke={9}
+            label={`${strongAgree.shown}%`}
+          />
+          <div>
+            <p className="text-sm font-medium text-slate-300">agree strongly</p>
+            {showComparison &&
+              (Math.abs(strongAgree.divergence) < NOTABLE_PTS ? (
+                <p className="text-xs text-slate-400 mt-1">in line with market</p>
+              ) : (
+                <p
+                  className={`text-xs font-medium mt-1 ${
+                    strongAgree.notable && strongAgree.directional
+                      ? strongAgree.divergence > 0
+                        ? "text-emerald-400"
+                        : "text-amber-400"
+                      : "text-slate-400"
+                  }`}
+                >
+                  vs {strongAgree.overallShown}% market
+                </p>
+              ))}
+          </div>
+        </div>
+      )}
+
       {agreementSummary && (
         <div className="mb-4 grid grid-cols-3 gap-2">
           {agreementSummary.map((s) => (
@@ -636,6 +694,26 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </div>
       )}
 
+      {/* Full per-point distribution: always shown for non-agreement cards;
+          behind a toggle (secondary) for agreement-scale cards. */}
+      {isAgreementScale && (
+        <button
+          type="button"
+          onClick={() => setShowDistribution((v) => !v)}
+          className={`inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors ${
+            showDistribution ? "mb-3" : ""
+          }`}
+          aria-expanded={showDistribution}
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${showDistribution ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+          {showDistribution ? "Hide distribution" : "Show distribution"}
+        </button>
+      )}
+
+      {(!isAgreementScale || showDistribution) && (
       <div className="space-y-2.5">
         {answers.map((answer, idx) => {
           const segDisplay = Math.round(answer.segPct * 100)
@@ -708,14 +786,15 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           )
         })}
       </div>
+      )}
 
       {suppressed && <FallbackNote className="mt-3" />}
-      {showComparison && (
+      {showComparison && (!isAgreementScale || showDistribution) && (
         <p className="text-[10px] text-slate-500 mt-3">
           Teal = your segment · marker = overall benchmark
         </p>
       )}
-      {showRoundingNote && (
+      {showRoundingNote && (!isAgreementScale || showDistribution) && (
         <p className="text-[10px] text-slate-500 mt-3">
           Percentages are rounded and may not total 100%.
         </p>
