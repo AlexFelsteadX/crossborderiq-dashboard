@@ -547,9 +547,9 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const notable = showComparison && yes.segN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
     const directional = isDirectionalRow(q.qCode, yes.option)
     return (
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+      <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h4 className="text-sm font-semibold text-brand-navy leading-tight">
+          <h4 className="text-sm font-medium text-slate-200 leading-tight">
             {displayQuestionLabel(q.qCode, q.questionLabel)}
           </h4>
         </div>
@@ -562,37 +562,38 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
         </div>
 
-        {/* Prominent Yes figure */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-primary tabular-nums leading-none">
-            {yesShown}%
-          </span>
-          <span className="text-sm font-medium text-brand-navy/70">Yes</span>
+        {/* Small circular gauge for the Yes figure, matching the dashboard's
+            visual language. Supporting text sits alongside. */}
+        <div className="flex items-center gap-4">
+          <CircularGauge value={yesShown} max={100} size={96} stroke={9} label={`${yesShown}%`} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-300">Yes</p>
+
+            {/* Market comparison — only when a filter yields a meaningful
+                comparison. Emerald ahead / amber behind for directional rows with
+                an adequate base; muted grey when in line, non-directional, or low
+                base. */}
+            {showComparison &&
+              (Math.abs(divergence) < NOTABLE_PTS ? (
+                <p className="text-xs text-slate-400 mt-1">in line with market</p>
+              ) : (
+                <p
+                  className={`text-xs font-medium mt-1 ${
+                    notable && directional
+                      ? divergence > 0
+                        ? "text-emerald-400"
+                        : "text-amber-400"
+                      : "text-slate-400"
+                  }`}
+                >
+                  vs {yesOverall}% market
+                </p>
+              ))}
+
+            {/* Muted split: remainder is No */}
+            <p className="text-[11px] text-slate-500 mt-2">No {noShown}%</p>
+          </div>
         </div>
-
-        {/* Market comparison — only when a filter yields a meaningful comparison.
-            Emerald/amber only for directional rows with an adequate base; muted
-            grey when in line, non-directional, or low base. Darker emerald/amber
-            variants for legibility on the light surface. */}
-        {showComparison &&
-          (Math.abs(divergence) < NOTABLE_PTS ? (
-            <p className="text-xs text-slate-500 mt-1">in line with market</p>
-          ) : (
-            <p
-              className={`text-xs font-medium mt-1 ${
-                notable && directional
-                  ? divergence > 0
-                    ? "text-emerald-700"
-                    : "text-amber-700"
-                  : "text-slate-500"
-              }`}
-            >
-              vs {yesOverall}% market
-            </p>
-          ))}
-
-        {/* Muted split: remainder is No */}
-        <p className="text-[11px] text-slate-600 mt-2">No {noShown}%</p>
 
         {suppressed && <FallbackNote className="mt-3" />}
       </div>
