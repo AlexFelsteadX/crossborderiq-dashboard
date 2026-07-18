@@ -136,13 +136,21 @@ export default async function WorkforceIntelligencePage() {
             Get your personal Mobility Maturity score free in 3 minutes, or unlock the full benchmark below.
           </p>
 
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-3">
             <a
-              href="#access-full-research"
+              href="/mobility-maturity-scorecard"
               className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
-              Access Full Data
-              <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+              Get your free Mobility Maturity score
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
+            <p className="text-xs text-slate-500">Free · takes about 3 minutes</p>
+            <a
+              href="#access-full-research"
+              className="group inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
+            >
+              Access full data
+              <ArrowDown className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
             </a>
           </div>
         </div>
@@ -305,7 +313,7 @@ export default async function WorkforceIntelligencePage() {
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <Link href="/contributor-dashboard">Contribute to the Survey — Free Access</Link>
+                <a href="https://www.cbiq.ai/survey">Contribute to the Survey — Free Access</a>
               </Button>
             </div>
           </div>
@@ -337,7 +345,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymized ·{" "}
+              Trusted by 2,000+ workforce leaders · aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>
