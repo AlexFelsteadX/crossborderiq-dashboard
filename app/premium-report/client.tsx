@@ -92,8 +92,8 @@ function ReportBody() {
     () => THEME_ORDER.filter((t) => t !== "Who took part"),
     [],
   )
-  const selectedThemes = useMemo<WorkforceTheme[]>(() => {
-    const raw = searchParams.get("themes")
+  // Parse the (validated, capped, ordered) theme list out of the URL param.
+  const parseThemesParam = (raw: string | null): WorkforceTheme[] => {
     if (!raw) return []
     const requested = new Set(
       raw
@@ -102,9 +102,17 @@ function ReportBody() {
         .filter(Boolean),
     )
     return SELECTABLE_THEMES.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
-  }, [searchParams, SELECTABLE_THEMES])
+  }
 
-  // Toggle a theme on screen while preserving all current filters in the URL.
+  // Local state is the source of truth for the checkboxes so a click ticks the
+  // box immediately, rather than waiting on a router round-trip. Initialised from
+  // the URL so a shared/bookmarked link still hydrates the correct selection.
+  const [selectedThemes, setSelectedThemes] = useState<WorkforceTheme[]>(() =>
+    parseThemesParam(searchParams.get("themes")),
+  )
+
+  // Toggle a theme, updating local state immutably (new array), then sync the URL
+  // while preserving all current filter params.
   function toggleTheme(theme: WorkforceTheme, next: boolean) {
     let updated: WorkforceTheme[]
     if (next) {
@@ -113,6 +121,7 @@ function ReportBody() {
     } else {
       updated = selectedThemes.filter((t) => t !== theme)
     }
+    setSelectedThemes(updated)
     const params = new URLSearchParams(searchParams.toString())
     if (updated.length > 0) params.set("themes", updated.join(","))
     else params.delete("themes")
