@@ -195,13 +195,10 @@ function ReportBody() {
         {/* HEADER */}
         {/* ---------------------------------------------------------------- */}
         <header className="bar bar-header">
-          <div>
-            <div className="bar-title">CBIQ</div>
-            <div className="bar-sub">Cross-Border Workforce Intelligence</div>
-          </div>
-          <div className="logo-slot">
+          <div className="logo-slot" style={{ justifyContent: "flex-start" }}>
             <img src="/cbiq-logo-lockup.svg" alt="CBIQ" className="logo-img" />
           </div>
+          <div />
         </header>
 
         {/* ---------------------------------------------------------------- */}

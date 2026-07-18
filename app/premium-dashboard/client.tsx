@@ -10,6 +10,7 @@ import {
   BarChart3,
   ChevronDown,
   Loader2,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -1200,6 +1201,23 @@ export function PremiumDashboardClient() {
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset filters
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  params.set("year", String(filters.year))
+                  if (filters.industry) params.set("industry", filters.industry)
+                  if (filters.region) params.set("region", filters.region)
+                  if (filters.size) params.set("size", filters.size)
+                  if (filters.assignee) params.set("assignee", filters.assignee)
+                  if (filters.traveller) params.set("traveller", filters.traveller)
+                  window.open(`/premium-report?${params.toString()}`, "_blank", "noopener,noreferrer")
+                }}
+                className="gap-2 bg-primary text-brand-navy hover:bg-primary/90"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download report
               </Button>
             </div>
           </div>
