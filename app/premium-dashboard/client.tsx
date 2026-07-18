@@ -332,29 +332,6 @@ function FilterSelect({
 // BLOCK 3 — BREAKDOWN QUESTION CARD (segment vs overall)
 // =============================================================================
 
-// Turn a Yes/No question into a short phrase describing what the "Yes" figure
-// represents (e.g. "have a Business Traveler policy"). Falls back to "answered
-// Yes" when no sensible phrase can be derived.
-function deriveYesNoLabel(rawLabel: string): string {
-  let s = rawLabel.trim().replace(/[?.]+$/g, "").trim()
-  const whether = s.match(/^whether\s+(.+)$/i)
-  if (whether) {
-    s = whether[1]
-  } else {
-    const lead = s.match(/^(do|does|did|is|are|has|have|will|would|should|can)\s+(.+)$/i)
-    if (lead) s = lead[2]
-  }
-  // Drop a leading subject so the phrase reads as an action.
-  s = s
-    .replace(
-      /^(you|your organization|your organisation|organizations|organisations|the organization|the organisation|they|we)\s+/i,
-      "",
-    )
-    .trim()
-  if (!s || s.length > 90) return "answered Yes"
-  return s
-}
-
 function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered: boolean }) {
   const suppressed = q.confidence === "suppressed"
 
@@ -569,7 +546,6 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const divergence = Math.round((yes.segPct - yes.overallPct) * 100)
     const notable = showComparison && yes.segN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
     const directional = isDirectionalRow(q.qCode, yes.option)
-    const statLabel = deriveYesNoLabel(displayQuestionLabel(q.qCode, q.questionLabel))
     return (
       <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
@@ -592,39 +568,30 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
             {yesShown}%
           </span>
           <span className="text-sm font-medium text-slate-400">Yes</span>
-          {notable &&
-            (directional ? (
-              <span
-                className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-                  divergence > 0 ? "text-emerald-400" : "text-amber-400"
-                }`}
-              >
-                {divergence > 0 ? (
-                  <TrendingUp className="h-3 w-3" aria-hidden="true" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" aria-hidden="true" />
-                )}
-                {Math.abs(divergence)} pts {divergence > 0 ? "ahead" : "behind"}
-              </span>
-            ) : (
-              <span className="text-xs font-normal text-slate-400">
-                {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"} market
-              </span>
-            ))}
         </div>
-        <p className="text-xs text-slate-400 mt-1">{statLabel}</p>
 
-        {/* Subtle split indicator: Yes fill, remainder is No */}
-        <div className="mt-3 h-1.5 w-full rounded-full bg-[#1a3344] overflow-hidden">
-          <div
-            className="h-full bg-primary/80 rounded-full"
-            style={{ width: `${Math.min(yesShown, 100)}%` }}
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-          <span>No {noShown}%</span>
-          {showComparison && <span>vs {yesOverall}% Yes across the market</span>}
-        </div>
+        {/* Market comparison — only when a filter yields a meaningful comparison.
+            Emerald/amber only for directional rows with an adequate base; muted
+            grey when in line, non-directional, or low base. */}
+        {showComparison &&
+          (Math.abs(divergence) < NOTABLE_PTS ? (
+            <p className="text-xs text-slate-400 mt-1">in line with market</p>
+          ) : (
+            <p
+              className={`text-xs font-medium mt-1 ${
+                notable && directional
+                  ? divergence > 0
+                    ? "text-emerald-400"
+                    : "text-amber-400"
+                  : "text-slate-400"
+              }`}
+            >
+              vs {yesOverall}% market
+            </p>
+          ))}
+
+        {/* Muted split: remainder is No */}
+        <p className="text-[11px] text-slate-500 mt-2">No {noShown}%</p>
 
         {suppressed && <FallbackNote className="mt-3" />}
       </div>
