@@ -337,7 +337,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Trusted by 1,500+ workforce leaders �� aggregated &amp; anonymized ·{" "}
+              Trusted by 2,000+ workforce leaders · aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>
