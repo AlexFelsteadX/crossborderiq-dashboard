@@ -339,6 +339,10 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   // distribution is kept reachable but secondary, behind this toggle.
   const [showDistribution, setShowDistribution] = useState(false)
 
+  // Long multi-select cards show only the top options by default; the rest are
+  // revealed behind this toggle.
+  const [showAllOptions, setShowAllOptions] = useState(false)
+
   // The overall/benchmark comparison is only meaningful when a segment filter is
   // active. With no filter the segment IS the whole population, so we show a single
   // percentage and hide the "(all X%)" text, the benchmark marker, and its legend.
@@ -451,6 +455,14 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     : [...q.answers].sort((a, b) =>
         suppressed ? b.overallPct - a.overallPct : b.segPct - a.segPct,
       )
+
+  // Long multi-select questions (more than 6 options) collapse to their top few
+  // by segment percentage by default, since readers care about the leaders. The
+  // answers array is already sorted descending, so slicing takes the top rows.
+  const TOP_OPTIONS = 5
+  const isLongMultiSelect = isMultiSelect && q.answers.length > 6
+  const visibleAnswers =
+    isLongMultiSelect && !showAllOptions ? answers.slice(0, TOP_OPTIONS) : answers
 
   // Divergence highlighting applies only to the STANDARD answer-bar rows when a
   // segment comparison is active. Agreement-scale cards (and the early-returned
@@ -715,7 +727,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
 
       {(!isAgreementScale || showDistribution) && (
       <div className="space-y-2.5">
-        {answers.map((answer, idx) => {
+        {visibleAnswers.map((answer, idx) => {
           const segDisplay = Math.round(answer.segPct * 100)
           const overallDisplay = Math.round(answer.overallPct * 100)
           const shown = suppressed ? overallDisplay : segDisplay
@@ -786,6 +798,21 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           )
         })}
       </div>
+      )}
+
+      {isLongMultiSelect && (
+        <button
+          type="button"
+          onClick={() => setShowAllOptions((v) => !v)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors mt-3"
+          aria-expanded={showAllOptions}
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${showAllOptions ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+          {showAllOptions ? "Show top 5 only" : `Show all ${q.answers.length} options`}
+        </button>
       )}
 
       {suppressed && <FallbackNote className="mt-3" />}
