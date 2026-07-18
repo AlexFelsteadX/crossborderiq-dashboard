@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -78,7 +78,20 @@ function pct(fraction: number): number {
 
 function ReportBody() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
+
+  // Detailed breakdown is opt-in: only rendered when ?breakdown=1 is present.
+  const includeBreakdown = searchParams.get("breakdown") === "1"
+
+  // Toggle the breakdown param on screen while preserving all current filters.
+  function toggleBreakdown(next: boolean) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next) params.set("breakdown", "1")
+    else params.delete("breakdown")
+    const qs = params.toString()
+    router.replace(qs ? `/premium-report?${qs}` : "/premium-report", { scroll: false })
+  }
 
   // Read filter values from the URL. Any missing param means "All" / null.
   const yearParam = paramOrNull(searchParams.get("year"))
@@ -160,18 +173,22 @@ function ReportBody() {
   )
 
   // Group breakdown rows into questions, preserving first-seen order.
+  // Omit answer options at 0% so empty rows do not pad the document, and drop
+  // any question left with no answers.
   const groupedQuestions = useMemo(() => {
     const map = new Map<string, GroupedQuestion>()
     for (const row of breakdown) {
+      const segPct = pct(row.seg_pct)
+      if (segPct === 0) continue
       const code = row.q_code ?? ""
       let group = map.get(code)
       if (!group) {
         group = { qCode: code, questionLabel: row.question_label ?? code, answers: [] }
         map.set(code, group)
       }
-      group.answers.push({ option: row.answer_option, segPct: pct(row.seg_pct) })
+      group.answers.push({ option: row.answer_option, segPct })
     }
-    return Array.from(map.values())
+    return Array.from(map.values()).filter((q) => q.answers.length > 0)
   }, [breakdown])
 
   const mmiScore = mmi ? Math.round(mmi.index_score) : null
@@ -184,6 +201,14 @@ function ReportBody() {
 
       {/* On-screen action bar (hidden in print) */}
       <div className="no-print action-bar">
+        <label className="breakdown-toggle">
+          <input
+            type="checkbox"
+            checked={includeBreakdown}
+            onChange={(e) => toggleBreakdown(e.target.checked)}
+          />
+          Include detailed breakdown
+        </label>
         <button type="button" className="download-btn" onClick={() => window.print()}>
           <Download size={16} aria-hidden="true" />
           Download PDF
@@ -283,7 +308,7 @@ function ReportBody() {
         {/* ---------------------------------------------------------------- */}
         {/* DETAILED BREAKDOWN */}
         {/* ---------------------------------------------------------------- */}
-        {!loading && groupedQuestions.length > 0 ? (
+        {includeBreakdown && !loading && groupedQuestions.length > 0 ? (
           <section className="section">
             <h2 className="card-title breakdown-heading">Detailed Breakdown</h2>
             <div className="breakdown-list">
@@ -312,7 +337,7 @@ function ReportBody() {
           </section>
         ) : null}
 
-        {!loading && !error && !mmi && pillars.length === 0 && groupedQuestions.length === 0 ? (
+        {!loading && !error && !mmi && pillars.length === 0 ? (
           <p className="loading">No benchmark data is available for this cohort.</p>
         ) : null}
 
@@ -359,9 +384,21 @@ const printStyles = `
   }
   .action-bar {
     display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 20px;
     padding: 20px 16px 0;
   }
+  .breakdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #0f172a;
+    cursor: pointer;
+  }
+  .breakdown-toggle input { width: 16px; height: 16px; cursor: pointer; accent-color: ${TEAL}; }
   .download-btn {
     display: inline-flex;
     align-items: center;
