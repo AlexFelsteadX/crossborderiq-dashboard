@@ -547,9 +547,9 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const notable = showComparison && yes.segN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
     const directional = isDirectionalRow(q.qCode, yes.option)
     return (
-      <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h4 className="text-sm font-medium text-slate-200 leading-tight">
+          <h4 className="text-sm font-semibold text-brand-navy leading-tight">
             {displayQuestionLabel(q.qCode, q.questionLabel)}
           </h4>
         </div>
@@ -564,26 +564,27 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
 
         {/* Prominent Yes figure */}
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold text-slate-100 tabular-nums leading-none">
+          <span className="text-4xl font-bold text-primary tabular-nums leading-none">
             {yesShown}%
           </span>
-          <span className="text-sm font-medium text-slate-400">Yes</span>
+          <span className="text-sm font-medium text-brand-navy/70">Yes</span>
         </div>
 
         {/* Market comparison — only when a filter yields a meaningful comparison.
             Emerald/amber only for directional rows with an adequate base; muted
-            grey when in line, non-directional, or low base. */}
+            grey when in line, non-directional, or low base. Darker emerald/amber
+            variants for legibility on the light surface. */}
         {showComparison &&
           (Math.abs(divergence) < NOTABLE_PTS ? (
-            <p className="text-xs text-slate-400 mt-1">in line with market</p>
+            <p className="text-xs text-slate-500 mt-1">in line with market</p>
           ) : (
             <p
               className={`text-xs font-medium mt-1 ${
                 notable && directional
                   ? divergence > 0
-                    ? "text-emerald-400"
-                    : "text-amber-400"
-                  : "text-slate-400"
+                    ? "text-emerald-700"
+                    : "text-amber-700"
+                  : "text-slate-500"
               }`}
             >
               vs {yesOverall}% market
@@ -591,7 +592,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           ))}
 
         {/* Muted split: remainder is No */}
-        <p className="text-[11px] text-slate-500 mt-2">No {noShown}%</p>
+        <p className="text-[11px] text-slate-600 mt-2">No {noShown}%</p>
 
         {suppressed && <FallbackNote className="mt-3" />}
       </div>
