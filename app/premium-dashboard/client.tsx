@@ -1189,7 +1189,7 @@ export function PremiumDashboardClient() {
                 <strong className="text-primary">
                   {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
                 </strong>{" "}
-                responses
+                organisations
               </span>
               <Button
                 variant="outline"
