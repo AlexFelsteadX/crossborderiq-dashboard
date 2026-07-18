@@ -476,7 +476,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const netLabel = (net: number) =>
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
     return (
-      <div className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6">
+      <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
         <div className="flex items-start justify-between gap-3 mb-1">
           <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
@@ -530,7 +530,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   }
 
   return (
-    <div className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6">
+    <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
       <div className="flex items-start justify-between gap-3 mb-1">
         <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
@@ -1303,7 +1303,7 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 1 — MMI ============================ */}
         {!is2025 && (
         <div
-          className={`rounded-2xl border-2 border-primary/50 bg-brand-navy-2 px-6 py-8 md:px-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-16 transition-opacity ${
+          className={`rounded-2xl border-2 border-primary/60 bg-gradient-to-b from-brand-navy-2 to-brand-navy-2/70 px-8 py-10 md:px-10 md:py-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-16 transition-opacity ${
             loadingMain ? "opacity-60" : "opacity-100"
           }`}
         >
@@ -1431,7 +1431,7 @@ export function PremiumDashboardClient() {
               <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{marketRead}</p>
             </div>
           )}
-          <h2 className="text-lg font-semibold text-slate-200 mb-6">Pillar snapshot</h2>
+          <h2 className="text-xl font-bold text-slate-100 mb-6 pb-3 border-b border-slate-700/60">Pillar snapshot</h2>
           {primaryPillars.length === 0 ? (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
               {loadingMain ? "Loading pillars…" : "No pillar data for this selection."}
@@ -1565,9 +1565,9 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS (2026 only) ============================ */}
         {!is2025 && (
         <div className="mb-16">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-700/60">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-slate-200">Year-on-year trends (2025 → 2026)</h2>
+            <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
             {loadingYoY && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           <p className="text-xs text-slate-500 mb-6">
@@ -1590,8 +1590,8 @@ export function PremiumDashboardClient() {
 
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-slate-200">Detailed breakdowns</h2>
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/60">
+            <h2 className="text-xl font-bold text-slate-100">Detailed breakdowns</h2>
             {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           {sections.map(({ sectionName, questions }) =>
