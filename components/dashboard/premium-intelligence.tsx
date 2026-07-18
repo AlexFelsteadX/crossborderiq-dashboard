@@ -39,7 +39,7 @@ const premiumModules = [
   {
     id: 3,
     title: "Vendor Market Activity Index",
-    subtitle: "Market activity signals indicating potential buying and switching behaviour.",
+    subtitle: "Market activity signals indicating potential buying and switching behavior.",
     icon: Users,
     metrics: [
       { label: "Organizations reviewing providers", value: 34 },
@@ -71,7 +71,7 @@ const premiumModules = [
     subtitle: "Benchmark your operating model against peers.",
     icon: Building2,
     metrics: [
-      { label: "Centre of Excellence adoption", value: 42 },
+      { label: "Center of Excellence adoption", value: 42 },
       { label: "Team size benchmarking", value: 55 },
       { label: "Centralized vs decentralized models", value: 48 },
       { label: "Regional hub adoption", value: 38 },

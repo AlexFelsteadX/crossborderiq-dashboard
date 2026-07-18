@@ -23,7 +23,7 @@ export function AiAdoptionIndex() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-foreground">AI Adoption Demand Index™</h3>
-          <p className="text-xs text-muted-foreground mt-1">Where organisations are exploring or deploying AI capabilities</p>
+          <p className="text-xs text-muted-foreground mt-1">Where organizations are exploring or deploying AI capabilities</p>
         </div>
         <div className="px-2 py-1 rounded bg-chart-3/10 text-chart-3 text-xs font-medium">
           Emerging Demand

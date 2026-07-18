@@ -180,7 +180,7 @@ function isDirectionalPillar(p: { pillar: string; short_name: string }): boolean
 // by question code. Consulted ONLY at render time for the header text — never for
 // matching, sorting, directionality, summaries, or any data lookup.
 const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
-  Q6: "Whether Global Mobility is set up as a Centre of Excellence",
+  Q6: "Whether Global Mobility is set up as a Center of Excellence",
   Q8: "The role of the Global Mobility function",
   Q10: "How the Global Mobility function is structured",
   Q12: "Where Global Mobility sits in the organization",
@@ -230,8 +230,8 @@ const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
   Q67: "Whether organizations track their International Remote Work population",
   Q68: "Whether organizations analyze International Remote Work data for talent attraction and retention",
   Q69: "The analysis conducted on International Remote Work programs",
-  Q71: "Whether organizations have a Business Traveller policy",
-  Q72: "Who owns the Business Traveller program",
+  Q71: "Whether organizations have a Business Traveler policy",
+  Q72: "Who owns the Business Traveler program",
   Q73: "Annual Business Travel trip volumes",
   E6: "The leadership expectations rising most for mobility teams",
   E7: "What is creating the greatest operational pressure for Global Mobility",
@@ -241,7 +241,7 @@ const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
   E11: "The areas where organizations are using AI",
   E13: "Where organizations expect the greatest operational investment over the next 12\u201318 months",
   E14: "Annual long-term assignment and permanent transfer volumes",
-  E15: "Annual short-term assignment and business traveller volumes",
+  E15: "Annual short-term assignment and business traveler volumes",
   E16: "How organizations use technology to manage Global Mobility",
 }
 
@@ -277,7 +277,7 @@ function LimitedChip({ base }: { base: number }) {
 function FallbackNote({ className = "" }: { className?: string }) {
   return (
     <p className={`text-[11px] text-slate-500 italic ${className}`}>
-      Not enough organisations in this segment — showing overall
+      Not enough organizations in this segment — showing overall
     </p>
   )
 }
@@ -1095,7 +1095,7 @@ export function PremiumDashboardClient() {
   if (aheadPillars.length > 0 && behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your programme leads on{" "}
+        Here&apos;s what stands out: compared to similar organizations, your program leads on{" "}
         {colorNames(aheadPillars, "text-emerald-400")}, but trails on {colorNames(behindPillars, "text-amber-400")} —
         two areas that may be worth a closer look.
       </>
@@ -1103,14 +1103,14 @@ export function PremiumDashboardClient() {
   } else if (aheadPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: your programme is ahead of similar organizations, most notably on{" "}
+        Here&apos;s what stands out: your program is ahead of similar organizations, most notably on{" "}
         {colorNames(aheadPillars, "text-emerald-400")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your programme trails on{" "}
+        Here&apos;s what stands out: compared to similar organizations, your program trails on{" "}
         {colorNames(behindPillars, "text-amber-400")} — areas that may be worth a closer look — and is in line
         elsewhere.
       </>
@@ -1338,7 +1338,7 @@ export function PremiumDashboardClient() {
                 </p>
                 {SHOW_COUNTS && (
                   <p className="text-xs text-slate-400 mt-3">
-                    Based on {Math.round(mmi.base_n).toLocaleString()} organisations
+                    Based on {Math.round(mmi.base_n).toLocaleString()} organizations
                   </p>
                 )}
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}

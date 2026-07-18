@@ -1,7 +1,7 @@
 "use client"
 
 const transformationData = [
-  { label: "Optimizing selected areas of mobility programme", value: 69 },
+  { label: "Optimizing selected areas of mobility program", value: 69 },
   { label: "Actively transforming parts of mobility function", value: 64 },
   { label: "Reviewing current processes and technology tools", value: 61 },
 ]
@@ -12,7 +12,7 @@ export function TransformationActivityIndex() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-foreground">Transformation Activity Index™</h3>
-          <p className="text-xs text-muted-foreground mt-1">Top transformation signals across organisations</p>
+          <p className="text-xs text-muted-foreground mt-1">Top transformation signals across organizations</p>
         </div>
         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">Preview</span>
       </div>

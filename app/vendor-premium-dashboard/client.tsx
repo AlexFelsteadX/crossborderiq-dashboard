@@ -740,14 +740,14 @@ function DemandColumn({
 
       {suppressed && (
         <p className="text-[11px] text-slate-500 italic">
-          Not enough organisations in this segment — showing market-wide
+          Not enough organizations in this segment — showing market-wide
         </p>
       )}
 
       {/* Quiet segment base count. Only shown when segment figures are actually
           displayed (not suppressed) so it never contradicts the market-wide note. */}
       {!suppressed && segBaseN > 0 && (
-        <p className="text-[11px] text-slate-500">Based on {segBaseN} organisations</p>
+        <p className="text-[11px] text-slate-500">Based on {segBaseN} organizations</p>
       )}
     </div>
   )
@@ -840,7 +840,7 @@ function WhitespacePanel({
             },
             {
               tag: "Opening" as WhitespaceTag,
-              def: "more buyers want this than organisations currently provide it. A measurable demand gap to move into.",
+              def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
             },
             {
               tag: "Saturated" as WhitespaceTag,
@@ -966,7 +966,7 @@ function WhitespacePanel({
 
                   {suppressed && (
                     <p className="text-[11px] text-slate-500 italic mt-2">
-                      Not enough organisations in this segment to report provision reliably
+                      Not enough organizations in this segment to report provision reliably
                     </p>
                   )}
                 </div>
@@ -1489,7 +1489,7 @@ export function VendorPremiumDashboardClient() {
             Market demand, investment priorities and transformation intelligence for providers serving global workforce, mobility, immigration and compliance teams.
           </p>
           <p className="text-xs text-slate-500 max-w-2xl mx-auto">
-            Aggregated market intelligence only. No company names, participant names or organisation-level responses are disclosed.
+            Aggregated market intelligence only. No company names, participant names or organization-level responses are disclosed.
           </p>
         </div>
 
@@ -2224,7 +2224,7 @@ export function VendorPremiumDashboardClient() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Established vs Emerging Service Demand — what organisations outsource today and what they&apos;re actively exploring
+                  Established vs Emerging Service Demand — what organizations outsource today and what they&apos;re actively exploring
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />

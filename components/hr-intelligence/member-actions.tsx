@@ -15,8 +15,8 @@ export function MemberActions() {
     },
     {
       icon: BarChart3,
-      title: "Benchmark My Organisation",
-      description: "Compare your organisation against peer groups using regional, industry and workforce-size intelligence.",
+      title: "Benchmark My Organization",
+      description: "Compare your organization against peer groups using regional, industry and workforce-size intelligence.",
       buttonText: "Unlock Global Workforce Intelligence™",
       href: "/pricing#global-workforce-intelligence",
     },

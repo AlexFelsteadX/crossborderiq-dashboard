@@ -67,7 +67,7 @@ export async function submitAssessment(
     return { ok: false, error: "Please answer all agreement-scale questions." }
   }
   if (centreOfExcellenceRaw !== "Yes" && centreOfExcellenceRaw !== "No") {
-    return { ok: false, error: "Please indicate whether your function is a Centre of Excellence." }
+    return { ok: false, error: "Please indicate whether your function is a Center of Excellence." }
   }
 
   const answers: SmiAnswers = {
