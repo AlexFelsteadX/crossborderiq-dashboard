@@ -548,12 +548,12 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
     const directional = isDirectionalRow(q.qCode, yes.option)
     return (
       <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <h4 className="text-sm font-medium text-slate-200 leading-tight">
+        <div className="flex items-start justify-center gap-3 mb-1">
+          <h4 className="text-sm font-medium text-slate-200 leading-tight text-center">
             {displayQuestionLabel(q.qCode, q.questionLabel)}
           </h4>
         </div>
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
           {SHOW_COUNTS && (
             <span className="text-[11px] text-slate-500">
               {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
