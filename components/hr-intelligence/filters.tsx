@@ -20,7 +20,7 @@ export function PeerBenchmarkingFilters() {
           <Lock className="h-3.5 w-3.5 text-primary" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Compare your organisation against peer groups using CBIQ intelligence data.
+          Compare your organization against peer groups using CBIQ intelligence data.
         </p>
       </div>
 

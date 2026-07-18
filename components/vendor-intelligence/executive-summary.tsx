@@ -5,7 +5,7 @@ import { TrendingUp, AlertTriangle, Cpu, Target } from "lucide-react"
 const insights = [
   {
     icon: TrendingUp,
-    text: "Transformation activity is rising as organisations review operating models, technology and vendor ecosystems.",
+    text: "Transformation activity is rising as organizations review operating models, technology and vendor ecosystems.",
   },
   {
     icon: AlertTriangle,

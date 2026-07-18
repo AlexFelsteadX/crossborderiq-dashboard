@@ -134,7 +134,7 @@ function sampleBaseN(filters: BenchmarkFilters): number {
 function buildPeerGroupLabel(filters: BenchmarkFilters): string {
   const { region, industry, size } = filters
   if (region === "All" && industry === "All" && size === "All") {
-    return "All organisations (global)"
+    return "All organizations (global)"
   }
   const industryPart = industry === "All" ? "All industries" : industry
   const regionPart = region === "All" ? "globally" : `in ${region}`

@@ -21,7 +21,7 @@ const leadershipInfluenceData = [
 
 const currentStateData = [
   { name: "Operating effectively", value: 22, color: "var(--brand-teal-deep)" },
-  { name: "Optimizing mobility programme", value: 24, color: "#1D9AAA" },
+  { name: "Optimizing mobility program", value: 24, color: "#1D9AAA" },
   { name: "Reviewing technology", value: 18, color: "#24B8B8" },
   { name: "Reviewing vendors", value: 12, color: "#2DD4BF" },
   { name: "Actively transforming", value: 18, color: "#5EEAD4" },

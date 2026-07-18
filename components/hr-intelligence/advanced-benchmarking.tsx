@@ -8,7 +8,7 @@ const previewCards = [
   {
     title: "Regional Benchmarking",
     icon: Globe,
-    description: "Compare your organisation against peers in North America, UK, Europe, Middle East, and APAC regions.",
+    description: "Compare your organization against peers in North America, UK, Europe, Middle East, and APAC regions.",
     previewData: [
       { label: "North America", value: "67%", subtext: "Strategic Importance" },
       { label: "UK", value: "72%", subtext: "Strategic Importance" },
@@ -28,7 +28,7 @@ const previewCards = [
   {
     title: "Workforce Size Benchmarking",
     icon: Users,
-    description: "Benchmark against organisations of similar employee population and global footprint.",
+    description: "Benchmark against organizations of similar employee population and global footprint.",
     previewData: [
       { label: "10,000+ employees", value: "74%", subtext: "Maturity Score" },
       { label: "5,000-10,000", value: "68%", subtext: "Maturity Score" },
@@ -84,7 +84,7 @@ export function AdvancedBenchmarking() {
       <div className="text-center">
         <h2 className="text-xl font-semibold text-foreground">Unlock Advanced Benchmarking™</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Compare your organisation against peers with detailed regional, industry, and workforce size analysis.
+          Compare your organization against peers with detailed regional, industry, and workforce size analysis.
         </p>
       </div>
 

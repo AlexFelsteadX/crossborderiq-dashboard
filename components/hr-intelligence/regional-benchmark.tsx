@@ -27,12 +27,12 @@ const benchmarkingCapabilities = [
   {
     icon: Building2,
     title: "Industry Benchmarking",
-    description: "Compare against organisations operating in your sector.",
+    description: "Compare against organizations operating in your sector.",
   },
   {
     icon: Users,
     title: "Employee Population Benchmarking",
-    description: "Compare against organisations of a similar workforce size.",
+    description: "Compare against organizations of a similar workforce size.",
   },
 ]
 
@@ -123,7 +123,7 @@ export function RegionalBenchmarking() {
               <span className="text-xs font-medium text-primary">™</span>
             </h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Compare your organisation against peer groups using CBIQ intelligence data.
+              Compare your organization against peer groups using CBIQ intelligence data.
             </p>
 
             {/* Capability Cards */}

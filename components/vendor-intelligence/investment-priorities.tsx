@@ -40,7 +40,7 @@ export function InvestmentPrioritiesIndex() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Where organisations expect to focus operational investment and transformation over the next 12–18 months.
+              Where organizations expect to focus operational investment and transformation over the next 12–18 months.
             </p>
           </div>
         </div>

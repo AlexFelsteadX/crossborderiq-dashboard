@@ -194,7 +194,7 @@ function ReportBody() {
     if (size) parts.push(`${size} employees`)
     if (region) parts.push(region)
     if (assignee) parts.push(`${assignee} long-term assignees`)
-    if (traveller) parts.push(`${traveller} business travellers`)
+    if (traveller) parts.push(`${traveller} business travelers`)
     return parts.length > 0 ? parts.join(" · ") : "All respondents"
   }, [industry, region, size, assignee, traveller])
 

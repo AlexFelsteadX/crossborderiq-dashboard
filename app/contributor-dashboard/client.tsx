@@ -253,7 +253,7 @@ export function ContributorDashboardClient({
               </p>
               {contributorCount > 0 && (
                 <p className="text-xs text-slate-400 mt-3">
-                  Based on {contributorCount.toLocaleString()} contributing organisations
+                  Based on {contributorCount.toLocaleString()} contributing organizations
                 </p>
               )}
             </div>
@@ -378,7 +378,7 @@ export function ContributorDashboardClient({
               <span className="text-[10px] font-medium text-primary">™</span>
             </div>
             <p className="text-sm text-slate-400 max-w-2xl mx-auto">
-              Contributor Access provides full access to benchmark findings and research. Global Workforce Intelligence™ members can benchmark their organisation against peer groups using advanced interactive intelligence tools.
+              Contributor Access provides full access to benchmark findings and research. Global Workforce Intelligence™ members can benchmark their organization against peer groups using advanced interactive intelligence tools.
             </p>
           </div>
 
@@ -393,7 +393,7 @@ export function ContributorDashboardClient({
             />
             <LockedFeatureCard 
               title="Employee Population Benchmarking"
-              description="Compare against organisations of similar size."
+              description="Compare against organizations of similar size."
             />
             <LockedFeatureCard 
               title="Interactive Benchmark Explorer"

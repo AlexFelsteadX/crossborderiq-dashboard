@@ -24,7 +24,7 @@ export function HRIntelligenceHeader() {
           <Button className="gap-2 bg-primary hover:bg-primary/90" asChild>
             <Link href="/pricing#corporate-access">
               <Building2 className="h-4 w-4" />
-              Benchmark My Organisation
+              Benchmark My Organization
             </Link>
           </Button>
         </div>
