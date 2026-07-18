@@ -1035,6 +1035,40 @@ export function PremiumDashboardClient() {
   const primaryPillars = pillars.filter((p) => !remoteRegex.test(`${p.pillar} ${p.short_name}`))
   const remotePillar = pillars.find((p) => remoteRegex.test(`${p.pillar} ${p.short_name}`))
 
+  // Visual emphasis: pick the two "notable" pillars so they stand out and the rest
+  // recede. Derived entirely from values already in state — no data fetching.
+  //  - Filtered: the two largest |seg − overall| gaps (>= 3 pts), ahead or behind.
+  //  - Unfiltered: the highest and lowest seg_pct, but only when the spread is
+  //    meaningful (>= 3 pts) so near-identical scores aren't falsely highlighted.
+  // Suppressed pillars are never notable. Accent maps to existing semantic colours:
+  // emerald = ahead, amber = behind, primary (brand teal) = neutral/attention.
+  const MIN_NOTABLE_PTS = 3
+  const pillarEmphasis = useMemo(() => {
+    const map = new Map<string, "emerald" | "amber" | "primary">()
+    const candidates = primaryPillars.filter((p) => p.confidence !== "suppressed")
+    if (isFiltered) {
+      candidates
+        .map((p) => ({ p, gap: Math.round((p.seg_pct - p.overall_pct) * 100) }))
+        .filter((x) => Math.abs(x.gap) >= MIN_NOTABLE_PTS)
+        .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))
+        .slice(0, 2)
+        .forEach(({ p, gap }) => {
+          const accent = !isDirectionalPillar(p) ? "primary" : gap >= 0 ? "emerald" : "amber"
+          map.set(p.pillar, accent)
+        })
+    } else if (candidates.length >= 2) {
+      const sorted = [...candidates].sort((a, b) => b.seg_pct - a.seg_pct)
+      const highest = sorted[0]
+      const lowest = sorted[sorted.length - 1]
+      const spread = Math.round((highest.seg_pct - lowest.seg_pct) * 100)
+      if (spread >= MIN_NOTABLE_PTS) {
+        map.set(highest.pillar, "primary")
+        map.set(lowest.pillar, "primary")
+      }
+    }
+    return map
+  }, [primaryPillars, isFiltered])
+
   // One-line "you vs market" narrative across the five primary pillars. Derived
   // entirely from pillar values already in state — meaningful only when a segment
   // filter is active, and skips any pillar whose segment value is suppressed.
@@ -1406,10 +1440,20 @@ export function PremiumDashboardClient() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {primaryPillars.map((p) => {
                 const r = resolve(p.confidence, p.seg_pct, p.overall_pct)
+                const accent = pillarEmphasis.get(p.pillar)
+                const notable = !!accent
+                // Static class strings so Tailwind can detect them at build time.
+                const tileClass = notable
+                  ? {
+                      emerald: "border-emerald-400/60 bg-brand-navy-2/70 ring-1 ring-emerald-400/15",
+                      amber: "border-amber-400/60 bg-brand-navy-2/70 ring-1 ring-amber-400/15",
+                      primary: "border-primary/60 bg-brand-navy-2/70 ring-1 ring-primary/15",
+                    }[accent]
+                  : "border-slate-700/40 bg-brand-navy-2/25"
                 return (
                   <div
                     key={p.pillar}
-                    className="rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-6 flex flex-col items-center text-center"
+                    className={`rounded-xl border p-6 flex flex-col items-center text-center transition-colors ${tileClass}`}
                   >
                     <CircularGauge
                       value={Math.round(r.value * 100)}
@@ -1418,9 +1462,21 @@ export function PremiumDashboardClient() {
                       stroke={8}
                       label={formatPct(r.value)}
                     />
-                    <p className="text-xs font-medium text-slate-300 mt-3 leading-tight">{p.short_name}</p>
+                    <p
+                      className={`text-xs mt-3 leading-tight ${
+                        notable ? "font-semibold text-slate-100" : "font-medium text-slate-400"
+                      }`}
+                    >
+                      {p.short_name}
+                    </p>
                     {p.metric_label && (
-                      <p className="text-[11px] text-slate-500 mt-1 leading-snug">{p.metric_label}</p>
+                      <p
+                        className={`text-[11px] mt-1 leading-snug ${
+                          notable ? "text-slate-400" : "text-slate-600"
+                        }`}
+                      >
+                        {p.metric_label}
+                      </p>
                     )}
                     {/* "You vs market" — only meaningful when a segment filter is active and
                         the segment value is shown (not a suppression fallback). */}
