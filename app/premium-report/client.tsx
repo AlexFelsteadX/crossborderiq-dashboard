@@ -55,6 +55,11 @@ interface GroupedQuestion {
 }
 
 const NAVY = "#0a1628"
+// Brand accents pulled from the premium dashboard theme (globals.css):
+// --primary / --brand-teal-deep and --brand-teal. Used for scores, bars and
+// percentages so the report reads as the same product, on a print-safe light bg.
+const TEAL = "#146e79" // --primary (brand-teal-deep)
+const TEAL_BRIGHT = "#14b8a6" // --brand-teal
 
 // A filter value that is absent / empty means "All" (null param).
 function paramOrNull(value: string | null): string | null {
@@ -364,7 +369,7 @@ const printStyles = `
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: ${NAVY};
+    background: ${TEAL};
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -418,7 +423,7 @@ const printStyles = `
 
   .prepared-for {
     background: #f1f5f9;
-    border-left: 4px solid ${NAVY};
+    border-left: 4px solid ${TEAL};
     border-radius: 6px;
     padding: 12px 16px;
     margin-bottom: 12px;
@@ -437,11 +442,18 @@ const printStyles = `
     padding: 20px 22px;
     margin-top: 20px;
   }
-  .card-title { font-size: 16px; font-weight: 700; color: #0a1628; margin: 0 0 14px; }
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0a1628;
+    margin: 0 0 14px;
+    border-left: 3px solid ${TEAL};
+    padding-left: 10px;
+  }
   .breakdown-heading { margin-top: 28px; }
 
   .mmi-score-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .mmi-score { font-size: 48px; font-weight: 800; line-height: 1; color: ${NAVY}; }
+  .mmi-score { font-size: 48px; font-weight: 800; line-height: 1; color: ${TEAL}; }
   .mmi-outof { font-size: 18px; color: #94a3b8; font-weight: 600; }
   .mmi-delta { font-size: 13px; font-weight: 600; margin-left: 8px; }
   .mmi-delta.up { color: #047857; }
@@ -456,21 +468,28 @@ const printStyles = `
     overflow: hidden;
   }
   .bar-track.sm { height: 8px; margin-top: 6px; }
-  .bar-fill { height: 100%; background: ${NAVY}; border-radius: 999px; }
-  .bar-marker { position: absolute; top: -3px; width: 2px; height: 18px; background: #0f172a; }
+  .bar-fill {
+    height: 100%;
+    background: ${TEAL};
+    border-radius: 999px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .bar-track.sm .bar-fill { background: ${TEAL_BRIGHT}; }
+  .bar-marker { position: absolute; top: -3px; width: 2px; height: 18px; background: ${NAVY}; }
   .bar-caption { font-size: 12px; color: #64748b; margin-top: 8px; }
 
   .pillar-list { display: flex; flex-direction: column; gap: 14px; }
   .pillar-head, .answer-head { display: flex; justify-content: space-between; align-items: baseline; }
   .pillar-name { font-size: 13px; font-weight: 600; color: #1e293b; }
-  .pillar-pct { font-size: 13px; font-weight: 700; color: ${NAVY}; }
+  .pillar-pct { font-size: 13px; font-weight: 700; color: ${TEAL}; }
 
   .breakdown-list { display: flex; flex-direction: column; }
   .breakdown-card { margin-top: 16px; }
   .question-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 12px; }
   .answer-list { display: flex; flex-direction: column; gap: 10px; }
   .answer-option { font-size: 12px; color: #334155; }
-  .answer-pct { font-size: 12px; font-weight: 700; color: ${NAVY}; }
+  .answer-pct { font-size: 12px; font-weight: 700; color: ${TEAL}; }
 
   .bar-header { margin-bottom: 0; }
   .bar-footer { margin-top: 28px; }
