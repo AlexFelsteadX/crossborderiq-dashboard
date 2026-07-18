@@ -332,6 +332,29 @@ function FilterSelect({
 // BLOCK 3 — BREAKDOWN QUESTION CARD (segment vs overall)
 // =============================================================================
 
+// Turn a Yes/No question into a short phrase describing what the "Yes" figure
+// represents (e.g. "have a Business Traveler policy"). Falls back to "answered
+// Yes" when no sensible phrase can be derived.
+function deriveYesNoLabel(rawLabel: string): string {
+  let s = rawLabel.trim().replace(/[?.]+$/g, "").trim()
+  const whether = s.match(/^whether\s+(.+)$/i)
+  if (whether) {
+    s = whether[1]
+  } else {
+    const lead = s.match(/^(do|does|did|is|are|has|have|will|would|should|can)\s+(.+)$/i)
+    if (lead) s = lead[2]
+  }
+  // Drop a leading subject so the phrase reads as an action.
+  s = s
+    .replace(
+      /^(you|your organization|your organisation|organizations|organisations|the organization|the organisation|they|we)\s+/i,
+      "",
+    )
+    .trim()
+  if (!s || s.length > 90) return "answered Yes"
+  return s
+}
+
 function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered: boolean }) {
   const suppressed = q.confidence === "suppressed"
 
@@ -522,6 +545,85 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
               </span>
             </div>
           ))}
+        </div>
+
+        {suppressed && <FallbackNote className="mt-3" />}
+      </div>
+    )
+  }
+
+  // Yes/No questions: exactly two options that (ignoring case/whitespace) are
+  // "Yes" and "No". These render as a single prominent Yes figure rather than
+  // two competing bars.
+  const yesNoNorm = q.answers.map((a) => a.option.trim().toLowerCase())
+  const isYesNo =
+    q.answers.length === 2 && yesNoNorm.includes("yes") && yesNoNorm.includes("no")
+
+  if (isYesNo) {
+    const yes = q.answers.find((a) => a.option.trim().toLowerCase() === "yes")!
+    const no = q.answers.find((a) => a.option.trim().toLowerCase() === "no")!
+    const yesShown = shownPct(yes)
+    const noShown = shownPct(no)
+    const yesOverall = Math.round(yes.overallPct * 100)
+    // Signed gap from the market, in percentage points (matches the bar version).
+    const divergence = Math.round((yes.segPct - yes.overallPct) * 100)
+    const notable = showComparison && yes.segN >= LOW_BASE && Math.abs(divergence) >= NOTABLE_PTS
+    const directional = isDirectionalRow(q.qCode, yes.option)
+    const statLabel = deriveYesNoLabel(displayQuestionLabel(q.qCode, q.questionLabel))
+    return (
+      <div className="rounded-lg border border-slate-800/50 bg-brand-navy/30 p-5">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <h4 className="text-sm font-medium text-slate-200 leading-tight">
+            {displayQuestionLabel(q.qCode, q.questionLabel)}
+          </h4>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {SHOW_COUNTS && (
+            <span className="text-[11px] text-slate-500">
+              {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
+            </span>
+          )}
+          {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
+        </div>
+
+        {/* Prominent Yes figure */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold text-slate-100 tabular-nums leading-none">
+            {yesShown}%
+          </span>
+          <span className="text-sm font-medium text-slate-400">Yes</span>
+          {notable &&
+            (directional ? (
+              <span
+                className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+                  divergence > 0 ? "text-emerald-400" : "text-amber-400"
+                }`}
+              >
+                {divergence > 0 ? (
+                  <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                ) : (
+                  <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                )}
+                {Math.abs(divergence)} pts {divergence > 0 ? "ahead" : "behind"}
+              </span>
+            ) : (
+              <span className="text-xs font-normal text-slate-400">
+                {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"} market
+              </span>
+            ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-1">{statLabel}</p>
+
+        {/* Subtle split indicator: Yes fill, remainder is No */}
+        <div className="mt-3 h-1.5 w-full rounded-full bg-[#1a3344] overflow-hidden">
+          <div
+            className="h-full bg-primary/80 rounded-full"
+            style={{ width: `${Math.min(yesShown, 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+          <span>No {noShown}%</span>
+          {showComparison && <span>vs {yesOverall}% Yes across the market</span>}
         </div>
 
         {suppressed && <FallbackNote className="mt-3" />}
