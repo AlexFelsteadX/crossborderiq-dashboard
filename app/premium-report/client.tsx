@@ -85,7 +85,13 @@ function ReportBody() {
 
   // Detailed sections are opt-in: ?themes is a comma-separated list of theme
   // names. Only valid THEME_ORDER names count, capped at 2, in THEME_ORDER order.
+  // "Who took part" is intentionally excluded so it can neither be selected nor
+  // rendered, even if it appears in the URL param.
   const MAX_THEMES = 2
+  const SELECTABLE_THEMES = useMemo<WorkforceTheme[]>(
+    () => THEME_ORDER.filter((t) => t !== "Who took part"),
+    [],
+  )
   const selectedThemes = useMemo<WorkforceTheme[]>(() => {
     const raw = searchParams.get("themes")
     if (!raw) return []
@@ -95,15 +101,15 @@ function ReportBody() {
         .map((t) => t.trim())
         .filter(Boolean),
     )
-    return THEME_ORDER.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
-  }, [searchParams])
+    return SELECTABLE_THEMES.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
+  }, [searchParams, SELECTABLE_THEMES])
 
   // Toggle a theme on screen while preserving all current filters in the URL.
   function toggleTheme(theme: WorkforceTheme, next: boolean) {
     let updated: WorkforceTheme[]
     if (next) {
       if (selectedThemes.includes(theme) || selectedThemes.length >= MAX_THEMES) return
-      updated = THEME_ORDER.filter((t) => selectedThemes.includes(t) || t === theme)
+      updated = SELECTABLE_THEMES.filter((t) => selectedThemes.includes(t) || t === theme)
     } else {
       updated = selectedThemes.filter((t) => t !== theme)
     }
@@ -230,7 +236,7 @@ function ReportBody() {
         <fieldset className="theme-picker">
           <legend className="theme-picker-legend">Add detailed sections (up to 2)</legend>
           <div className="theme-picker-list">
-            {THEME_ORDER.map((theme) => {
+            {SELECTABLE_THEMES.map((theme) => {
               const checked = selectedThemes.includes(theme)
               const atLimit = selectedThemes.length >= MAX_THEMES
               return (
