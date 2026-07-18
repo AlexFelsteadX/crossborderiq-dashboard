@@ -563,10 +563,10 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </div>
 
         {/* Small circular gauge for the Yes figure, matching the dashboard's
-            visual language. Supporting text sits alongside. */}
-        <div className="flex items-center gap-4">
+            visual language. Gauge and supporting text are centered as a group. */}
+        <div className="flex flex-col items-center text-center gap-3 py-2">
           <CircularGauge value={yesShown} max={100} size={96} stroke={9} label={`${yesShown}%`} />
-          <div className="min-w-0">
+          <div>
             <p className="text-sm font-medium text-slate-300">Yes</p>
 
             {/* Market comparison — only when a filter yields a meaningful
