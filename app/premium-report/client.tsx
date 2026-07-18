@@ -85,9 +85,15 @@ function ReportBody() {
 
   // Detailed sections are opt-in: ?themes is a comma-separated list of theme
   // names. Only valid THEME_ORDER names count, capped at 2, in THEME_ORDER order.
+  // "Who took part" is intentionally excluded so it can neither be selected nor
+  // rendered, even if it appears in the URL param.
   const MAX_THEMES = 2
-  const selectedThemes = useMemo<WorkforceTheme[]>(() => {
-    const raw = searchParams.get("themes")
+  const SELECTABLE_THEMES = useMemo<WorkforceTheme[]>(
+    () => THEME_ORDER.filter((t) => t !== "Who took part"),
+    [],
+  )
+  // Parse the (validated, capped, ordered) theme list out of the URL param.
+  const parseThemesParam = (raw: string | null): WorkforceTheme[] => {
     if (!raw) return []
     const requested = new Set(
       raw
@@ -95,18 +101,27 @@ function ReportBody() {
         .map((t) => t.trim())
         .filter(Boolean),
     )
-    return THEME_ORDER.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
-  }, [searchParams])
+    return SELECTABLE_THEMES.filter((t) => requested.has(t)).slice(0, MAX_THEMES)
+  }
 
-  // Toggle a theme on screen while preserving all current filters in the URL.
+  // Local state is the source of truth for the checkboxes so a click ticks the
+  // box immediately, rather than waiting on a router round-trip. Initialised from
+  // the URL so a shared/bookmarked link still hydrates the correct selection.
+  const [selectedThemes, setSelectedThemes] = useState<WorkforceTheme[]>(() =>
+    parseThemesParam(searchParams.get("themes")),
+  )
+
+  // Toggle a theme, updating local state immutably (new array), then sync the URL
+  // while preserving all current filter params.
   function toggleTheme(theme: WorkforceTheme, next: boolean) {
     let updated: WorkforceTheme[]
     if (next) {
       if (selectedThemes.includes(theme) || selectedThemes.length >= MAX_THEMES) return
-      updated = THEME_ORDER.filter((t) => selectedThemes.includes(t) || t === theme)
+      updated = SELECTABLE_THEMES.filter((t) => selectedThemes.includes(t) || t === theme)
     } else {
       updated = selectedThemes.filter((t) => t !== theme)
     }
+    setSelectedThemes(updated)
     const params = new URLSearchParams(searchParams.toString())
     if (updated.length > 0) params.set("themes", updated.join(","))
     else params.delete("themes")
@@ -230,7 +245,7 @@ function ReportBody() {
         <fieldset className="theme-picker">
           <legend className="theme-picker-legend">Add detailed sections (up to 2)</legend>
           <div className="theme-picker-list">
-            {THEME_ORDER.map((theme) => {
+            {SELECTABLE_THEMES.map((theme) => {
               const checked = selectedThemes.includes(theme)
               const atLimit = selectedThemes.length >= MAX_THEMES
               return (
