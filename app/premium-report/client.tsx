@@ -194,8 +194,8 @@ function ReportBody() {
             <div className="bar-title">CBIQ</div>
             <div className="bar-sub">Cross-Border Workforce Intelligence</div>
           </div>
-          <div className="logo-slot" aria-hidden="true">
-            {/* CBIQ logo goes here */}
+          <div className="logo-slot">
+            <img src="/cbiq-logo-lockup.svg" alt="CBIQ" className="logo-img" />
           </div>
         </header>
 
@@ -324,8 +324,8 @@ function ReportBody() {
           </div>
           <div className="powered-by">
             <span className="powered-label">POWERED BY</span>
-            <div className="logo-slot sm" aria-hidden="true">
-              {/* GME logo goes here */}
+            <div className="logo-slot sm">
+              <img src="/images/GME_White_transparent.png" alt="GME" className="logo-img" />
             </div>
           </div>
         </footer>
@@ -395,11 +395,18 @@ const printStyles = `
   .bar-title.sm { font-size: 12px; font-weight: 600; max-width: 60ch; }
   .bar-sub { font-size: 12px; color: #93c5c9; margin-top: 2px; }
   .logo-slot {
-    width: 120px; height: 44px;
-    border: 1px dashed rgba(255,255,255,0.35);
-    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 36px;
   }
-  .logo-slot.sm { width: 90px; height: 34px; }
+  .logo-slot.sm { height: 26px; justify-content: flex-start; }
+  .logo-img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+    display: block;
+  }
   .powered-by { display: flex; align-items: center; gap: 10px; }
   .powered-label { font-size: 10px; letter-spacing: 1px; color: #93c5c9; text-transform: uppercase; }
 
