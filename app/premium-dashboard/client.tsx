@@ -166,6 +166,66 @@ function isDirectionalRow(qCode: string, answerOption: string): boolean {
   return false
 }
 
+// DISPLAY-ONLY: reword a survey question label so it reads naturally after
+// "whether ..." inside a comparison sentence. Strips a trailing question mark and,
+// for yes/no question phrasings, inverts the leading auxiliary — e.g.
+//   "Are you seeing a closer alignment...?" -> "whether you are seeing a closer alignment..."
+//   "Is your GM function set up as a CoE?"   -> "whether your GM function is set up as a CoE"
+//   "Do you measure Global Mobility ROI?"    -> "whether you measure Global Mobility ROI"
+// Applied ONLY to interpolated question labels in these sentences — never to
+// pillar names or answer options. Purely presentational; affects no computation.
+function toWhetherClause(raw: string): string {
+  let s = (raw ?? "").trim().replace(/\s*\?+\s*$/, "").trim()
+  if (!s) return "whether this applies"
+
+  // Only lowercase a leading word that is a function word (pronoun/determiner/
+  // wh-word), so proper nouns like "Global Mobility" keep their capitalization.
+  const decap = (str: string) => {
+    const fw = str.split(/\s+/)[0] ?? ""
+    const SAFE = /^(you|we|they|it|there|your|the|a|an|our|their|its|my|how|what|which|whether|do|does|did|is|are|was|were)$/i
+    return SAFE.test(fw) ? str.charAt(0).toLowerCase() + str.slice(1) : str
+  }
+
+  const firstSpace = s.indexOf(" ")
+  const firstWord = firstSpace === -1 ? s : s.slice(0, firstSpace)
+  const afterFirst = firstSpace === -1 ? "" : s.slice(firstSpace + 1)
+
+  if (/^(are|is|was|were|am)$/i.test(firstWord)) {
+    const aux = firstWord.toLowerCase()
+    if (/^(you|we|they|it|there)\b/i.test(afterFirst)) {
+      // be-verb + pronoun: "Are you seeing X" -> "you are seeing X"
+      const m = afterFirst.match(/^(\S+)(.*)$/)!
+      s = `${m[1].toLowerCase()} ${aux}${m[2]}`
+    } else {
+      // be-verb + noun subject: relocate the auxiliary to just before the first
+      // predicate cue (participle/gerund/adjective) so the subject noun phrase
+      // stays intact. Prepositions are NOT treated as boundaries (they can be
+      // part of the subject, e.g. "the scope and complexity of Global Mobility").
+      const PREDICATE_CUE = /(ing|ed|en)$/i
+      const IRREGULAR_CUE = /^(set|live|able|likely|ready|aware|open|keen)$/i
+      const words = afterFirst.split(/\s+/)
+      let boundary = words.length
+      for (let i = 0; i < words.length; i++) {
+        if (i === 0 && /^(your|the|a|an|our|their|its|my)$/i.test(words[i])) continue
+        if (PREDICATE_CUE.test(words[i]) || IRREGULAR_CUE.test(words[i])) {
+          boundary = i
+          break
+        }
+      }
+      const subject = words.slice(0, boundary).join(" ")
+      const predicate = words.slice(boundary).join(" ")
+      s = decap(predicate ? `${subject} ${aux} ${predicate}` : `${subject} ${aux}`)
+    }
+  } else if (/^(do|does|did)$/i.test(firstWord)) {
+    // do-support: drop the dummy auxiliary. "Do you measure X" -> "you measure X"
+    s = decap(afterFirst)
+  } else {
+    s = decap(s)
+  }
+
+  return `whether ${s}`
+}
+
 // Pillars where above-market does NOT mean "better", so ahead/behind language is
 // invalid. Show a neutral factual gap instead. Matched by name string, as pillars
 // carry no code.
@@ -867,7 +927,9 @@ function BreakdownSection({
         if (a.segN < LOW_BASE) continue
         if (!isDirectionalRow(q.qCode, a.option)) continue
         const gap = a.segPct - a.overallPct
-        const label = wholeQuestionDirectional ? q.questionLabel : a.option
+        // Question-level directional codes read as the question topic, reworded to
+        // follow "whether ..."; answer-specific cases read as the raw answer option.
+        const label = wholeQuestionDirectional ? toWhetherClause(q.questionLabel) : a.option
         if (gap >= NOTABLE && (!bestAhead || gap > bestAhead.gap)) bestAhead = { label, gap }
         if (gap <= -NOTABLE && (!bestBehind || gap < bestBehind.gap)) bestBehind = { label, gap }
       }
@@ -880,21 +942,21 @@ function BreakdownSection({
     ? directionalSummary.bestAhead && directionalSummary.bestBehind
       ? (
           <>
-            In this area, you&apos;re ahead of similar organizations on{" "}
-            <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span> but behind on{" "}
+            In this area you sit above the market for similar organizations on{" "}
+            <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>, and below on{" "}
             <span className="font-medium text-amber-400">{directionalSummary.bestBehind.label}</span>.
           </>
         )
       : directionalSummary.bestAhead
         ? (
             <>
-              In this area, you&apos;re ahead of similar organizations, most notably on{" "}
+              In this area you sit above the market for similar organizations, most notably on{" "}
               <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>.
             </>
           )
         : (
             <>
-              In this area, you&apos;re behind similar organizations, most notably on{" "}
+              In this area you sit below the market for similar organizations, most notably on{" "}
               <span className="font-medium text-amber-400">{directionalSummary.bestBehind!.label}</span>.
             </>
           )
@@ -1272,23 +1334,23 @@ export function PremiumDashboardClient() {
   if (aheadPillars.length > 0 && behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your program leads on{" "}
-        {colorNames(aheadPillars, "text-emerald-400")}, but trails on {colorNames(behindPillars, "text-amber-400")} —
-        two areas that may be worth a closer look.
+        Compared with similar organizations, your program sits above the market on{" "}
+        {colorNames(aheadPillars, "text-emerald-400")} and below on {colorNames(behindPillars, "text-amber-400")}. Both
+        may be worth a closer look.
       </>
     )
   } else if (aheadPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: your program is ahead of similar organizations, most notably on{" "}
+        Your program sits above the market for similar organizations, most notably on{" "}
         {colorNames(aheadPillars, "text-emerald-400")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your program trails on{" "}
-        {colorNames(behindPillars, "text-amber-400")} — areas that may be worth a closer look — and is in line
+        Your program sits below the market on{" "}
+        {colorNames(behindPillars, "text-amber-400")}, which may be worth a closer look, and is broadly in line
         elsewhere.
       </>
     )
