@@ -674,14 +674,17 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                 <p className="text-xs text-slate-400 mt-1">in line with market</p>
               ) : (
                 <p
-                  className={`text-xs font-medium mt-1 ${
-                    notable && directional
-                      ? divergence > 0
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                      : "text-slate-400"
+                  className={`text-xs font-medium mt-1 inline-flex items-center gap-0.5 ${
+                    notable && directional ? "text-primary" : "text-slate-400"
                   }`}
                 >
+                  {notable &&
+                    directional &&
+                    (divergence > 0 ? (
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                    ))}
                   vs {yesOverall}% market
                 </p>
               ))}
@@ -737,14 +740,17 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                 <p className="text-xs text-slate-400 mt-1">in line with market</p>
               ) : (
                 <p
-                  className={`text-xs font-medium mt-1 ${
-                    strongAgree.notable && strongAgree.directional
-                      ? strongAgree.divergence > 0
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                      : "text-slate-400"
+                  className={`text-xs font-medium mt-1 inline-flex items-center gap-0.5 ${
+                    strongAgree.notable && strongAgree.directional ? "text-primary" : "text-slate-400"
                   }`}
                 >
+                  {strongAgree.notable &&
+                    strongAgree.directional &&
+                    (strongAgree.divergence > 0 ? (
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                    ))}
                   vs {strongAgree.overallShown}% market
                 </p>
               ))}
@@ -817,11 +823,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                   {notable &&
                     (isDirectionalRow(q.qCode, answer.option) ? (
                       // Directional: above market is genuinely better → ahead/behind, coloured.
-                      <span
-                        className={`inline-flex items-center gap-0.5 font-medium ml-1.5 ${
-                          divergence > 0 ? "text-emerald-400" : "text-amber-400"
-                        }`}
-                      >
+                      <span className="inline-flex items-center gap-0.5 font-medium ml-1.5 text-primary">
                         {divergence > 0 ? (
                           <TrendingUp className="h-3 w-3" aria-hidden="true" />
                         ) : (
@@ -943,21 +945,21 @@ function BreakdownSection({
       ? (
           <>
             In this area you sit above the market for similar organizations on{" "}
-            <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>, and below on{" "}
-            <span className="font-medium text-amber-400">{directionalSummary.bestBehind.label}</span>.
+            <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>, and below on{" "}
+            <span className="font-semibold text-slate-200">{directionalSummary.bestBehind.label}</span>.
           </>
         )
       : directionalSummary.bestAhead
         ? (
             <>
               In this area you sit above the market for similar organizations, most notably on{" "}
-              <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>.
+              <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>.
             </>
           )
         : (
             <>
               In this area you sit below the market for similar organizations, most notably on{" "}
-              <span className="font-medium text-amber-400">{directionalSummary.bestBehind!.label}</span>.
+              <span className="font-semibold text-slate-200">{directionalSummary.bestBehind!.label}</span>.
             </>
           )
     : null
@@ -1311,12 +1313,14 @@ export function PremiumDashboardClient() {
   // One-line "you vs market" narrative across the five primary pillars. Derived
   // entirely from pillar values already in state — meaningful only when a segment
   // filter is active, and skips any pillar whose segment value is suppressed.
-  // Render a list of pillar names as colour-coded inline spans, joined naturally
-  // with commas and "and". Presentation only — does not affect the computation.
+  // Render a list of pillar names as emphasised inline spans, joined naturally
+  // with commas and "and". Emphasis is identical for above and below pillars —
+  // direction is stated by the surrounding sentence, never by colour.
+  // Presentation only — does not affect the computation.
   const colorNames = (names: string[], toneClass: string) =>
     names.map((name, i) => (
       <span key={name}>
-        <span className={`font-medium ${toneClass}`}>{name}</span>
+        <span className={`font-semibold ${toneClass}`}>{name}</span>
         {i < names.length - 2 ? ", " : i === names.length - 2 ? " and " : ""}
       </span>
     ))
@@ -1335,7 +1339,7 @@ export function PremiumDashboardClient() {
     pillarNarrative = (
       <>
         Compared with similar organizations, your program sits above the market on{" "}
-        {colorNames(aheadPillars, "text-emerald-400")} and below on {colorNames(behindPillars, "text-amber-400")}. Both
+        {colorNames(aheadPillars, "text-slate-200")} and below on {colorNames(behindPillars, "text-slate-200")}. Both
         may be worth a closer look.
       </>
     )
@@ -1343,14 +1347,14 @@ export function PremiumDashboardClient() {
     pillarNarrative = (
       <>
         Your program sits above the market for similar organizations, most notably on{" "}
-        {colorNames(aheadPillars, "text-emerald-400")}, and broadly in line elsewhere.
+        {colorNames(aheadPillars, "text-slate-200")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
         Your program sits below the market on{" "}
-        {colorNames(behindPillars, "text-amber-400")}, which may be worth a closer look, and is broadly in line
+        {colorNames(behindPillars, "text-slate-200")}, which may be worth a closer look, and is broadly in line
         elsewhere.
       </>
     )
@@ -1591,12 +1595,14 @@ export function PremiumDashboardClient() {
                     const diffPts = Math.round(mmi.index_score - mmi.overall_index)
                     const ahead = diffPts >= 2
                     const behind = diffPts <= -2
-                    const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                    const tone = ahead ? "text-emerald-400" : behind ? "text-amber-400" : "text-slate-400"
+                    // Direction is carried by the icon; a single teal accent is used for
+                    // both above and below (never colour-coded). "In line" is neutral, no icon.
+                    const Icon = ahead ? TrendingUp : TrendingDown
+                    const tone = ahead || behind ? "text-primary" : "text-slate-400"
                     return (
                       <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
                         <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
-                          <Icon className="h-4 w-4" aria-hidden="true" />
+                          {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
                           {ahead ? `${Math.abs(diffPts)} pts above` : behind ? `${Math.abs(diffPts)} pts below` : "In line"}
                         </span>
                         <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
@@ -1726,17 +1732,11 @@ export function PremiumDashboardClient() {
                         const ahead = diffPts >= 2
                         const behind = diffPts <= -2
                         const directional = isDirectionalPillar(p)
-                        const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                        // Neutral pillars (e.g. Operational Pressure, Leadership Expectations):
-                        // above-market isn't "better", so never colour green/amber and never
-                        // say ahead/behind — show the factual gap in muted grey.
-                        const tone = directional
-                          ? ahead
-                            ? "text-emerald-400"
-                            : behind
-                              ? "text-amber-400"
-                              : "text-slate-400"
-                          : "text-slate-400"
+                        const Icon = ahead ? TrendingUp : TrendingDown
+                        // Direction is carried by the icon, not colour. Directional pillars use a
+                        // single teal accent for both above and below; neutral pillars (e.g.
+                        // Operational Pressure, Leadership Expectations) and "in line" stay muted grey.
+                        const tone = directional && (ahead || behind) ? "text-primary" : "text-slate-400"
                         const label = directional
                           ? ahead
         ? `${Math.abs(diffPts)} pts above`
@@ -1751,7 +1751,7 @@ export function PremiumDashboardClient() {
                         return (
                           <div className="mt-2.5 flex flex-col items-center gap-1 rounded-md bg-slate-800/40 px-2 py-1">
                             <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
-                              <Icon className="h-4 w-4" aria-hidden="true" />
+                              {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
                               {label}
                             </span>
                             <span className="text-xs text-slate-400">Market: {formatPct(p.overall_pct)}</span>
