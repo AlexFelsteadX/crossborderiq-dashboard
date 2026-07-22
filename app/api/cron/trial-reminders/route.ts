@@ -99,9 +99,9 @@ export async function GET(req: Request) {
     sentN1++;
   }
 
-  // Stage 2: granted more than 7 days ago, stage 1 already sent
+  // Stage 2: stage 1 already sent, and sent more than 5 days ago
   const { data: n2 } = await grantBase()
-    .lt("granted_at", plus(-7))
+    .lt("nudge_1_sent_at", plus(-5))
     .not("nudge_1_sent_at", "is", null)
     .is("nudge_2_sent_at", null)
     .limit(200);
