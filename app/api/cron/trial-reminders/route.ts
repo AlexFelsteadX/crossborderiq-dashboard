@@ -1,6 +1,6 @@
 // app/api/cron/trial-reminders/route.ts
 import { sendEmail } from "@/lib/email";
-import { trialReminder10dEmail, trialReminder3dEmail, trialWinbackEmail, trialStragglerNudgeEmail } from "@/lib/trial-emails";
+import { trialReminder10dEmail, trialReminder3dEmail, trialWinbackEmail, claimNudge1Email, claimNudge2Email, claimNudgeFinalEmail } from "@/lib/trial-emails";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   const now = new Date();
   const iso = (d: Date) => d.toISOString();
   const plus = (days: number) => iso(new Date(now.getTime() + days * 86400000));
-  let sent10 = 0, sent3 = 0, sentWin = 0, sentNudge = 0;
+  let sent10 = 0, sent3 = 0, sentWin = 0;
 
   // 10-day: trial has between 3 and 10 days left, not yet reminded
   const { data: tenDay } = await supabase.from("memberships")
@@ -71,22 +71,62 @@ export async function GET(req: Request) {
     sentWin++;
   }
 
-  // Straggler nudge: eligible-but-unclaimed benchmark grants, older than 2 days, not yet nudged
-  const { data: stragglers } = await supabase.from("premium_trial_grants")
-    .select("id,email,owner")
+  // ---- Claim reminder sequence for unclaimed grants (replaces the old straggler nudge) ----
+  // Three touches across the claim window. Each stage records its own timestamp so
+  // nothing double-sends. Grants can opt out via nudges_enabled = false.
+  let sentN1 = 0, sentN2 = 0, sentNFinal = 0;
+
+  const grantBase = () => supabase.from("premium_trial_grants")
+    .select("id,email,owner,event_name,claim_deadline")
     .eq("status", "eligible")
     .is("claimed_at", null)
-    .gt("claim_deadline", iso(now))
+    .eq("nudges_enabled", true)
+    .gt("claim_deadline", iso(now));
+
+  // Stage 1: granted more than 2 days ago
+  const { data: n1 } = await grantBase()
     .lt("granted_at", plus(-2))
-    .is("nudge_sent_at", null)
-    .in("owner", ["CD", "CK", "AP", "pricing"]);
-  for (const row of (stragglers ?? [])) {
+    .is("nudge_1_sent_at", null)
+    .limit(200);
+  for (const row of (n1 ?? [])) {
     if (!row.email) continue;
-    const { subject, html } = trialStragglerNudgeEmail();
+    const { subject, html } = claimNudge1Email(row.event_name);
     await sendEmail({ to: row.email, subject, html });
-    await supabase.from("premium_trial_grants").update({ nudge_sent_at: iso(now) }).eq("id", row.id);
-    sentNudge++;
+    await supabase.from("premium_trial_grants")
+      .update({ nudge_1_sent_at: iso(now) }).eq("id", row.id);
+    sentN1++;
   }
 
-  return Response.json({ ok: true, sent10, sent3, sentWin, sentNudge });
+  // Stage 2: granted more than 7 days ago, stage 1 already sent
+  const { data: n2 } = await grantBase()
+    .lt("granted_at", plus(-7))
+    .not("nudge_1_sent_at", "is", null)
+    .is("nudge_2_sent_at", null)
+    .limit(200);
+  for (const row of (n2 ?? [])) {
+    if (!row.email) continue;
+    const { subject, html } = claimNudge2Email(row.event_name);
+    await sendEmail({ to: row.email, subject, html });
+    await supabase.from("premium_trial_grants")
+      .update({ nudge_2_sent_at: iso(now) }).eq("id", row.id);
+    sentN2++;
+  }
+
+  // Final: 5 days or less remaining on the claim window
+  const { data: nF } = await grantBase()
+    .lte("claim_deadline", plus(5))
+    .is("nudge_final_sent_at", null)
+    .limit(200);
+  for (const row of (nF ?? [])) {
+    if (!row.email) continue;
+    const days = Math.max(1, Math.ceil(
+      (new Date(row.claim_deadline).getTime() - now.getTime()) / 86400000));
+    const { subject, html } = claimNudgeFinalEmail(row.event_name, days);
+    await sendEmail({ to: row.email, subject, html });
+    await supabase.from("premium_trial_grants")
+      .update({ nudge_final_sent_at: iso(now) }).eq("id", row.id);
+    sentNFinal++;
+  }
+
+  return Response.json({ ok: true, sent10, sent3, sentWin, sentN1, sentN2, sentNFinal });
 }
