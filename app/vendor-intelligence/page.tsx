@@ -84,8 +84,8 @@ export default async function VendorIntelligencePage() {
           </div>
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
             <Users className="h-5 w-5 text-primary mb-3" />
-            <h3 className="font-semibold text-foreground text-sm mb-1">Industry Targeting</h3>
-            <p className="text-xs text-slate-400">Filter by industry vertical and company size for precision targeting.</p>
+            <h3 className="font-semibold text-foreground text-sm mb-1">Demand by Segment</h3>
+            <p className="text-xs text-slate-400">Understand how demand varies by industry vertical and company size.</p>
           </div>
         </div>
 
@@ -151,10 +151,13 @@ export default async function VendorIntelligencePage() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-foreground">Market Opportunity Score™</h2>
               </div>
-              <p className="text-sm text-slate-300 mb-6">
+              <p className="text-sm text-slate-300 mb-3">
                 A composite index tracking where operational pressure, transformation activity, 
                 technology demand and investment priorities are converging — signaling where 
                 provider services are most needed.
+              </p>
+              <p className="text-xs text-slate-500 mb-6">
+                A market-wide composite index built from aggregated survey responses — not company-level data.
               </p>
               
               {/* Frosted component breakdown - no real data */}
@@ -248,13 +251,13 @@ export default async function VendorIntelligencePage() {
             <div className="relative z-0">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Demand Pipeline</h3>
+                <h3 className="font-semibold text-foreground">Demand Activity Indicators</h3>
               </div>
-              <p className="text-xs text-slate-400 mb-4">Near-term demand activity signals</p>
+              <p className="text-xs text-slate-400 mb-4">Market-level activity signals across the benchmark — not named accounts</p>
               
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-lg border border-slate-700 bg-[#1a3344]/30 p-4">
-                  <p className="text-xs text-slate-300 font-medium mb-2">Active service reviews</p>
+                  <p className="text-xs text-slate-300 font-medium mb-2">Service review activity</p>
                   <div className="text-2xl font-bold text-slate-500/50 blur-[3px]">██%</div>
                 </div>
                 <div className="rounded-lg border border-slate-700 bg-[#1a3344]/30 p-4">
@@ -375,8 +378,8 @@ export default async function VendorIntelligencePage() {
               As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
               Premium access for your corporate clients — extending independent, benchmarked workforce
               intelligence to the organizations you work with most closely. It&apos;s a natural value-add to your
-              client relationships, a differentiator in competitive processes, and a way to keep your clients&apos;
-              mobility strategy visible to you. Every client you bring onto the platform can contribute
+              client relationships, a differentiator in competitive processes, and a way to give your clients
+              valuable, independent benchmarking access as a relationship benefit. Every client you bring onto the platform can contribute
               to the Global Workforce Deployment Survey, so each sponsorship makes the benchmarks you rely on
               sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
               opens the door.
@@ -434,6 +437,18 @@ export default async function VendorIntelligencePage() {
               View methodology
             </Link>
           </div>
+        </div>
+
+        {/* Trust strip - data handling reassurance */}
+        <div className="text-center space-y-2 pt-8">
+          <p className="text-xs text-slate-500 max-w-3xl mx-auto leading-relaxed">
+            All intelligence is aggregated and anonymized — no individual organization is identifiable.
+            Reporting thresholds apply, so small segments are never shown, and no lead lists are provided.
+            Aggregated market intelligence, just strategic insight. ·{" "}
+            <Link href="/methodology" className="text-primary hover:underline">
+              View methodology
+            </Link>
+          </p>
         </div>
       </main>
 

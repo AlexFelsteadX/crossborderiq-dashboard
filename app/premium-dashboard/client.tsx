@@ -166,6 +166,66 @@ function isDirectionalRow(qCode: string, answerOption: string): boolean {
   return false
 }
 
+// DISPLAY-ONLY: reword a survey question label so it reads naturally after
+// "whether ..." inside a comparison sentence. Strips a trailing question mark and,
+// for yes/no question phrasings, inverts the leading auxiliary — e.g.
+//   "Are you seeing a closer alignment...?" -> "whether you are seeing a closer alignment..."
+//   "Is your GM function set up as a CoE?"   -> "whether your GM function is set up as a CoE"
+//   "Do you measure Global Mobility ROI?"    -> "whether you measure Global Mobility ROI"
+// Applied ONLY to interpolated question labels in these sentences — never to
+// pillar names or answer options. Purely presentational; affects no computation.
+function toWhetherClause(raw: string): string {
+  let s = (raw ?? "").trim().replace(/\s*\?+\s*$/, "").trim()
+  if (!s) return "whether this applies"
+
+  // Only lowercase a leading word that is a function word (pronoun/determiner/
+  // wh-word), so proper nouns like "Global Mobility" keep their capitalization.
+  const decap = (str: string) => {
+    const fw = str.split(/\s+/)[0] ?? ""
+    const SAFE = /^(you|we|they|it|there|your|the|a|an|our|their|its|my|how|what|which|whether|do|does|did|is|are|was|were)$/i
+    return SAFE.test(fw) ? str.charAt(0).toLowerCase() + str.slice(1) : str
+  }
+
+  const firstSpace = s.indexOf(" ")
+  const firstWord = firstSpace === -1 ? s : s.slice(0, firstSpace)
+  const afterFirst = firstSpace === -1 ? "" : s.slice(firstSpace + 1)
+
+  if (/^(are|is|was|were|am)$/i.test(firstWord)) {
+    const aux = firstWord.toLowerCase()
+    if (/^(you|we|they|it|there)\b/i.test(afterFirst)) {
+      // be-verb + pronoun: "Are you seeing X" -> "you are seeing X"
+      const m = afterFirst.match(/^(\S+)(.*)$/)!
+      s = `${m[1].toLowerCase()} ${aux}${m[2]}`
+    } else {
+      // be-verb + noun subject: relocate the auxiliary to just before the first
+      // predicate cue (participle/gerund/adjective) so the subject noun phrase
+      // stays intact. Prepositions are NOT treated as boundaries (they can be
+      // part of the subject, e.g. "the scope and complexity of Global Mobility").
+      const PREDICATE_CUE = /(ing|ed|en)$/i
+      const IRREGULAR_CUE = /^(set|live|able|likely|ready|aware|open|keen)$/i
+      const words = afterFirst.split(/\s+/)
+      let boundary = words.length
+      for (let i = 0; i < words.length; i++) {
+        if (i === 0 && /^(your|the|a|an|our|their|its|my)$/i.test(words[i])) continue
+        if (PREDICATE_CUE.test(words[i]) || IRREGULAR_CUE.test(words[i])) {
+          boundary = i
+          break
+        }
+      }
+      const subject = words.slice(0, boundary).join(" ")
+      const predicate = words.slice(boundary).join(" ")
+      s = decap(predicate ? `${subject} ${aux} ${predicate}` : `${subject} ${aux}`)
+    }
+  } else if (/^(do|does|did)$/i.test(firstWord)) {
+    // do-support: drop the dummy auxiliary. "Do you measure X" -> "you measure X"
+    s = decap(afterFirst)
+  } else {
+    s = decap(s)
+  }
+
+  return `whether ${s}`
+}
+
 // Pillars where above-market does NOT mean "better", so ahead/behind language is
 // invalid. Show a neutral factual gap instead. Matched by name string, as pillars
 // carry no code.
@@ -614,14 +674,17 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                 <p className="text-xs text-slate-400 mt-1">in line with market</p>
               ) : (
                 <p
-                  className={`text-xs font-medium mt-1 ${
-                    notable && directional
-                      ? divergence > 0
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                      : "text-slate-400"
+                  className={`text-xs font-medium mt-1 inline-flex items-center gap-0.5 ${
+                    notable && directional ? "text-primary" : "text-slate-400"
                   }`}
                 >
+                  {notable &&
+                    directional &&
+                    (divergence > 0 ? (
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                    ))}
                   vs {yesOverall}% market
                 </p>
               ))}
@@ -677,14 +740,17 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                 <p className="text-xs text-slate-400 mt-1">in line with market</p>
               ) : (
                 <p
-                  className={`text-xs font-medium mt-1 ${
-                    strongAgree.notable && strongAgree.directional
-                      ? strongAgree.divergence > 0
-                        ? "text-emerald-400"
-                        : "text-amber-400"
-                      : "text-slate-400"
+                  className={`text-xs font-medium mt-1 inline-flex items-center gap-0.5 ${
+                    strongAgree.notable && strongAgree.directional ? "text-primary" : "text-slate-400"
                   }`}
                 >
+                  {strongAgree.notable &&
+                    strongAgree.directional &&
+                    (strongAgree.divergence > 0 ? (
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" aria-hidden="true" />
+                    ))}
                   vs {strongAgree.overallShown}% market
                 </p>
               ))}
@@ -757,17 +823,13 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                   {notable &&
                     (isDirectionalRow(q.qCode, answer.option) ? (
                       // Directional: above market is genuinely better → ahead/behind, coloured.
-                      <span
-                        className={`inline-flex items-center gap-0.5 font-medium ml-1.5 ${
-                          divergence > 0 ? "text-emerald-400" : "text-amber-400"
-                        }`}
-                      >
+                      <span className="inline-flex items-center gap-0.5 font-medium ml-1.5 text-primary">
                         {divergence > 0 ? (
                           <TrendingUp className="h-3 w-3" aria-hidden="true" />
                         ) : (
                           <TrendingDown className="h-3 w-3" aria-hidden="true" />
                         )}
-                        {Math.abs(divergence)} pts {divergence > 0 ? "ahead" : "behind"}
+                        {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"}
                       </span>
                     ) : (
                       // Neutral: just a profile difference, not a judgment → muted, factual.
@@ -867,7 +929,9 @@ function BreakdownSection({
         if (a.segN < LOW_BASE) continue
         if (!isDirectionalRow(q.qCode, a.option)) continue
         const gap = a.segPct - a.overallPct
-        const label = wholeQuestionDirectional ? q.questionLabel : a.option
+        // Question-level directional codes read as the question topic, reworded to
+        // follow "whether ..."; answer-specific cases read as the raw answer option.
+        const label = wholeQuestionDirectional ? toWhetherClause(q.questionLabel) : a.option
         if (gap >= NOTABLE && (!bestAhead || gap > bestAhead.gap)) bestAhead = { label, gap }
         if (gap <= -NOTABLE && (!bestBehind || gap < bestBehind.gap)) bestBehind = { label, gap }
       }
@@ -880,22 +944,22 @@ function BreakdownSection({
     ? directionalSummary.bestAhead && directionalSummary.bestBehind
       ? (
           <>
-            In this area, you&apos;re ahead of similar organizations on{" "}
-            <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span> but behind on{" "}
-            <span className="font-medium text-amber-400">{directionalSummary.bestBehind.label}</span>.
+            In this area you sit above the market for similar organizations on{" "}
+            <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>, and below on{" "}
+            <span className="font-semibold text-slate-200">{directionalSummary.bestBehind.label}</span>.
           </>
         )
       : directionalSummary.bestAhead
         ? (
             <>
-              In this area, you&apos;re ahead of similar organizations, most notably on{" "}
-              <span className="font-medium text-emerald-400">{directionalSummary.bestAhead.label}</span>.
+              In this area you sit above the market for similar organizations, most notably on{" "}
+              <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>.
             </>
           )
         : (
             <>
-              In this area, you&apos;re behind similar organizations, most notably on{" "}
-              <span className="font-medium text-amber-400">{directionalSummary.bestBehind!.label}</span>.
+              In this area you sit below the market for similar organizations, most notably on{" "}
+              <span className="font-semibold text-slate-200">{directionalSummary.bestBehind!.label}</span>.
             </>
           )
     : null
@@ -1249,12 +1313,14 @@ export function PremiumDashboardClient() {
   // One-line "you vs market" narrative across the five primary pillars. Derived
   // entirely from pillar values already in state — meaningful only when a segment
   // filter is active, and skips any pillar whose segment value is suppressed.
-  // Render a list of pillar names as colour-coded inline spans, joined naturally
-  // with commas and "and". Presentation only — does not affect the computation.
+  // Render a list of pillar names as emphasised inline spans, joined naturally
+  // with commas and "and". Emphasis is identical for above and below pillars —
+  // direction is stated by the surrounding sentence, never by colour.
+  // Presentation only — does not affect the computation.
   const colorNames = (names: string[], toneClass: string) =>
     names.map((name, i) => (
       <span key={name}>
-        <span className={`font-medium ${toneClass}`}>{name}</span>
+        <span className={`font-semibold ${toneClass}`}>{name}</span>
         {i < names.length - 2 ? ", " : i === names.length - 2 ? " and " : ""}
       </span>
     ))
@@ -1272,23 +1338,23 @@ export function PremiumDashboardClient() {
   if (aheadPillars.length > 0 && behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your program leads on{" "}
-        {colorNames(aheadPillars, "text-emerald-400")}, but trails on {colorNames(behindPillars, "text-amber-400")} —
-        two areas that may be worth a closer look.
+        Compared with similar organizations, your program sits above the market on{" "}
+        {colorNames(aheadPillars, "text-slate-200")} and below on {colorNames(behindPillars, "text-slate-200")}. Both
+        may be worth a closer look.
       </>
     )
   } else if (aheadPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: your program is ahead of similar organizations, most notably on{" "}
-        {colorNames(aheadPillars, "text-emerald-400")}, and broadly in line elsewhere.
+        Your program sits above the market for similar organizations, most notably on{" "}
+        {colorNames(aheadPillars, "text-slate-200")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Here&apos;s what stands out: compared to similar organizations, your program trails on{" "}
-        {colorNames(behindPillars, "text-amber-400")} — areas that may be worth a closer look — and is in line
+        Your program sits below the market on{" "}
+        {colorNames(behindPillars, "text-slate-200")}, which may be worth a closer look, and is broadly in line
         elsewhere.
       </>
     )
@@ -1529,13 +1595,15 @@ export function PremiumDashboardClient() {
                     const diffPts = Math.round(mmi.index_score - mmi.overall_index)
                     const ahead = diffPts >= 2
                     const behind = diffPts <= -2
-                    const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                    const tone = ahead ? "text-emerald-400" : behind ? "text-amber-400" : "text-slate-400"
+                    // Direction is carried by the icon; a single teal accent is used for
+                    // both above and below (never colour-coded). "In line" is neutral, no icon.
+                    const Icon = ahead ? TrendingUp : TrendingDown
+                    const tone = ahead || behind ? "text-primary" : "text-slate-400"
                     return (
                       <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
                         <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
-                          <Icon className="h-4 w-4" aria-hidden="true" />
-                          {ahead ? `${Math.abs(diffPts)} pts ahead` : behind ? `${Math.abs(diffPts)} pts behind` : "In line"}
+                          {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
+                          {ahead ? `${Math.abs(diffPts)} pts above` : behind ? `${Math.abs(diffPts)} pts below` : "In line"}
                         </span>
                         <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
                       </div>
@@ -1664,23 +1732,17 @@ export function PremiumDashboardClient() {
                         const ahead = diffPts >= 2
                         const behind = diffPts <= -2
                         const directional = isDirectionalPillar(p)
-                        const Icon = ahead ? TrendingUp : behind ? TrendingDown : Minus
-                        // Neutral pillars (e.g. Operational Pressure, Leadership Expectations):
-                        // above-market isn't "better", so never colour green/amber and never
-                        // say ahead/behind — show the factual gap in muted grey.
-                        const tone = directional
-                          ? ahead
-                            ? "text-emerald-400"
-                            : behind
-                              ? "text-amber-400"
-                              : "text-slate-400"
-                          : "text-slate-400"
+                        const Icon = ahead ? TrendingUp : TrendingDown
+                        // Direction is carried by the icon, not colour. Directional pillars use a
+                        // single teal accent for both above and below; neutral pillars (e.g.
+                        // Operational Pressure, Leadership Expectations) and "in line" stay muted grey.
+                        const tone = directional && (ahead || behind) ? "text-primary" : "text-slate-400"
                         const label = directional
                           ? ahead
-                            ? `${Math.abs(diffPts)} pts ahead`
-                            : behind
-                              ? `${Math.abs(diffPts)} pts behind`
-                              : "In line"
+        ? `${Math.abs(diffPts)} pts above`
+        : behind
+        ? `${Math.abs(diffPts)} pts below`
+        : "In line"
                           : ahead
                             ? `${Math.abs(diffPts)} pts above market`
                             : behind
@@ -1689,7 +1751,7 @@ export function PremiumDashboardClient() {
                         return (
                           <div className="mt-2.5 flex flex-col items-center gap-1 rounded-md bg-slate-800/40 px-2 py-1">
                             <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
-                              <Icon className="h-4 w-4" aria-hidden="true" />
+                              {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
                               {label}
                             </span>
                             <span className="text-xs text-slate-400">Market: {formatPct(p.overall_pct)}</span>
