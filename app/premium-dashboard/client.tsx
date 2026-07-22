@@ -827,7 +827,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
                         ) : (
                           <TrendingDown className="h-3 w-3" aria-hidden="true" />
                         )}
-                        {Math.abs(divergence)} pts {divergence > 0 ? "ahead" : "behind"}
+                        {Math.abs(divergence)} pts {divergence > 0 ? "above" : "below"}
                       </span>
                     ) : (
                       // Neutral: just a profile difference, not a judgment → muted, factual.
@@ -1597,7 +1597,7 @@ export function PremiumDashboardClient() {
                       <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
                         <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
                           <Icon className="h-4 w-4" aria-hidden="true" />
-                          {ahead ? `${Math.abs(diffPts)} pts ahead` : behind ? `${Math.abs(diffPts)} pts behind` : "In line"}
+                          {ahead ? `${Math.abs(diffPts)} pts above` : behind ? `${Math.abs(diffPts)} pts below` : "In line"}
                         </span>
                         <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
                       </div>
@@ -1739,10 +1739,10 @@ export function PremiumDashboardClient() {
                           : "text-slate-400"
                         const label = directional
                           ? ahead
-                            ? `${Math.abs(diffPts)} pts ahead`
-                            : behind
-                              ? `${Math.abs(diffPts)} pts behind`
-                              : "In line"
+        ? `${Math.abs(diffPts)} pts above`
+        : behind
+        ? `${Math.abs(diffPts)} pts below`
+        : "In line"
                           : ahead
                             ? `${Math.abs(diffPts)} pts above market`
                             : behind
