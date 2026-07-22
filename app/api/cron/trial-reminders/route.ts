@@ -83,9 +83,11 @@ export async function GET(req: Request) {
     .eq("nudges_enabled", true)
     .gt("claim_deadline", iso(now));
 
-  // Stage 1: granted more than 2 days ago
+  // Stage 1: granted more than 2 days ago, and not already within 5 days of the
+  // deadline (those skip stage 1 and go straight to the final reminder).
   const { data: n1 } = await grantBase()
     .lt("granted_at", plus(-2))
+    .gt("claim_deadline", plus(5))
     .is("nudge_1_sent_at", null)
     .limit(200);
   for (const row of (n1 ?? [])) {
@@ -112,9 +114,11 @@ export async function GET(req: Request) {
     sentN2++;
   }
 
-  // Final: 5 days or less remaining on the claim window
+  // Final: 5 days or less remaining on the claim window. Never send within 2 days
+  // of stage 1 (stage 1 either never sent, or sent more than 2 days ago).
   const { data: nF } = await grantBase()
     .lte("claim_deadline", plus(5))
+    .or(`nudge_1_sent_at.is.null,nudge_1_sent_at.lt.${plus(-2)}`)
     .is("nudge_final_sent_at", null)
     .limit(200);
   for (const row of (nF ?? [])) {
