@@ -76,23 +76,58 @@ export function trialStragglerNudgeEmail() {
 
 // ---- Claim reminder sequence for unclaimed event/benchmark grants ----
 // Three touches across the claim window. Sent by app/api/cron/trial-reminders/route.ts.
+// Shell matches the live magic link template: grey page, rounded white card,
+// CBIQ lockup header, GME lockup footer.
 
 const SITE = "https://www.cbiq.ai";
 
-function claimShell(heading: string, body: string, ctaLabel: string, ctaHref: string) {
+function claimShell(heading: string, intro: string, body: string, ctaLabel: string) {
   return `
-<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;">
-  <div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;">
-    <span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span>
-  </div>
-  <div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
-    <h1 style="font-size:22px;margin:0 0 16px;">${heading}</h1>
-    ${body}
-    <a href="${ctaHref}" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">${ctaLabel}</a>
-    <p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ, Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p>
-  </div>
-</div>`;
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;">
+        <tr>
+          <td style="background:#0A1628;padding:28px 32px;text-align:center;">
+            <img src="${SITE}/cbiq-lockup.png" alt="CBIQ" width="140" style="display:inline-block;max-width:140px;height:auto;" />
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 32px 8px 32px;">
+            <h1 style="margin:0 0 16px 0;font-size:22px;line-height:1.3;color:#0A1628;font-weight:700;">${heading}</h1>
+            <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#3a4654;">${intro}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 8px 32px;">
+            ${body}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 36px 32px;">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:8px;background:#16B8A6;">
+                  <a href="${SITE}/login" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">${ctaLabel}</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#0A1628;padding:24px 32px;text-align:center;">
+            <img src="${SITE}/images/GME_White_transparent.png" alt="GME" width="90" style="display:inline-block;max-width:90px;height:auto;opacity:0.9;" />
+            <p style="margin:12px 0 0 0;font-size:11px;line-height:1.5;color:#7a8694;">CBIQ is the cross-border workforce intelligence platform from Global Mobility Executive.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
 }
+
+const P = (text: string) =>
+  `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#3a4654;">${text}</p>`;
 
 function eventPhrase(eventName: string | null) {
   return eventName ? `at ${eventName}` : "at a recent GME event";
@@ -100,38 +135,46 @@ function eventPhrase(eventName: string | null) {
 
 /** Stage 1, roughly two days after the grant. Orientation, not a chase. */
 export function claimNudge1Email(eventName: string | null) {
-  const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Following your time with us ${eventPhrase(eventName)}, your complimentary CBIQ Premium access is ready and waiting.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Premium gives you the full benchmark: how Global Mobility programs are structured, resourced and funded, where peers are investing, and how your own program compares against organizations of similar size and sector.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">It takes about a minute to activate. Sign in with this email address and your access switches on automatically.</p>`;
+  const intro = `Following your time with us ${eventPhrase(eventName)}, your complimentary CBIQ Premium access is ready and waiting.`;
+  const body =
+    P("Premium gives you the full benchmark: how Global Mobility programs are structured, resourced and funded, where peers are investing, and how your own program compares against organizations of similar size and sector.") +
+    P("It takes about a minute to activate. Sign in with this email address and your access switches on automatically.");
   return {
     subject: "Your CBIQ Premium access is ready",
-    html: claimShell("Your access is waiting", body, "Activate your access", `${SITE}/login`),
+    html: claimShell("Your access is waiting", intro, body, "Activate your access"),
   };
 }
 
 /** Stage 2, roughly a week in. Leads with a finding so there is a reason to click. */
 export function claimNudge2Email(eventName: string | null) {
-  const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">One finding from the current benchmark, in case it is useful.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;background-color:#f4f6f8;border-left:3px solid #16b8a6;padding:14px 16px;">Global Mobility teams outsource specialist execution at high rates. Around four in five outsource tax and roughly three in four outsource immigration. Fewer than one in ten outsource coordination of the assignment process itself. Programs buy the parts and keep the orchestration in house.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your complimentary Premium access from ${eventPhrase(eventName)} is still available, and it lets you cut findings like this by region, industry and program size to see where your own program sits.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Sign in with this email address and your access activates automatically.</p>`;
+  const intro = "One finding from the current benchmark, in case it is useful.";
+  const body =
+    `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
+      <tr>
+        <td style="background:#f4f6f8;border-left:3px solid #16B8A6;border-radius:0 8px 8px 0;padding:18px 20px;">
+          <p style="margin:0;font-size:15px;line-height:1.6;color:#0A1628;">Global Mobility teams outsource specialist execution at high rates. Around four in five outsource tax and roughly three in four outsource immigration. Fewer than one in ten outsource coordination of the assignment process itself.</p>
+          <p style="margin:12px 0 0 0;font-size:15px;line-height:1.6;color:#3a4654;">Programs buy the parts and keep the orchestration in house.</p>
+        </td>
+      </tr>
+    </table>` +
+    P(`Your complimentary Premium access from ${eventPhrase(eventName)} is still available, and it lets you cut findings like this by region, industry and program size to see where your own program sits.`) +
+    P("Sign in with this email address and your access activates automatically.");
   return {
     subject: "What the benchmark shows on outsourcing",
-    html: claimShell("The part nobody outsources", body, "See the full benchmark", `${SITE}/login`),
+    html: claimShell("The part nobody outsources", intro, body, "See the full benchmark"),
   };
 }
 
 /** Final reminder, once the claim window is nearly up. */
 export function claimNudgeFinalEmail(eventName: string | null, daysRemaining: number) {
   const dayLabel = daysRemaining === 1 ? "tomorrow" : `in ${daysRemaining} days`;
-  const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your complimentary CBIQ Premium access from ${eventPhrase(eventName)} is still unclaimed, and the window closes ${dayLabel}.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Once activated you get the full benchmark: pillar breakdowns, peer segment filtering, and the questions that sit behind the headline numbers. Most people find the peer comparison the useful part, since it answers the question the market cannot otherwise answer, which is whether your program is normal.</p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Activating takes about a minute. Sign in with this email address and it switches on automatically.</p>`;
+  const intro = `Your complimentary CBIQ Premium access from ${eventPhrase(eventName)} is still unclaimed, and the window closes ${dayLabel}.`;
+  const body =
+    P("Once activated you get the full benchmark: pillar breakdowns, peer segment filtering, and the questions that sit behind the headline numbers.") +
+    P("Most people find the peer comparison the useful part, since it answers the question the market cannot otherwise answer, which is whether your program is normal.") +
+    P("Activating takes about a minute. Sign in with this email address and it switches on automatically.");
   return {
     subject: `Your CBIQ access closes ${dayLabel}`,
-    html: claimShell("Last chance to activate", body, "Activate now", `${SITE}/login`),
+    html: claimShell("Last chance to activate", intro, body, "Activate now"),
   };
 }
