@@ -73,3 +73,65 @@ export function trialStragglerNudgeEmail() {
     }),
   };
 }
+
+// ---- Claim reminder sequence for unclaimed event/benchmark grants ----
+// Three touches across the claim window. Sent by app/api/cron/trial-reminders/route.ts.
+
+const SITE = "https://www.cbiq.ai";
+
+function claimShell(heading: string, body: string, ctaLabel: string, ctaHref: string) {
+  return `
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#0a1628;">
+  <div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;">
+    <span style="color:#ffffff;font-size:20px;font-weight:bold;">CBIQ</span>
+  </div>
+  <div style="padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
+    <h1 style="font-size:22px;margin:0 0 16px;">${heading}</h1>
+    ${body}
+    <a href="${ctaHref}" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">${ctaLabel}</a>
+    <p style="font-size:13px;line-height:1.6;color:#6b7280;margin:32px 0 0;">CBIQ, Cross-Border Workforce Intelligence, powered by Global Mobility Executive.</p>
+  </div>
+</div>`;
+}
+
+function eventPhrase(eventName: string | null) {
+  return eventName ? `at ${eventName}` : "at a recent GME event";
+}
+
+/** Stage 1, roughly two days after the grant. Orientation, not a chase. */
+export function claimNudge1Email(eventName: string | null) {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Following your time with us ${eventPhrase(eventName)}, your complimentary CBIQ Premium access is ready and waiting.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Premium gives you the full benchmark: how Global Mobility programs are structured, resourced and funded, where peers are investing, and how your own program compares against organizations of similar size and sector.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">It takes about a minute to activate. Sign in with this email address and your access switches on automatically.</p>`;
+  return {
+    subject: "Your CBIQ Premium access is ready",
+    html: claimShell("Your access is waiting", body, "Activate your access", `${SITE}/login`),
+  };
+}
+
+/** Stage 2, roughly a week in. Leads with a finding so there is a reason to click. */
+export function claimNudge2Email(eventName: string | null) {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">One finding from the current benchmark, in case it is useful.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;background-color:#f4f6f8;border-left:3px solid #16b8a6;padding:14px 16px;">Global Mobility teams outsource specialist execution at high rates. Around four in five outsource tax and roughly three in four outsource immigration. Fewer than one in ten outsource coordination of the assignment process itself. Programs buy the parts and keep the orchestration in house.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your complimentary Premium access from ${eventPhrase(eventName)} is still available, and it lets you cut findings like this by region, industry and program size to see where your own program sits.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Sign in with this email address and your access activates automatically.</p>`;
+  return {
+    subject: "What the benchmark shows on outsourcing",
+    html: claimShell("The part nobody outsources", body, "See the full benchmark", `${SITE}/login`),
+  };
+}
+
+/** Final reminder, once the claim window is nearly up. */
+export function claimNudgeFinalEmail(eventName: string | null, daysRemaining: number) {
+  const dayLabel = daysRemaining === 1 ? "tomorrow" : `in ${daysRemaining} days`;
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Your complimentary CBIQ Premium access from ${eventPhrase(eventName)} is still unclaimed, and the window closes ${dayLabel}.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Once activated you get the full benchmark: pillar breakdowns, peer segment filtering, and the questions that sit behind the headline numbers. Most people find the peer comparison the useful part, since it answers the question the market cannot otherwise answer, which is whether your program is normal.</p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Activating takes about a minute. Sign in with this email address and it switches on automatically.</p>`;
+  return {
+    subject: `Your CBIQ access closes ${dayLabel}`,
+    html: claimShell("Last chance to activate", body, "Activate now", `${SITE}/login`),
+  };
+}
