@@ -145,14 +145,14 @@ function LoginForm() {
               <>
                 <h1 className="text-2xl font-bold text-slate-100 mb-2">Check your email</h1>
                 <p className="text-sm text-slate-400">
-                  We&apos;ve sent your sign in link.
+                  We&apos;ve sent your sign in code.
                 </p>
               </>
             ) : (
               <>
                 <h1 className="text-2xl font-bold text-slate-100 mb-2">Get access to CBIQ</h1>
                 <p className="text-sm text-slate-400">
-                  Enter your email and we&apos;ll send you a secure sign-in link.
+                  Enter your email and we&apos;ll send you a secure sign-in code.
                 </p>
               </>
             )}
@@ -163,7 +163,7 @@ function LoginForm() {
               <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-slate-100">Check your email for your sign in link.</p>
+                  <p className="text-sm font-medium text-slate-100">Check your email for your sign in code. It may take a minute to arrive, and remember to check your spam folder.</p>
                   <p className="mt-1 text-xs text-slate-400">
                     Sent to {email.trim()}. Don&apos;t see it? Check your spam or junk folder.
                   </p>
@@ -280,7 +280,7 @@ function LoginForm() {
                   className="w-full bg-primary hover:bg-primary/90"
                   disabled={loading}
                 >
-                  {loading ? "Sending link..." : "Email me a sign in code"}
+                  {loading ? "Sending code..." : "Email me a sign in code"}
                 </Button>
               </form>
             </>
