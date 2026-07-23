@@ -280,7 +280,7 @@ function LoginForm() {
                   className="w-full bg-primary hover:bg-primary/90"
                   disabled={loading}
                 >
-                  {loading ? "Sending link..." : "Email me a sign in link"}
+                  {loading ? "Sending link..." : "Email me a sign in code"}
                 </Button>
               </form>
             </>
