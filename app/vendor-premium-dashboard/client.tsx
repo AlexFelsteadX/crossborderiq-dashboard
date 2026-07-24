@@ -118,6 +118,17 @@ interface SegmentSummaryRow {
   abs_delta: number
 }
 
+// Display-only: vendor-facing labels for the raw Program State survey answers.
+// Does NOT affect RPC values, sorting, or keys — presentation only. Any answer
+// not in this map falls back to its raw text (e.g. AI Adoption answers pass through).
+const PROGRAM_STATE_LABELS: Record<string, string> = {
+  "We are optimizing selected areas of our mobility program": "Optimizing selected areas",
+  "We are reviewing current processes and technology tools": "Reviewing processes and technology",
+  "Our existing mobility model is operating effectively": "Model operating effectively",
+  "We are actively transforming parts of our mobility function": "Actively transforming the function",
+}
+const displayProgramLabel = (answer: string) => PROGRAM_STATE_LABELS[answer] ?? answer
+
 // Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
 type Confidence = "full" | "limited" | "suppressed"
 
@@ -1881,6 +1892,17 @@ export function VendorPremiumDashboardClient() {
                 const sign = d > 0 ? "+" : d < 0 ? "−" : ""
                 return `${sign}${Math.abs(Math.round(d))}`
               }
+              // Build the noun phrase from the RPC's answer + topic (never omit answer,
+              // never recompute anything). Outsourcing appends the topic word so it reads
+              // "Cultural training outsourcing"; AI adoption / technology / program_state
+              // read fully from the answer alone. program_state answers use the
+              // vendor-facing display labels.
+              const phraseFor = (r: SegmentSummaryRow) => {
+                const topic = (r.topic ?? "").toLowerCase()
+                const answer = displayProgramLabel(r.answer)
+                if (topic.includes("outsourc")) return `${answer} outsourcing`
+                return answer
+              }
               // Group consecutive divergences by direction so the line reads
               // "above market on X (+9) and Y (+6); below market on Z (−7)".
               const groups: { direction: string; items: SegmentSummaryRow[] }[] = []
@@ -1890,7 +1912,7 @@ export function VendorPremiumDashboardClient() {
                 else groups.push({ direction: row.direction, items: [row] })
               }
               const clauses = groups.map((g) => {
-                const parts = g.items.map((r) => `${r.topic} (${fmtDelta(r.delta)})`)
+                const parts = g.items.map((r) => `${phraseFor(r)} (${fmtDelta(r.delta)})`)
                 const joined =
                   parts.length > 1
                     ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
@@ -2071,7 +2093,7 @@ export function VendorPremiumDashboardClient() {
                         return (
                           <div key={idx}>
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                              <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                               <span className="text-sm font-semibold text-primary">{row.pct}%</span>
                             </div>
                             <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
@@ -2124,7 +2146,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
@@ -2431,7 +2453,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
