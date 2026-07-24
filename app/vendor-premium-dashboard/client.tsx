@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw, Cpu
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw, Cpu, Triangle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -89,6 +89,20 @@ interface AiAdoptionRow {
   pct: number
   base_n: number
   is_reportable: boolean
+}
+
+// Filtered segment vs whole-pool market for a single question.
+// Returned by get_vendor_segment_vs_market(p_question_key, p_region, p_industry,
+// p_size, p_assignee, p_traveller). direction ∈ 'above' | 'below' | 'in_line' | 'insufficient'.
+interface SegmentVsMarketRow {
+  answer: string
+  segment_pct: number
+  market_pct: number
+  delta: number
+  direction: string
+  segment_base: number
+  market_base: number
+  segment_reportable: boolean
 }
 
 // Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
@@ -1008,6 +1022,7 @@ export function VendorPremiumDashboardClient() {
   const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
   const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
   const [aiAdoption, setAiAdoption] = useState<AiAdoptionRow[]>([])
+  const [aiVsMarket, setAiVsMarket] = useState<SegmentVsMarketRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -1297,12 +1312,29 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes, whitespaceRes] = await Promise.all([
+      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes] = await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
         supabase.rpc("get_vendor_breakdown", params),
         supabase.rpc("get_vendor_whitespace", params),
+        // AI adoption: filtered segment vs whole-pool market. Only the five
+        // demographic filters apply here (never empty string — null when "All").
+        supabase.rpc("get_vendor_segment_vs_market", {
+          p_question_key: "ai_use_stage",
+          p_region: selectedRegion,
+          p_industry: selectedIndustry,
+          p_size: selectedSize,
+          p_assignee: selectedAssignee,
+          p_traveller: selectedTraveller,
+        }),
       ])
       if (cancelled) return
+
+      if (vsMarketRes.error) {
+        console.log("[v0] AI segment-vs-market RPC error:", vsMarketRes.error)
+        setAiVsMarket([])
+      } else {
+        setAiVsMarket((vsMarketRes.data as SegmentVsMarketRow[]) ?? [])
+      }
 
       if (sizeRes.error) {
         console.log("[v0] Vendor segment size RPC error:", sizeRes.error)
@@ -2048,11 +2080,153 @@ export function VendorPremiumDashboardClient() {
                   Filtered
                 </span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Among Global Mobility leaders registering for GME events.
-              </p>
 
               {(() => {
+                // Maturity gradient by position (production → piloting → planning →
+                // not using): CBIQ teal fades to muted grey.
+                const MATURITY_COLORS = ["#16b8a6", "#4f9e9a", "#6f929a", "#8a96a3"]
+
+                // Canonical answer order taken from the adoption RPC, so every state
+                // renders in the same maturity sequence.
+                const orderIndex = new Map(aiAdoption.map((r, i) => [r.answer, i]))
+                const byOrder = <T extends { answer: string }>(a: T, b: T) =>
+                  (orderIndex.get(a.answer) ?? 99) - (orderIndex.get(b.answer) ?? 99)
+
+                // Market-only distribution: headline + stacked maturity bar + legend.
+                // Used for the no-filter view and the insufficient-segment fallback.
+                const marketOnlyView = (
+                  dist: { answer: string; pct: number }[],
+                  baseN: number,
+                  note?: string,
+                ) => {
+                  const usingToday = dist.slice(0, 2).reduce((s, r) => s + (r.pct ?? 0), 0)
+                  return (
+                    <>
+                      {note && (
+                        <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                          {note}
+                        </div>
+                      )}
+                      <div className="mb-6">
+                        <div className="text-5xl font-bold tracking-tight text-slate-100">
+                          {Math.round(usingToday)}%
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-slate-300">
+                          using AI in Global Mobility today
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          the remainder are planning or not yet using it
+                        </p>
+                      </div>
+                      <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-700/40">
+                        {dist.map((row, idx) => {
+                          const width = Math.max(0, Math.min(100, row.pct ?? 0))
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-center text-[10px] font-semibold text-brand-navy-3 transition-all"
+                              style={{
+                                width: `${width}%`,
+                                backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1],
+                              }}
+                              title={`${row.answer}: ${row.pct}%`}
+                            >
+                              {width >= 10 ? `${row.pct}%` : ""}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+                        {dist.map((row, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1] }}
+                            />
+                            <span className="text-xs text-slate-400">
+                              <span className="text-slate-200">{row.pct}%</span> {row.answer}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-5">Based on {baseN} responses</p>
+                    </>
+                  )
+                }
+
+                // ---- Comparison mode: a filter is applied and we have vs-market data ----
+                if (isFiltered && aiVsMarket.length > 0) {
+                  const rows = [...aiVsMarket].sort(byOrder)
+                  const marketBase = aiVsMarket[0]?.market_base ?? 0
+                  const segmentReportable = rows.every((r) => r.segment_reportable)
+
+                  // Segment too thin to compare → market rate only, with the note.
+                  if (!segmentReportable) {
+                    const marketDist = rows.map((r) => ({ answer: r.answer, pct: r.market_pct }))
+                    return marketOnlyView(
+                      marketDist,
+                      marketBase,
+                      "Not enough responses in this segment to compare — showing market rate.",
+                    )
+                  }
+
+                  // Direction carried by icon (not colour). Words are fixed:
+                  // above market / below market / in line with market.
+                  const dirMeta = (d: string) => {
+                    if (d === "above")
+                      return { label: "above market", icon: <Triangle className="h-3 w-3 fill-current" /> }
+                    if (d === "below")
+                      return { label: "below market", icon: <Triangle className="h-3 w-3 fill-current rotate-180" /> }
+                    return { label: "in line with market", icon: <Minus className="h-3 w-3" /> }
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs text-slate-500 mb-5">
+                        vs all benchmark respondents (n={marketBase})
+                      </p>
+                      <div className="space-y-5">
+                        {rows.map((row, idx) => {
+                          const seg = Math.max(0, Math.min(100, row.segment_pct ?? 0))
+                          const mkt = Math.max(0, Math.min(100, row.market_pct ?? 0))
+                          const meta = dirMeta(row.direction)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="flex items-center gap-1 text-xs text-slate-400">
+                                  {meta.icon}
+                                  {row.direction !== "in_line" && (
+                                    <span className="text-slate-300">{Math.abs(Math.round(row.delta))}pp</span>
+                                  )}
+                                  <span>{meta.label}</span>
+                                </span>
+                              </div>
+                              {/* Segment = primary neutral accent bar */}
+                              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${seg}%` }} />
+                              </div>
+                              {/* Market = faint reference beneath */}
+                              <div className="mt-1 flex items-center gap-2">
+                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/30">
+                                  <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/50" style={{ width: `${mkt}%` }} />
+                                </div>
+                                <span className="text-[10px] text-slate-500 shrink-0">
+                                  segment {row.segment_pct}% · market {row.market_pct}%
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-5">
+                        Segment n={rows[0]?.segment_base ?? 0} · market n={marketBase}
+                      </p>
+                    </>
+                  )
+                }
+
+                // ---- No filters applied → market distribution only, no comparison ----
                 const aiReportable = aiAdoption.length > 0 && aiAdoption.every((r) => r.is_reportable)
                 if (!aiReportable) {
                   return (
@@ -2064,66 +2238,9 @@ export function VendorPremiumDashboardClient() {
                     </div>
                   )
                 }
-                const aiBaseN = aiAdoption[0]?.base_n ?? 0
-                // Maturity gradient by position (rows are pre-sorted by sort_order):
-                // production → piloting → planning → not using. CBIQ teal fades to muted grey.
-                const MATURITY_COLORS = ["#16b8a6", "#4f9e9a", "#6f929a", "#8a96a3"]
-                // "Using AI today" = production + piloting (the first two maturity stages).
-                const usingToday = aiAdoption
-                  .slice(0, 2)
-                  .reduce((sum, r) => sum + (r.pct ?? 0), 0)
-                return (
-                  <>
-                    {/* Headline stat: under-half-are-actually-using story at a glance */}
-                    <div className="mb-6">
-                      <div className="text-5xl font-bold tracking-tight text-slate-100">
-                        {Math.round(usingToday)}%
-                      </div>
-                      <p className="mt-1 text-sm font-medium text-slate-300">
-                        using AI in Global Mobility today
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        the remainder are planning or not yet using it
-                      </p>
-                    </div>
-
-                    {/* Single stacked bar, maturity gradient teal → grey */}
-                    <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-700/40">
-                      {aiAdoption.map((row, idx) => {
-                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
-                        return (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-center text-[10px] font-semibold text-brand-navy-3 transition-all"
-                            style={{
-                              width: `${width}%`,
-                              backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1],
-                            }}
-                            title={`${row.answer}: ${row.pct}%`}
-                          >
-                            {width >= 10 ? `${row.pct}%` : ""}
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Legend — carries answer labels and any percentages too small to fit inline */}
-                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-                      {aiAdoption.map((row, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1] }}
-                          />
-                          <span className="text-xs text-slate-400">
-                            <span className="text-slate-200">{row.pct}%</span> {row.answer}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <p className="text-xs text-slate-500 mt-5">Based on {aiBaseN} responses</p>
-                  </>
+                return marketOnlyView(
+                  aiAdoption.map((r) => ({ answer: r.answer, pct: r.pct })),
+                  aiAdoption[0]?.base_n ?? 0,
                 )
               })()}
             </div>
