@@ -2065,24 +2065,63 @@ export function VendorPremiumDashboardClient() {
                   )
                 }
                 const aiBaseN = aiAdoption[0]?.base_n ?? 0
+                // Maturity gradient by position (rows are pre-sorted by sort_order):
+                // production → piloting → planning → not using. CBIQ teal fades to muted grey.
+                const MATURITY_COLORS = ["#16b8a6", "#4f9e9a", "#6f929a", "#8a96a3"]
+                // "Using AI today" = production + piloting (the first two maturity stages).
+                const usingToday = aiAdoption
+                  .slice(0, 2)
+                  .reduce((sum, r) => sum + (r.pct ?? 0), 0)
                 return (
                   <>
-                    <div className="space-y-4">
+                    {/* Headline stat: under-half-are-actually-using story at a glance */}
+                    <div className="mb-6">
+                      <div className="text-5xl font-bold tracking-tight text-slate-100">
+                        {Math.round(usingToday)}%
+                      </div>
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        using AI in Global Mobility today
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        the remainder are planning or not yet using it
+                      </p>
+                    </div>
+
+                    {/* Single stacked bar, maturity gradient teal → grey */}
+                    <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-700/40">
+                      {aiAdoption.map((row, idx) => {
+                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-center text-[10px] font-semibold text-brand-navy-3 transition-all"
+                            style={{
+                              width: `${width}%`,
+                              backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1],
+                            }}
+                            title={`${row.answer}: ${row.pct}%`}
+                          >
+                            {width >= 10 ? `${row.pct}%` : ""}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Legend — carries answer labels and any percentages too small to fit inline */}
+                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
                       {aiAdoption.map((row, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-medium text-slate-200">{row.answer}</span>
-                            <span className="text-sm font-semibold text-primary">{row.pct}%</span>
-                          </div>
-                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${Math.max(0, Math.min(100, row.pct))}%` }}
-                            />
-                          </div>
+                        <div key={idx} className="flex items-center gap-2">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: MATURITY_COLORS[idx] ?? MATURITY_COLORS[MATURITY_COLORS.length - 1] }}
+                          />
+                          <span className="text-xs text-slate-400">
+                            <span className="text-slate-200">{row.pct}%</span> {row.answer}
+                          </span>
                         </div>
                       ))}
                     </div>
+
                     <p className="text-xs text-slate-500 mt-5">Based on {aiBaseN} responses</p>
                   </>
                 )
