@@ -1962,6 +1962,152 @@ export function VendorPremiumDashboardClient() {
             />
 
             {/* =================================================================== */}
+            {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] mt-8">
+              <div className="flex items-center gap-2 mb-2">
+                <Layers className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Filtered
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Among Global Mobility leaders registering for GME events.
+              </p>
+
+              {(() => {
+                // Canonical answer order from the RPC rows, so every state renders
+                // in the same sequence.
+                const orderIndex = new Map(programVsMarket.map((r, i) => [r.answer, i]))
+                const byOrder = <T extends { answer: string }>(a: T, b: T) =>
+                  (orderIndex.get(a.answer) ?? 99) - (orderIndex.get(b.answer) ?? 99)
+
+                // Market-only distribution: a labelled bar per answer, base_n once.
+                // Used for the unfiltered view and the insufficient-segment fallback.
+                const marketOnlyView = (
+                  dist: { answer: string; pct: number }[],
+                  baseN: number,
+                  note?: string,
+                ) => (
+                  <>
+                    {note && (
+                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                        {note}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      {dist.map((row, idx) => {
+                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
+                        return (
+                          <div key={idx}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
+                            </div>
+                            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                              <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${width}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-5">Based on {baseN} responses</p>
+                  </>
+                )
+
+                // ---- Comparison mode: a filter is applied and we have vs-market data ----
+                if (isFiltered && programVsMarket.length > 0) {
+                  const rows = [...programVsMarket].sort(byOrder)
+                  const marketBase = programVsMarket[0]?.market_base ?? 0
+                  const segmentReportable = rows.every((r) => r.segment_reportable)
+
+                  // Segment too thin to compare → market rate only, with the note.
+                  if (!segmentReportable) {
+                    const marketDist = rows.map((r) => ({ answer: r.answer, pct: r.market_pct }))
+                    return marketOnlyView(
+                      marketDist,
+                      marketBase,
+                      "Not enough responses in this segment to compare — showing market rate.",
+                    )
+                  }
+
+                  // Direction carried by icon (not colour). Words are fixed:
+                  // above market / below market / in line with market.
+                  const dirMeta = (d: string) => {
+                    if (d === "above")
+                      return { label: "above market", icon: <Triangle className="h-3 w-3 fill-current" /> }
+                    if (d === "below")
+                      return { label: "below market", icon: <Triangle className="h-3 w-3 fill-current rotate-180" /> }
+                    return { label: "in line with market", icon: <Minus className="h-3 w-3" /> }
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs text-slate-500 mb-5">
+                        vs all benchmark respondents (n={marketBase})
+                      </p>
+                      <div className="space-y-5">
+                        {rows.map((row, idx) => {
+                          const seg = Math.max(0, Math.min(100, row.segment_pct ?? 0))
+                          const mkt = Math.max(0, Math.min(100, row.market_pct ?? 0))
+                          const meta = dirMeta(row.direction)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="flex items-center gap-1 text-xs text-slate-400">
+                                  {meta.icon}
+                                  {row.direction !== "in_line" && (
+                                    <span className="text-slate-300">{Math.abs(Math.round(row.delta))}pp</span>
+                                  )}
+                                  <span>{meta.label}</span>
+                                </span>
+                              </div>
+                              {/* Segment = primary neutral accent bar */}
+                              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${seg}%` }} />
+                              </div>
+                              {/* Market = faint reference beneath */}
+                              <div className="mt-1 flex items-center gap-2">
+                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/30">
+                                  <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/50" style={{ width: `${mkt}%` }} />
+                                </div>
+                                <span className="text-[10px] text-slate-500 shrink-0">
+                                  segment {row.segment_pct}% · market {row.market_pct}%
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-5">
+                        Segment n={rows[0]?.segment_base ?? 0} · market n={marketBase}
+                      </p>
+                    </>
+                  )
+                }
+
+                // ---- No filters applied → market distribution only, no comparison ----
+                if (programVsMarket.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">
+                        Not enough responses for this segment — try broadening your filters
+                      </p>
+                    </div>
+                  )
+                }
+                return marketOnlyView(
+                  [...programVsMarket].sort(byOrder).map((r) => ({ answer: r.answer, pct: r.market_pct })),
+                  programVsMarket[0]?.market_base ?? 0,
+                )
+              })()}
+            </div>
+
+            {/* =================================================================== */}
             {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
             {/* =================================================================== */}
 
@@ -2265,152 +2411,6 @@ export function VendorPremiumDashboardClient() {
                 return marketOnlyView(
                   aiAdoption.map((r) => ({ answer: r.answer, pct: r.pct })),
                   aiAdoption[0]?.base_n ?? 0,
-                )
-              })()}
-            </div>
-
-            {/* =================================================================== */}
-            {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] mt-8">
-              <div className="flex items-center gap-2 mb-2">
-                <Layers className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Among Global Mobility leaders registering for GME events.
-              </p>
-
-              {(() => {
-                // Canonical answer order from the RPC rows, so every state renders
-                // in the same sequence.
-                const orderIndex = new Map(programVsMarket.map((r, i) => [r.answer, i]))
-                const byOrder = <T extends { answer: string }>(a: T, b: T) =>
-                  (orderIndex.get(a.answer) ?? 99) - (orderIndex.get(b.answer) ?? 99)
-
-                // Market-only distribution: a labelled bar per answer, base_n once.
-                // Used for the unfiltered view and the insufficient-segment fallback.
-                const marketOnlyView = (
-                  dist: { answer: string; pct: number }[],
-                  baseN: number,
-                  note?: string,
-                ) => (
-                  <>
-                    {note && (
-                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
-                        {note}
-                      </div>
-                    )}
-                    <div className="space-y-4">
-                      {dist.map((row, idx) => {
-                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
-                        return (
-                          <div key={idx}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-medium text-slate-200">{row.answer}</span>
-                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
-                            </div>
-                            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                              <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${width}%` }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-5">Based on {baseN} responses</p>
-                  </>
-                )
-
-                // ---- Comparison mode: a filter is applied and we have vs-market data ----
-                if (isFiltered && programVsMarket.length > 0) {
-                  const rows = [...programVsMarket].sort(byOrder)
-                  const marketBase = programVsMarket[0]?.market_base ?? 0
-                  const segmentReportable = rows.every((r) => r.segment_reportable)
-
-                  // Segment too thin to compare → market rate only, with the note.
-                  if (!segmentReportable) {
-                    const marketDist = rows.map((r) => ({ answer: r.answer, pct: r.market_pct }))
-                    return marketOnlyView(
-                      marketDist,
-                      marketBase,
-                      "Not enough responses in this segment to compare — showing market rate.",
-                    )
-                  }
-
-                  // Direction carried by icon (not colour). Words are fixed:
-                  // above market / below market / in line with market.
-                  const dirMeta = (d: string) => {
-                    if (d === "above")
-                      return { label: "above market", icon: <Triangle className="h-3 w-3 fill-current" /> }
-                    if (d === "below")
-                      return { label: "below market", icon: <Triangle className="h-3 w-3 fill-current rotate-180" /> }
-                    return { label: "in line with market", icon: <Minus className="h-3 w-3" /> }
-                  }
-
-                  return (
-                    <>
-                      <p className="text-xs text-slate-500 mb-5">
-                        vs all benchmark respondents (n={marketBase})
-                      </p>
-                      <div className="space-y-5">
-                        {rows.map((row, idx) => {
-                          const seg = Math.max(0, Math.min(100, row.segment_pct ?? 0))
-                          const mkt = Math.max(0, Math.min(100, row.market_pct ?? 0))
-                          const meta = dirMeta(row.direction)
-                          return (
-                            <div key={idx}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
-                                <span className="flex items-center gap-1 text-xs text-slate-400">
-                                  {meta.icon}
-                                  {row.direction !== "in_line" && (
-                                    <span className="text-slate-300">{Math.abs(Math.round(row.delta))}pp</span>
-                                  )}
-                                  <span>{meta.label}</span>
-                                </span>
-                              </div>
-                              {/* Segment = primary neutral accent bar */}
-                              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${seg}%` }} />
-                              </div>
-                              {/* Market = faint reference beneath */}
-                              <div className="mt-1 flex items-center gap-2">
-                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/30">
-                                  <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/50" style={{ width: `${mkt}%` }} />
-                                </div>
-                                <span className="text-[10px] text-slate-500 shrink-0">
-                                  segment {row.segment_pct}% · market {row.market_pct}%
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-5">
-                        Segment n={rows[0]?.segment_base ?? 0} · market n={marketBase}
-                      </p>
-                    </>
-                  )
-                }
-
-                // ---- No filters applied → market distribution only, no comparison ----
-                if (programVsMarket.length === 0) {
-                  return (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                      <p className="text-slate-400">
-                        Not enough responses for this segment — try broadening your filters
-                      </p>
-                    </div>
-                  )
-                }
-                return marketOnlyView(
-                  [...programVsMarket].sort(byOrder).map((r) => ({ answer: r.answer, pct: r.market_pct })),
-                  programVsMarket[0]?.market_base ?? 0,
                 )
               })()}
             </div>
