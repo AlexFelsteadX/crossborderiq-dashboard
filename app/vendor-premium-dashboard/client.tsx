@@ -1973,9 +1973,6 @@ export function VendorPremiumDashboardClient() {
                   Filtered
                 </span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Among Global Mobility leaders registering for GME events.
-              </p>
 
               {(() => {
                 // Canonical answer order from the RPC rows, so every state renders
