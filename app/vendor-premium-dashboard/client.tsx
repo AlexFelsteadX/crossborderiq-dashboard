@@ -118,16 +118,27 @@ interface SegmentSummaryRow {
   abs_delta: number
 }
 
-// Display-only: vendor-facing labels for the raw Program State survey answers.
-// Does NOT affect RPC values, sorting, or keys — presentation only. Any answer
-// not in this map falls back to its raw text (e.g. AI Adoption answers pass through).
-const PROGRAM_STATE_LABELS: Record<string, string> = {
+// Display-only: vendor-facing labels for raw survey answers (program state,
+// technology maturity, AI adoption). Does NOT affect RPC values, sorting, or
+// keys — presentation only. Any answer not in this map falls back to its raw text.
+const ANSWER_DISPLAY_LABELS: Record<string, string> = {
+  // Program state
   "We are optimizing selected areas of our mobility program": "Optimizing selected areas",
   "We are reviewing current processes and technology tools": "Reviewing processes and technology",
   "Our existing mobility model is operating effectively": "Model operating effectively",
   "We are actively transforming parts of our mobility function": "Actively transforming the function",
+  // Technology maturity
+  "We are currently evaluating or implementing a solution": "evaluating or implementing technology",
+  "Partially — some tasks are supported by technology": "partial technology in place",
+  "Yes — a dedicated Global Mobility / assignment management platform": "a dedicated platform",
+  "No — we manage the program with spreadsheets and general office tools": "spreadsheets and manual tools",
+  // AI adoption (mirror the established vendor-facing short forms used elsewhere)
+  "Using AI in production": "AI in production",
+  "Piloting AI use cases": "Piloting AI",
+  "Planning to implement AI": "Planning AI",
+  "Not currently using AI in mobility operations": "Not using AI",
 }
-const displayProgramLabel = (answer: string) => PROGRAM_STATE_LABELS[answer] ?? answer
+const displayAnswerLabel = (answer: string) => ANSWER_DISPLAY_LABELS[answer] ?? answer
 
 // Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
 type Confidence = "full" | "limited" | "suppressed"
@@ -1886,8 +1897,6 @@ export function VendorPremiumDashboardClient() {
               // Keep it scannable: top 3 divergences only (RPC may return up to 5),
               // already ranked by abs_delta descending.
               const top = segmentSummary.slice(0, 3)
-              const label = (d: string) =>
-                d === "above" ? "above market" : d === "below" ? "below market" : "in line with market"
               const fmtDelta = (d: number) => {
                 const sign = d > 0 ? "+" : d < 0 ? "−" : ""
                 return `${sign}${Math.abs(Math.round(d))}`
@@ -1899,7 +1908,7 @@ export function VendorPremiumDashboardClient() {
               // vendor-facing display labels.
               const phraseFor = (r: SegmentSummaryRow) => {
                 const topic = (r.topic ?? "").toLowerCase()
-                const answer = displayProgramLabel(r.answer)
+                const answer = displayAnswerLabel(r.answer)
                 if (topic.includes("outsourc")) return `${answer} outsourcing`
                 return answer
               }
@@ -1917,7 +1926,7 @@ export function VendorPremiumDashboardClient() {
                   parts.length > 1
                     ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
                     : parts[0]
-                return `${label(g.direction)} on ${joined}`
+                return `${g.direction} on ${joined}`
               })
               const sentence = clauses.join("; ")
               return (
@@ -2093,7 +2102,7 @@ export function VendorPremiumDashboardClient() {
                         return (
                           <div key={idx}>
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
+                              <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
                               <span className="text-sm font-semibold text-primary">{row.pct}%</span>
                             </div>
                             <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
@@ -2146,7 +2155,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
@@ -2453,7 +2462,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
