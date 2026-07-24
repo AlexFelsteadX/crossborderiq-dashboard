@@ -1782,59 +1782,6 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* AI ADOPTION (event-sourced GM leaders — market context, filterable)  */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Cpu className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Among Global Mobility leaders registering for GME events.
-              </p>
-
-              {(() => {
-                const aiReportable = aiAdoption.length > 0 && aiAdoption.every((r) => r.is_reportable)
-                if (!aiReportable) {
-                  return (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                      <p className="text-slate-400">
-                        Not enough responses for this segment — try broadening your filters
-                      </p>
-                    </div>
-                  )
-                }
-                const aiBaseN = aiAdoption[0]?.base_n ?? 0
-                return (
-                  <>
-                    <div className="space-y-4">
-                      {aiAdoption.map((row, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm font-medium text-slate-200">{row.answer}</span>
-                            <span className="text-sm font-semibold text-primary">{row.pct}%</span>
-                          </div>
-                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${Math.max(0, Math.min(100, row.pct))}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-5">Based on {aiBaseN} responses</p>
-                  </>
-                )
-              })()}
-            </div>
-
-            {/* =================================================================== */}
             {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
             {/* =================================================================== */}
             
@@ -2088,6 +2035,59 @@ export function VendorPremiumDashboardClient() {
               )}
             </div>
             )}
+
+            {/* =================================================================== */}
+            {/* AI ADOPTION (event-sourced GM leaders — filterable, precedes breakdowns) */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Cpu className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Filtered
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Among Global Mobility leaders registering for GME events.
+              </p>
+
+              {(() => {
+                const aiReportable = aiAdoption.length > 0 && aiAdoption.every((r) => r.is_reportable)
+                if (!aiReportable) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">
+                        Not enough responses for this segment — try broadening your filters
+                      </p>
+                    </div>
+                  )
+                }
+                const aiBaseN = aiAdoption[0]?.base_n ?? 0
+                return (
+                  <>
+                    <div className="space-y-4">
+                      {aiAdoption.map((row, idx) => (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                            <span className="text-sm font-semibold text-primary">{row.pct}%</span>
+                          </div>
+                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${Math.max(0, Math.min(100, row.pct))}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-5">Based on {aiBaseN} responses</p>
+                  </>
+                )
+              })()}
+            </div>
 
             {/* =================================================================== */}
             {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
