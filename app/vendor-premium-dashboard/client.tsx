@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw, Cpu
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -75,6 +75,16 @@ interface ServiceInterestRow {
 
 interface DemandPipelineRow {
   signal: string
+  sort_order: number
+  pct: number
+  base_n: number
+  is_reportable: boolean
+}
+
+// AI adoption distribution among GM leaders who registered for GME events.
+// Returned by get_vendor_ai_adoption(p_industry, p_region, p_size).
+interface AiAdoptionRow {
+  answer: string
   sort_order: number
   pct: number
   base_n: number
@@ -997,6 +1007,7 @@ export function VendorPremiumDashboardClient() {
   const [earlierCommercial, setEarlierCommercial] = useState<CommercialEarlierRow[]>([])
   const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
   const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
+  const [aiAdoption, setAiAdoption] = useState<AiAdoptionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -1201,6 +1212,24 @@ export function VendorPremiumDashboardClient() {
           // Sort by sort_order
           const sorted = (pipelineRows || []).sort((a: DemandPipelineRow, b: DemandPipelineRow) => a.sort_order - b.sort_order)
           setDemandPipeline(sorted)
+        }
+
+        // Call get_vendor_ai_adoption with region / industry / size.
+        // Filters are already null when "All", so pass them straight through.
+        const { data: aiRows, error: aiError } = await supabase
+          .rpc('get_vendor_ai_adoption', {
+            p_industry: selectedIndustry,
+            p_region: selectedRegion,
+            p_size: selectedSize,
+          })
+
+        if (aiError) {
+          console.log("[v0] AI adoption RPC error:", aiError)
+          setAiAdoption([])
+        } else {
+          // Order production → piloting → planning → not using via sort_order.
+          const sorted = (aiRows || []).sort((a: AiAdoptionRow, b: AiAdoptionRow) => a.sort_order - b.sort_order)
+          setAiAdoption(sorted)
         }
         
       } catch (err) {
@@ -1750,6 +1779,59 @@ export function VendorPremiumDashboardClient() {
                   )}
                 </p>
               </div>
+            </div>
+
+            {/* =================================================================== */}
+            {/* AI ADOPTION (event-sourced GM leaders — market context, filterable)  */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Cpu className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Filtered
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Among Global Mobility leaders registering for GME events.
+              </p>
+
+              {(() => {
+                const aiReportable = aiAdoption.length > 0 && aiAdoption.every((r) => r.is_reportable)
+                if (!aiReportable) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">
+                        Not enough responses for this segment — try broadening your filters
+                      </p>
+                    </div>
+                  )
+                }
+                const aiBaseN = aiAdoption[0]?.base_n ?? 0
+                return (
+                  <>
+                    <div className="space-y-4">
+                      {aiAdoption.map((row, idx) => (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                            <span className="text-sm font-semibold text-primary">{row.pct}%</span>
+                          </div>
+                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${Math.max(0, Math.min(100, row.pct))}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-5">Based on {aiBaseN} responses</p>
+                  </>
+                )
+              })()}
             </div>
 
             {/* =================================================================== */}
