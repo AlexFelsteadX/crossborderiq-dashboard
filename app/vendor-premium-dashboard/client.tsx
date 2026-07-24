@@ -118,6 +118,17 @@ interface SegmentSummaryRow {
   abs_delta: number
 }
 
+// Display-only: vendor-facing labels for the raw Program State survey answers.
+// Does NOT affect RPC values, sorting, or keys — presentation only. Any answer
+// not in this map falls back to its raw text (e.g. AI Adoption answers pass through).
+const PROGRAM_STATE_LABELS: Record<string, string> = {
+  "We are optimizing selected areas of our mobility program": "Optimizing selected areas",
+  "We are reviewing current processes and technology tools": "Reviewing processes and technology",
+  "Our existing mobility model is operating effectively": "Model operating effectively",
+  "We are actively transforming parts of our mobility function": "Actively transforming the function",
+}
+const displayProgramLabel = (answer: string) => PROGRAM_STATE_LABELS[answer] ?? answer
+
 // Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
 type Confidence = "full" | "limited" | "suppressed"
 
@@ -2071,7 +2082,7 @@ export function VendorPremiumDashboardClient() {
                         return (
                           <div key={idx}>
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                              <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                               <span className="text-sm font-semibold text-primary">{row.pct}%</span>
                             </div>
                             <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
@@ -2124,7 +2135,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
@@ -2431,7 +2442,7 @@ export function VendorPremiumDashboardClient() {
                           return (
                             <div key={idx}>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{row.answer}</span>
+                                <span className="text-sm font-medium text-slate-200">{displayProgramLabel(row.answer)}</span>
                                 <span className="flex items-center gap-1 text-xs text-slate-400">
                                   {meta.icon}
                                   {row.direction !== "in_line" && (
