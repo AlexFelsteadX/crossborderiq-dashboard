@@ -1892,6 +1892,17 @@ export function VendorPremiumDashboardClient() {
                 const sign = d > 0 ? "+" : d < 0 ? "−" : ""
                 return `${sign}${Math.abs(Math.round(d))}`
               }
+              // Build the noun phrase from the RPC's answer + topic (never omit answer,
+              // never recompute anything). Outsourcing appends the topic word so it reads
+              // "Cultural training outsourcing"; AI adoption / technology / program_state
+              // read fully from the answer alone. program_state answers use the
+              // vendor-facing display labels.
+              const phraseFor = (r: SegmentSummaryRow) => {
+                const topic = (r.topic ?? "").toLowerCase()
+                const answer = displayProgramLabel(r.answer)
+                if (topic.includes("outsourc")) return `${answer} outsourcing`
+                return answer
+              }
               // Group consecutive divergences by direction so the line reads
               // "above market on X (+9) and Y (+6); below market on Z (−7)".
               const groups: { direction: string; items: SegmentSummaryRow[] }[] = []
@@ -1901,7 +1912,7 @@ export function VendorPremiumDashboardClient() {
                 else groups.push({ direction: row.direction, items: [row] })
               }
               const clauses = groups.map((g) => {
-                const parts = g.items.map((r) => `${r.topic} (${fmtDelta(r.delta)})`)
+                const parts = g.items.map((r) => `${phraseFor(r)} (${fmtDelta(r.delta)})`)
                 const joined =
                   parts.length > 1
                     ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
