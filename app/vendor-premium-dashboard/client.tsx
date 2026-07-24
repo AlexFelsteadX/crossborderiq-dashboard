@@ -105,6 +105,19 @@ interface SegmentVsMarketRow {
   segment_reportable: boolean
 }
 
+// One headline way the filtered segment diverges from the whole-pool market.
+// Returned by get_vendor_segment_summary(...) — up to 5 rows, already ranked
+// by abs_delta descending. direction ∈ 'above' | 'below' | 'in_line'.
+interface SegmentSummaryRow {
+  topic: string
+  answer: string
+  segment_pct: number
+  market_pct: number
+  delta: number
+  direction: string
+  abs_delta: number
+}
+
 // Confidence + segment-aware breakdown row returned by get_vendor_breakdown.
 type Confidence = "full" | "limited" | "suppressed"
 
@@ -1024,6 +1037,7 @@ export function VendorPremiumDashboardClient() {
   const [aiAdoption, setAiAdoption] = useState<AiAdoptionRow[]>([])
   const [aiVsMarket, setAiVsMarket] = useState<SegmentVsMarketRow[]>([])
   const [programVsMarket, setProgramVsMarket] = useState<SegmentVsMarketRow[]>([])
+  const [segmentSummary, setSegmentSummary] = useState<SegmentSummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -1313,7 +1327,7 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes] = await Promise.all([
+      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes] = await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
         supabase.rpc("get_vendor_breakdown", params),
         supabase.rpc("get_vendor_whitespace", params),
@@ -1343,8 +1357,24 @@ export function VendorPremiumDashboardClient() {
           p_assignee: selectedAssignee,
           p_traveller: selectedTraveller,
         }),
+        // Segment summary: the top ways this segment diverges from the market,
+        // ranked by abs_delta. Same five demographic filters, null when "All".
+        supabase.rpc("get_vendor_segment_summary", {
+          p_region: selectedRegion,
+          p_industry: selectedIndustry,
+          p_size: selectedSize,
+          p_assignee: selectedAssignee,
+          p_traveller: selectedTraveller,
+        }),
       ])
       if (cancelled) return
+
+      if (summaryRes.error) {
+        console.log("[v0] Segment summary RPC error:", summaryRes.error)
+        setSegmentSummary([])
+      } else {
+        setSegmentSummary((summaryRes.data as SegmentSummaryRow[]) ?? [])
+      }
 
       if (vsMarketRes.error) {
         console.log("[v0] AI segment-vs-market RPC error:", vsMarketRes.error)
@@ -1836,6 +1866,47 @@ export function VendorPremiumDashboardClient() {
                 </p>
               </div>
             </div>
+
+            {/* =================================================================== */}
+            {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
+            {/* =================================================================== */}
+
+            {isFiltered && segmentSummary.length > 0 && (() => {
+              // Keep it scannable: top 3 divergences only (RPC may return up to 5),
+              // already ranked by abs_delta descending.
+              const top = segmentSummary.slice(0, 3)
+              const label = (d: string) =>
+                d === "above" ? "above market" : d === "below" ? "below market" : "in line with market"
+              const fmtDelta = (d: number) => {
+                const sign = d > 0 ? "+" : d < 0 ? "−" : ""
+                return `${sign}${Math.abs(Math.round(d))}`
+              }
+              // Group consecutive divergences by direction so the line reads
+              // "above market on X (+9) and Y (+6); below market on Z (−7)".
+              const groups: { direction: string; items: SegmentSummaryRow[] }[] = []
+              for (const row of top) {
+                const last = groups[groups.length - 1]
+                if (last && last.direction === row.direction) last.items.push(row)
+                else groups.push({ direction: row.direction, items: [row] })
+              }
+              const clauses = groups.map((g) => {
+                const parts = g.items.map((r) => `${r.topic} (${fmtDelta(r.delta)})`)
+                const joined =
+                  parts.length > 1
+                    ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+                    : parts[0]
+                return `${label(g.direction)} on ${joined}`
+              })
+              const sentence = clauses.join("; ")
+              return (
+                <div className="rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4">
+                  <p className="text-sm sm:text-base leading-relaxed text-slate-200">
+                    <span className="font-semibold text-slate-100">In this segment:</span> {sentence}.
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">compared with all benchmark respondents</p>
+                </div>
+              )
+            })()}
 
             {/* =================================================================== */}
             {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
