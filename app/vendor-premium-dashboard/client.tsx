@@ -2048,9 +2048,6 @@ export function VendorPremiumDashboardClient() {
                   Filtered
                 </span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Among Global Mobility leaders registering for GME events.
-              </p>
 
               {(() => {
                 const aiReportable = aiAdoption.length > 0 && aiAdoption.every((r) => r.is_reportable)
