@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { 
   ArrowRight, 
   BarChart3, 
-  TrendingUp, 
   Globe2, 
   Users, 
   LineChart,
@@ -237,91 +236,41 @@ export default async function HomePage() {
                     <span className="text-xs text-slate-400">cbiq.ai/intelligence</span>
                   </div>
                 </div>
-                {/* Hero dashboard mockup — static, illustrative only (not live data) */}
-                <div className="m-4 rounded-lg overflow-hidden bg-brand-navy/40 relative">
-                  {/* Illustrative preview badge */}
-                  <span className="absolute top-3 right-3 z-20 rounded-full border border-slate-600/50 bg-brand-navy/80 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 backdrop-blur-sm">
-                    Illustrative preview
+                {/* Hero dashboard — real Premium Dashboard screenshot, linked as a CTA */}
+                <Link
+                  href="/mobility-maturity-scorecard"
+                  aria-label="Get your free Global Mobility maturity score"
+                  className="group relative m-4 block overflow-hidden rounded-lg bg-brand-navy/40 shadow-[0_20px_50px_-20px_rgb(0_0_0_/_0.7)] ring-1 ring-primary/10 transition-shadow hover:shadow-[0_24px_60px_-18px_rgb(var(--brand-teal-rgb)_/_0.35)]"
+                >
+                  {/* Live dashboard badge */}
+                  <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-brand-navy/80 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-primary backdrop-blur-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgb(var(--brand-teal-rgb)_/_0.9)]" />
+                    Live dashboard
+                  </span>
+                  {/* Pillars tracked pill */}
+                  <span className="absolute top-3 right-3 z-20 hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 sm:inline-flex">
+                    <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-[11px] font-medium text-primary">7 pillars tracked</span>
                   </span>
 
-                  <div className="p-5 sm:p-6">
-                    {/* Mock dashboard header */}
-                    <div className="flex items-center justify-between mb-5">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-100">Global Workforce Intelligence</p>
-                        <p className="text-xs text-slate-500">2025 → 2026 benchmark · sample data</p>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1">
-                        <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-[11px] font-medium text-primary">7 pillars tracked</span>
-                      </div>
-                    </div>
+                  {/* 16:9 screenshot, fit to width and cropped from the bottom so the
+                      title, maturity gauge and start of the pillar snapshot stay visible.
+                      Shorter crop on mobile keeps the gauge + maturity index legible. */}
+                  <img
+                    src="/images/premium-dashboard-preview.png"
+                    alt="CBIQ Premium Dashboard showing the Mobility Maturity Index gauge, score breakdown and pillar snapshot"
+                    className="h-[280px] w-full object-cover object-top sm:h-[420px] lg:h-[520px]"
+                  />
 
-                    {/* Metric card grid — real labels, illustrative placeholder figures */}
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                      {[
-                        { label: "Using AI tools", value: "40%", delta: "+10 pts" },
-                        { label: "Talent–Mobility alignment", value: "70%", delta: "+5 pts" },
-                        { label: "Supporting International Remote Work", value: "55%", delta: "+5 pts" },
-                        { label: "Defined Global Mobility strategy", value: "35%", delta: "-5 pts", down: true },
-                        { label: "Assignment-management technology", value: "60%", delta: "+10 pts" },
-                        { label: "Global Mobility embedded in EVP", value: "20%", delta: "+5 pts" },
-                      ].map((m, i) => (
-                        <div
-                          key={i}
-                          className="rounded-lg border border-primary/15 bg-brand-navy-2/80 p-3.5"
-                        >
-                          <p className="text-[11px] text-slate-400 leading-tight mb-2 min-h-[2.2em]">{m.label}</p>
-                          <div className="flex items-end justify-between gap-1">
-                            <span className="text-2xl font-bold text-slate-100 tracking-tight">{m.value}</span>
-                            <span
-                              className={`flex items-center gap-0.5 text-[11px] font-medium ${m.down ? "text-amber-400/80" : "text-primary"}`}
-                            >
-                              <TrendingUp className={`h-3 w-3 ${m.down ? "rotate-180" : ""}`} />
-                              {m.delta}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Biggest movers row — illustrative point changes */}
-                    <div className="mt-4 rounded-lg border border-primary/15 bg-brand-navy-2/80 p-3.5">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                        Biggest Movers
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { label: "Using AI tools", delta: "+10 pts" },
-                          { label: "Assignment-management technology", delta: "+10 pts" },
-                          { label: "Defined Global Mobility strategy", delta: "-5 pts", down: true },
-                        ].map((m, i) => (
-                          <div key={i} className="flex flex-col gap-1">
-                            <span className="text-[10px] text-slate-500 leading-tight">{m.label}</span>
-                            <span
-                              className={`flex items-center gap-0.5 text-xs font-semibold ${m.down ? "text-amber-400/80" : "text-primary"}`}
-                            >
-                              <TrendingUp className={`h-3 w-3 ${m.down ? "rotate-180" : ""}`} />
-                              {m.delta}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Frosted gradient fade + CTA overlay teasing the live data */}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-brand-navy via-brand-navy/85 to-transparent backdrop-blur-[2px]" />
+                  {/* Frosted gradient fade + CTA at the cropped bottom edge */}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-brand-navy via-brand-navy/85 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-6">
-                    <Link
-                      href="/workforce-intelligence#access-full-research"
-                      className="group inline-flex items-center gap-2 rounded-full bg-primary px-5 h-10 text-sm font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90"
-                    >
-                      Unlock the live dashboard
+                    <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 h-10 text-sm font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all group-hover:-translate-y-0.5 group-hover:bg-primary/90">
+                      Get your free score
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Link>
+                    </span>
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
           </div>
