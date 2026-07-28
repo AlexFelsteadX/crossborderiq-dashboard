@@ -253,7 +253,7 @@ export default async function HomePage() {
                       "What this means" line; mobile zooms into the gauge + maturity index so
                       it stays legible instead of shrinking the whole width down. */}
                   <div
-                    className="w-full bg-brand-navy-2 bg-no-repeat aspect-[4/3] bg-[length:230%_auto] bg-[position:20%_44%] sm:aspect-[11/4] sm:bg-[length:100%_auto] sm:bg-top"
+                    className="w-full bg-brand-navy-2 bg-no-repeat aspect-[4/3] bg-[length:210%_auto] bg-[position:18%_40%] sm:aspect-[12/5] sm:bg-[length:100%_auto] sm:bg-top"
                     style={{ backgroundImage: "url(/images/premium-dashboard-preview.png)" }}
                   />
 
