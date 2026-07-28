@@ -1040,6 +1040,30 @@ function WhitespacePanel({
 }
 
 // =============================================================================
+// ZONE HEADER (slim full-width label row used before each zone)
+// =============================================================================
+
+function ZoneHeader({
+  number,
+  title,
+  description,
+}: {
+  number: string
+  title: string
+  description?: string
+}) {
+  return (
+    <div className="pt-4">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
+        {number} · {title}
+      </h2>
+      {description && <p className="mt-1 text-xs text-slate-500">{description}</p>}
+      <div className="mt-3 border-b border-primary/15" />
+    </div>
+  )
+}
+
+// =============================================================================
 // MAIN CLIENT COMPONENT
 // =============================================================================
 
@@ -1890,55 +1914,119 @@ export function VendorPremiumDashboardClient() {
               </div>
             </div>
 
+            {/* ================= ZONE 01 - WHERE THE DEMAND IS ================= */}
+
+            <ZoneHeader
+              number="01"
+              title="Where the demand is"
+              description="Unmet need by service: what buyers want versus what they already have."
+            />
+
             {/* =================================================================== */}
-            {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
+            {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
             {/* =================================================================== */}
 
-            {isFiltered && segmentSummary.length > 0 && (() => {
-              // Keep it scannable: top 3 divergences only (RPC may return up to 5),
-              // already ranked by abs_delta descending.
-              const top = segmentSummary.slice(0, 3)
-              const fmtDelta = (d: number) => {
-                const sign = d > 0 ? "+" : d < 0 ? "−" : ""
-                return `${sign}${Math.abs(Math.round(d))}`
-              }
-              // Build the noun phrase from the RPC's answer + topic (never omit answer,
-              // never recompute anything). Outsourcing appends the topic word so it reads
-              // "Cultural training outsourcing"; AI adoption / technology / program_state
-              // read fully from the answer alone. program_state answers use the
-              // vendor-facing display labels.
-              const phraseFor = (r: SegmentSummaryRow) => {
-                const topic = (r.topic ?? "").toLowerCase()
-                const answer = displayAnswerLabel(r.answer)
-                if (topic.includes("outsourc")) return `${answer} outsourcing`
-                return answer
-              }
-              // Group consecutive divergences by direction so the line reads
-              // "above market on X (+9) and Y (+6); below market on Z (−7)".
-              const groups: { direction: string; items: SegmentSummaryRow[] }[] = []
-              for (const row of top) {
-                const last = groups[groups.length - 1]
-                if (last && last.direction === row.direction) last.items.push(row)
-                else groups.push({ direction: row.direction, items: [row] })
-              }
-              const clauses = groups.map((g) => {
-                const parts = g.items.map((r) => `${phraseFor(r)} (${fmtDelta(r.delta)})`)
-                const joined =
-                  parts.length > 1
-                    ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-                    : parts[0]
-                return `${g.direction} on ${joined}`
-              })
-              const sentence = clauses.join("; ")
-              return (
-                <div className="rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4">
-                  <p className="text-sm sm:text-base leading-relaxed text-slate-200">
-                    <span className="font-semibold text-slate-100">In this segment:</span> {sentence}.
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">compared with all benchmark respondents</p>
+            <WhitespacePanel
+              rows={whitespace}
+              loading={demandLoading}
+              error={whitespaceError}
+              isFiltered={isFiltered}
+            />
+
+            {/* DEMAND VS PROVISION: Emerging (E13) and Established (Q49) side by side */}
+            <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Demand vs provision</h2>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                What this segment is investing in next, alongside what it already outsources today.
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Emerging demand (E13, segment-aware) */}
+                <DemandColumn
+                  title="Emerging demand"
+                  subtitle="Investment focus, next 12–18 months"
+                  items={emergingDemand.items}
+                  confidence={emergingDemand.confidence}
+                  segBaseN={emergingDemand.segBaseN}
+                  barColor="#2dd4bf"
+                  loading={demandLoading}
+                  isFiltered={isFiltered}
+                  badge="Filtered"
+                />
+
+                {/* Established demand (Q49, segment-aware) */}
+                <DemandColumn
+                  title="Established demand"
+                  subtitle="What they outsource today"
+                  items={establishedDemand.items}
+                  confidence={establishedDemand.confidence}
+                  segBaseN={establishedDemand.segBaseN}
+                  barColor="var(--brand-teal)"
+                  loading={demandLoading}
+                  isFiltered={isFiltered}
+                />
+              </div>
+            </div>
+
+            {/* STATED SERVICE INTEREST (SI1) */}
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-semibold text-slate-100">Stated service interest</h3>
+                    <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                      Market-wide
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">Services GME event audiences are actively seeking</p>
                 </div>
-              )
-            })()}
+
+                {serviceInterest.length === 0 ? (
+                  <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+                    <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400">No stated interest data available.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {serviceInterest.map((row, idx) => (
+                      <div key={idx}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
+                          {row.is_reportable ? (
+                            <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
+                          ) : (
+                            <span className="text-xs text-slate-500 italic shrink-0">—</span>
+                          )}
+                        </div>
+                        {row.is_reportable && (
+                          <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
+                              style={{ width: `${row.pct}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-500 mt-6 italic">
+                Stated service interest is market-wide and does not vary by segment.
+              </p>
+            </div>
+
+            {/* ================= ZONE 02 - WHO IS BUYING NOW ================= */}
+
+            <ZoneHeader
+              number="02"
+              title="Who is buying now"
+              description="Active buying signals in your selected segment."
+            />
 
             {/* =================================================================== */}
             {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
@@ -1976,93 +2064,6 @@ export function VendorPremiumDashboardClient() {
                 </div>
               )}
             </div>
-
-            {/* =================================================================== */}
-            {/* HEADLINE: WHERE DEMAND IS HEADING (forward-looking signals lead)    */}
-            {/* =================================================================== */}
-            
-            <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Where demand is heading</h2>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Forward-looking signals — what this segment is investing in next, alongside what service buyers are actively seeking.
-              </p>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Co-headline A: Emerging demand (E13, segment-aware) */}
-                <DemandColumn
-                  title="Emerging demand"
-                  subtitle="Investment focus, next 12–18 months"
-                  items={emergingDemand.items}
-                  confidence={emergingDemand.confidence}
-                  segBaseN={emergingDemand.segBaseN}
-                  barColor="#2dd4bf"
-                  loading={demandLoading}
-                  isFiltered={isFiltered}
-                  badge="Filtered"
-                />
-
-                {/* Co-headline B: Stated service interest (SI1, market-wide — not filtered) */}
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-slate-100">Stated service interest</h3>
-                      <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                        Market-wide
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400">Services GME event audiences are actively seeking</p>
-                  </div>
-
-                  {serviceInterest.length === 0 ? (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-                      <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-                      <p className="text-sm text-slate-400">No stated interest data available.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {serviceInterest.map((row, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
-                            {row.is_reportable ? (
-                              <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
-                            ) : (
-                              <span className="text-xs text-slate-500 italic shrink-0">—</span>
-                            )}
-                          </div>
-                          {row.is_reportable && (
-                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
-                                style={{ width: `${row.pct}%` }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-500 mt-6 italic">
-                Stated service interest is market-wide and does not vary by segment.
-              </p>
-            </div>
-
-            {/* =================================================================== */}
-            {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
-            {/* =================================================================== */}
-
-            <WhitespacePanel
-              rows={whitespace}
-              loading={demandLoading}
-              error={whitespaceError}
-              isFiltered={isFiltered}
-            />
 
             {/* =================================================================== */}
             {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
@@ -2208,135 +2209,68 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
+            {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
             {/* =================================================================== */}
 
-            <MoveTypeDemandCard rows={currentCommercial} />
-
-            {/* =================================================================== */}
-            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">
-                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
-                </h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Forward-looking market signal — the forces buyers expect to reshape Global Mobility over the next three years.
-              </p>
-
-              {reshapeSignals.items.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No data available.</p>
+            {isFiltered && segmentSummary.length > 0 && (() => {
+              // Keep it scannable: top 3 divergences only (RPC may return up to 5),
+              // already ranked by abs_delta descending.
+              const top = segmentSummary.slice(0, 3)
+              const fmtDelta = (d: number) => {
+                const sign = d > 0 ? "+" : d < 0 ? "−" : ""
+                return `${sign}${Math.abs(Math.round(d))}`
+              }
+              // Build the noun phrase from the RPC's answer + topic (never omit answer,
+              // never recompute anything). Outsourcing appends the topic word so it reads
+              // "Cultural training outsourcing"; AI adoption / technology / program_state
+              // read fully from the answer alone. program_state answers use the
+              // vendor-facing display labels.
+              const phraseFor = (r: SegmentSummaryRow) => {
+                const topic = (r.topic ?? "").toLowerCase()
+                const answer = displayAnswerLabel(r.answer)
+                if (topic.includes("outsourc")) return `${answer} outsourcing`
+                return answer
+              }
+              // Group consecutive divergences by direction so the line reads
+              // "above market on X (+9) and Y (+6); below market on Z (−7)".
+              const groups: { direction: string; items: SegmentSummaryRow[] }[] = []
+              for (const row of top) {
+                const last = groups[groups.length - 1]
+                if (last && last.direction === row.direction) last.items.push(row)
+                else groups.push({ direction: row.direction, items: [row] })
+              }
+              const clauses = groups.map((g) => {
+                const parts = g.items.map((r) => `${phraseFor(r)} (${fmtDelta(r.delta)})`)
+                const joined =
+                  parts.length > 1
+                    ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
+                    : parts[0]
+                return `${g.direction} on ${joined}`
+              })
+              const sentence = clauses.join("; ")
+              return (
+                <div className="rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4">
+                  <p className="text-sm sm:text-base leading-relaxed text-slate-200">
+                    <span className="font-semibold text-slate-100">In this segment:</span> {sentence}.
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">compared with all benchmark respondents</p>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {reshapeSignals.items.map((item, idx) => {
-                    const pctDisplay = Math.round(item.pct)
-                    return (
-                      <div key={idx}>
-                        <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                          <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
-                          <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                        </div>
-                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+              )
+            })()}
+
+            {/* ================= ZONE 03 - HOW THEY BUY ================= */}
+
+            <ZoneHeader
+              number="03"
+              title="How they buy"
+              description="Who approves, whose budget, and what tips the decision."
+            />
 
             {/* =================================================================== */}
-            {/* CONTEXT (demoted): CURRENT OUTSOURCING BASELINE (Q49, segment-aware) */}
+            {/* SECTION 3b: TECHNOLOGY BUYER INTELLIGENCE */}
             {/* =================================================================== */}
-            
-            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/50 p-5 lg:p-6 opacity-90">
-              <div className="flex items-center gap-2 mb-1">
-                <Database className="h-4 w-4 text-slate-500" />
-                <h3 className="text-base font-medium text-slate-300">Current outsourcing baseline</h3>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mb-5">
-                What this segment already outsources — the baseline for spotting white space.
-              </p>
 
-              <DemandColumn
-                title="Established demand"
-                subtitle="What they outsource today"
-                items={establishedDemand.items}
-                confidence={establishedDemand.confidence}
-                segBaseN={establishedDemand.segBaseN}
-                barColor="var(--brand-teal)"
-                loading={demandLoading}
-                isFiltered={isFiltered}
-              />
-            </div>
-
-            {/* =================================================================== */}
-            {/* SECTION 2: YEAR-ON-YEAR TRENDS - PRESERVES GREEN/RED */}
-            {/* =================================================================== */}
-            
-            {SHOW_YOY && (
-            <div className="mb-12 pb-10 border-b border-slate-700/50">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Year-on-Year Trends</h2>
-              </div>
-              
-              <p className="text-sm text-slate-400 mb-6">
-                Directional — based on the 2025 and 2026 Global Workforce Deployment waves.
-              </p>
-              
-              {yoyData.length === 0 ? (
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No year-on-year data available.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Biggest Movers Strip - PRESERVES GREEN/RED */}
-                  {(() => {
-                    const sortedByAbsDelta = [...yoyData]
-                      .filter(r => r.delta_pts !== 0)
-                      .sort((a, b) => Math.abs(b.delta_pts) - Math.abs(a.delta_pts))
-                      .slice(0, 3)
-                    
-                    return sortedByAbsDelta.length > 0 ? (
-                      <div className="mb-6">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Biggest Movers</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {sortedByAbsDelta.map((row, idx) => (
-                            <BiggestMoverChip key={idx} row={row} />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null
-                  })()}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {yoyData.map((row, idx) => (
-                      <YoYTrendCard key={idx} row={row} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            )}
+            <TechnologyBuyerIntelligence supabase={supabase} />
 
             {/* =================================================================== */}
             {/* AI ADOPTION (event-sourced GM leaders — filterable, precedes breakdowns) */}
@@ -2605,6 +2539,125 @@ export function VendorPremiumDashboardClient() {
               )}
             </div>
 
+            {/* ================= ZONE 04 - WHAT IS COMING ================= */}
+
+            <ZoneHeader
+              number="04"
+              title="What is coming"
+              description="Directional signals for the next 12-36 months."
+            />
+
+            {/* =================================================================== */}
+            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
+            {/* =================================================================== */}
+
+            <MoveTypeDemandCard rows={currentCommercial} />
+
+            {/* =================================================================== */}
+            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">
+                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
+                </h2>
+                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                  Market-wide
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Forward-looking market signal — the forces buyers expect to reshape Global Mobility over the next three years.
+              </p>
+
+              {reshapeSignals.items.length === 0 ? (
+                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No data available.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {reshapeSignals.items.map((item, idx) => {
+                    const pctDisplay = Math.round(item.pct)
+                    return (
+                      <div key={idx}>
+                        <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                          <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
+                          <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                        </div>
+                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* =================================================================== */}
+            {/* SECTION 2: YEAR-ON-YEAR TRENDS - PRESERVES GREEN/RED */}
+            {/* =================================================================== */}
+            
+            {SHOW_YOY && (
+            <div className="mb-12 pb-10 border-b border-slate-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Year-on-Year Trends</h2>
+              </div>
+              
+              <p className="text-sm text-slate-400 mb-6">
+                Directional — based on the 2025 and 2026 Global Workforce Deployment waves.
+              </p>
+              
+              {yoyData.length === 0 ? (
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No year-on-year data available.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Biggest Movers Strip - PRESERVES GREEN/RED */}
+                  {(() => {
+                    const sortedByAbsDelta = [...yoyData]
+                      .filter(r => r.delta_pts !== 0)
+                      .sort((a, b) => Math.abs(b.delta_pts) - Math.abs(a.delta_pts))
+                      .slice(0, 3)
+                    
+                    return sortedByAbsDelta.length > 0 ? (
+                      <div className="mb-6">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Biggest Movers</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {sortedByAbsDelta.map((row, idx) => (
+                            <BiggestMoverChip key={idx} row={row} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {yoyData.map((row, idx) => (
+                      <YoYTrendCard key={idx} row={row} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            )}
+
+            {/* ================= ZONE 05 - RESOURCES ================= */}
+
+            <ZoneHeader
+              number="05"
+              title="Resources"
+              description="Briefings, earlier studies, and partnership options."
+            />
+
             {/* =================================================================== */}
             {/* SECTION 3b: EARLIER RESEARCH (one-off GME studies, 2022–2023)        */}
             {/* =================================================================== */}
@@ -2670,12 +2723,6 @@ export function VendorPremiumDashboardClient() {
                 </div>
               </div>
             )}
-
-            {/* =================================================================== */}
-            {/* SECTION 3b: TECHNOLOGY BUYER INTELLIGENCE */}
-            {/* =================================================================== */}
-
-            <TechnologyBuyerIntelligence supabase={supabase} />
 
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
