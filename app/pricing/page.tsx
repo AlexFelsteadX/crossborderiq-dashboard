@@ -187,6 +187,62 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {/* ============ FREE TRIAL SECTION (always visible, both paths) ============ */}
+        <div id="free-trial" className="mb-16 scroll-mt-24 max-w-5xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-b from-[#10384a] to-[#0c2230] p-8 sm:p-10 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.45)]">
+            {/* Teal ribbon across the top */}
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+
+            <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+              {/* Left: pitch + CTAs */}
+              <div>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/15 px-3 py-1 rounded-full border border-primary/30 mb-4">
+                  <Sparkles className="h-3.5 w-3.5 fill-current" />
+                  No credit card required
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 mb-3 text-balance">
+                  Try Premium free for 14 days
+                </h2>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6 text-pretty">
+                  Complete the Global Workforce Deployment Survey&trade; and unlock the full Premium dashboard — every
+                  intelligence pillar, year-on-year trends and peer-segment benchmarking — free for 14 days. No card, no
+                  commitment.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-6 text-base shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+                    asChild
+                  >
+                    <Link href="/survey">Start the survey — get 14 days free</Link>
+                  </Button>
+                  <Link
+                    href="/workforce-intelligence"
+                    className="inline-flex items-center justify-center rounded-md border border-primary/30 bg-transparent px-6 py-3 text-base font-medium text-slate-100 transition-colors hover:bg-primary/10 hover:border-primary/50"
+                  >
+                    Explore the free dashboard
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right: what you get */}
+              <ul className="space-y-3 lg:pl-8 lg:border-l lg:border-primary/20">
+                {[
+                  "Full Premium dashboard — all 7 intelligence pillars (60+ datasets)",
+                  "Year-on-Year trends & peer-segment benchmarking filters",
+                  "Branded, board-ready PDF export",
+                  "Instant access the moment you finish the survey",
+                  "Available free once every 12 months",
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
+                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Corporate Access Section */}
         {view === "corporate" && (
           <div id="corporate-access" className="mb-20 scroll-mt-24">
