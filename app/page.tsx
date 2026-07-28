@@ -247,24 +247,19 @@ export default async function HomePage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgb(var(--brand-teal-rgb)_/_0.9)]" />
                     Live dashboard
                   </span>
-                  {/* Pillars tracked pill */}
-                  <span className="absolute top-3 right-3 z-20 hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 sm:inline-flex">
-                    <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-[11px] font-medium text-primary">7 pillars tracked</span>
-                  </span>
-
-                  {/* 16:9 screenshot, fit to width and cropped from the bottom so the
-                      title, maturity gauge and start of the pillar snapshot stay visible.
-                      Shorter crop on mobile keeps the gauge + maturity index legible. */}
-                  <img
-                    src="/images/premium-dashboard-preview.png"
-                    alt="CBIQ Premium Dashboard showing the Mobility Maturity Index gauge, score breakdown and pillar snapshot"
-                    className="h-[280px] w-full object-cover object-top sm:h-[420px] lg:h-[520px]"
+                  {/* Real dashboard screenshot as a background image so it can be framed
+                      precisely per breakpoint: desktop shows the top (title → 2026/2025
+                      toggle → peer-segment filters → maturity gauge) cropped just above the
+                      "What this means" line; mobile zooms into the gauge + maturity index so
+                      it stays legible instead of shrinking the whole width down. */}
+                  <div
+                    className="w-full bg-brand-navy-2 bg-no-repeat aspect-[4/3] bg-[length:230%_auto] bg-[position:20%_44%] sm:aspect-[11/4] sm:bg-[length:100%_auto] sm:bg-top"
+                    style={{ backgroundImage: "url(/images/premium-dashboard-preview.png)" }}
                   />
 
                   {/* Frosted gradient fade + CTA at the cropped bottom edge */}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-40 bg-gradient-to-t from-brand-navy via-brand-navy/85 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-6">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-brand-navy via-brand-navy/80 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-4">
                     <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 h-10 text-sm font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all group-hover:-translate-y-0.5 group-hover:bg-primary/90">
                       Get your free score
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
