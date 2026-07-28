@@ -2449,96 +2449,6 @@ export function VendorPremiumDashboardClient() {
               })()}
             </div>
 
-            {/* =================================================================== */}
-            {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
-            {/* =================================================================== */}
-            
-            <div className="space-y-4">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
-                <p className="text-sm text-slate-400">
-                  Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
-                </p>
-              </div>
-              
-              {groupedByPillar.length === 0 ? (
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No breakdowns to report for this segment.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {groupedByPillar
-                    .map(([pillarName, questions]) => {
-                      // Filter questions for display
-                      const visibleQuestions = questions.filter(q => {
-                        // Always hide "Do you have a central budget in the GM function?"
-                        if (q.questionLabel === "Do you have a central budget in the GM function?") return false
-                        // Hide "Are you switching from business class to economy class travel on planes?" in default (unfiltered) view
-                        const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
-                        if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
-                        return true
-                      })
-                      
-                      // Skip pillar if no visible questions remain
-                      if (visibleQuestions.length === 0) return null
-                      
-                      const isExpanded = activePillar === pillarName
-                      
-                      return (
-                        <div
-                          key={pillarName}
-                          className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
-                        >
-                          {/* Accordion Header */}
-                          <button
-                            onClick={() => togglePillar(pillarName)}
-                            className="w-full px-6 py-5 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-base font-semibold text-slate-100">{pillarName}</h3>
-                              <span className="text-xs text-slate-500">({visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"})</span>
-                            </div>
-                            <ChevronDown 
-                              className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            />
-                          </button>
-                          
-                          {/* Accordion Content */}
-                          <div 
-                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                              isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
-                            }`}
-                          >
-                            <div className="px-6 pb-6">
-                              {pillarName === "Sustainable Service Demand" && (
-                                <p className="text-xs text-slate-500 mb-4">
-                                  Historical ESG benchmark (2023 survey) — shown for context.
-                                </p>
-                              )}
-                              
-                              <div className={`grid grid-cols-1 gap-4 ${visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
-                                {visibleQuestions.map((q, idx) => (
-                                  <QuestionCard
-              key={`${pillarName}-${idx}`}
-                        qCode={q.qCode}
-                        questionLabel={q.questionLabel}
-                        caption="Global Workforce Deployment · % of respondents"
-                                    baseN={q.baseN}
-                                    answers={q.answers}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })
-                    .filter(Boolean)}
-                </div>
-              )}
-            </div>
-
             {/* ================= ZONE 04 - WHAT IS COMING ================= */}
 
             <ZoneHeader
@@ -2650,13 +2560,103 @@ export function VendorPremiumDashboardClient() {
             </div>
             )}
 
-            {/* ================= ZONE 05 - RESOURCES ================= */}
+            {/* ================= ZONE 05 - THE FULL BREAKDOWNS ================= */}
 
             <ZoneHeader
               number="05"
-              title="Resources"
-              description="Briefings, earlier studies, and partnership options."
+              title="The full breakdowns"
+              description="Every benchmark question, grouped by pillar, for deeper reference."
             />
+
+            {/* =================================================================== */}
+            {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
+            {/* =================================================================== */}
+            
+            <div className="space-y-4">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
+                <p className="text-sm text-slate-400">
+                  Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
+                </p>
+              </div>
+              
+              {groupedByPillar.length === 0 ? (
+                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                  <p className="text-slate-400">No breakdowns to report for this segment.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {groupedByPillar
+                    .map(([pillarName, questions]) => {
+                      // Filter questions for display
+                      const visibleQuestions = questions.filter(q => {
+                        // Always hide "Do you have a central budget in the GM function?"
+                        if (q.questionLabel === "Do you have a central budget in the GM function?") return false
+                        // Hide "Are you switching from business class to economy class travel on planes?" in default (unfiltered) view
+                        const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
+                        if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
+                        return true
+                      })
+                      
+                      // Skip pillar if no visible questions remain
+                      if (visibleQuestions.length === 0) return null
+                      
+                      const isExpanded = activePillar === pillarName
+                      
+                      return (
+                        <div
+                          key={pillarName}
+                          className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+                        >
+                          {/* Accordion Header */}
+                          <button
+                            onClick={() => togglePillar(pillarName)}
+                            className="w-full px-6 py-5 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-base font-semibold text-slate-100">{pillarName}</h3>
+                              <span className="text-xs text-slate-500">({visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"})</span>
+                            </div>
+                            <ChevronDown 
+                              className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          
+                          {/* Accordion Content */}
+                          <div 
+                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                              isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
+                            }`}
+                          >
+                            <div className="px-6 pb-6">
+                              {pillarName === "Sustainable Service Demand" && (
+                                <p className="text-xs text-slate-500 mb-4">
+                                  Historical ESG benchmark (2023 survey) — shown for context.
+                                </p>
+                              )}
+                              
+                              <div className={`grid grid-cols-1 gap-4 ${visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
+                                {visibleQuestions.map((q, idx) => (
+                                  <QuestionCard
+              key={`${pillarName}-${idx}`}
+                        qCode={q.qCode}
+                        questionLabel={q.questionLabel}
+                        caption="Global Workforce Deployment · % of respondents"
+                                    baseN={q.baseN}
+                                    answers={q.answers}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                    .filter(Boolean)}
+                </div>
+              )}
+            </div>
 
             {/* =================================================================== */}
             {/* SECTION 3b: EARLIER RESEARCH (one-off GME studies, 2022–2023)        */}
@@ -2723,6 +2723,14 @@ export function VendorPremiumDashboardClient() {
                 </div>
               </div>
             )}
+
+            {/* ================= ZONE 06 - RESOURCES ================= */}
+
+            <ZoneHeader
+              number="06"
+              title="Resources"
+              description="Briefings, reports, and partnership options."
+            />
 
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
