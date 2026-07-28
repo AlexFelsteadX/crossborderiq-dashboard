@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
+import { TechnologyBuyerIntelligence } from "./technology-buyer-intelligence"
 
 // =============================================================================
 // TYPES
@@ -2669,6 +2670,12 @@ export function VendorPremiumDashboardClient() {
                 </div>
               </div>
             )}
+
+            {/* =================================================================== */}
+            {/* SECTION 3b: TECHNOLOGY BUYER INTELLIGENCE */}
+            {/* =================================================================== */}
+
+            <TechnologyBuyerIntelligence supabase={supabase} />
 
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
