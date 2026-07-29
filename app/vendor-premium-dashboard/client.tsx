@@ -823,6 +823,13 @@ const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
   Saturated: "border-slate-600/50 bg-slate-700/30 text-slate-400",
 }
 
+// Categories engaged per project rather than outsourced continuously. For these a
+// low "have" is the nature of the service, not unmet demand — so we present them as
+// project demand (interest), never as a provision gap. Category strings must match
+// the RPC output exactly; keep this list easy to extend.
+const PROJECT_BASED_CATEGORIES = ["Consulting / advisory"]
+const PROJECT_DEMAND_PILL = "border-violet-400/40 bg-violet-400/10 text-violet-300"
+
 function WhitespacePanel({
   rows,
   loading,
@@ -837,21 +844,32 @@ function WhitespacePanel({
   // Accordion: only one row expanded at a time.
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
 
-  const takeaway = rows
-    .filter((r) => r.tag === "Emerging" || r.tag === "Opening")
-    .slice(0, 3)
-    .map((r) => r.category)
-    .join(", ")
+  // Some services are engaged per project rather than outsourced continuously, so a
+  // want-vs-have gap is NOT whitespace for them — it reads as interest, not unmet demand.
+  const isProjectBased = (category: string) => PROJECT_BASED_CATEGORIES.includes(category)
+  // A row gets the "project demand" treatment when it is project-based AND emerging.
+  const isProjectDemand = (r: WhitespaceRow) => isProjectBased(r.category) && r.tag === "Emerging"
 
-  // Headline takeaway — only ever derived from non-suppressed opportunity rows
-  // so we never headline a row we couldn't report reliably.
-  const openRows = rows.filter(
+  // All non-suppressed opportunity rows, best-first (RPC order), including project-based.
+  const opportunityRows = rows.filter(
     (r) => (r.tag === "Opening" || r.tag === "Emerging") && r.confidence !== "suppressed",
   )
+  // Continuous-service openings only — project-based rows are excluded from the count
+  // and from the "biggest opportunity" selection so we never headline interest as a gap.
+  const openRows = opportunityRows.filter((r) => !isProjectBased(r.category))
   const openCount = openRows.length
   const scope = isFiltered ? "in this segment" : "across the market"
   // Rows arrive best-first; lead with the biggest measurable Opening, else the top emerging row.
   const biggest = openRows.find((r) => r.tag === "Opening" && r.gap !== null) ?? openRows[0] ?? null
+  // If a project-based category would have ranked first (it leads the best-first list),
+  // surface it as a separate honest note rather than as the biggest opening.
+  const topProjectDemand =
+    opportunityRows.length > 0 && isProjectDemand(opportunityRows[0]) ? opportunityRows[0] : null
+
+  const takeaway = openRows
+    .slice(0, 3)
+    .map((r) => r.category)
+    .join(", ")
 
   return (
     <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
@@ -888,6 +906,13 @@ function WhitespacePanel({
                 <> — not yet commonly outsourced</>
               )}
               .
+            </p>
+          )}
+          {topProjectDemand && (
+            <p className="text-sm text-slate-400 mt-2 text-pretty">
+              Strong project-based interest in{" "}
+              <span className="font-semibold text-violet-300">{topProjectDemand.category}</span> (
+              {topProjectDemand.want_pct}%).
             </p>
           )}
         </div>
@@ -952,6 +977,7 @@ function WhitespacePanel({
               const saturated = row.tag === "Saturated"
               const suppressed = row.confidence === "suppressed"
               const limited = row.confidence === "limited"
+              const projectDemand = isProjectDemand(row)
               const isExpanded = !suppressed && expandedCategory === row.category
 
               // The collapsed bar + number + caption, shared by both suppressed and
@@ -978,7 +1004,12 @@ function WhitespacePanel({
                     {!suppressed && row.tag === "Opening" && row.gap !== null && (
                       <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt</span>
                     )}
-                    {!suppressed && row.is_emerging && (
+                    {!suppressed && row.is_emerging && projectDemand && (
+                      <span className="text-sm font-semibold text-violet-300 shrink-0">
+                        {row.want_pct}% interested
+                      </span>
+                    )}
+                    {!suppressed && row.is_emerging && !projectDemand && (
                       <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}%</span>
                     )}
                     {!suppressed && saturated && row.have_pct !== null && (
@@ -989,9 +1020,11 @@ function WhitespacePanel({
                   {/* One caption line (interactive rows only) */}
                   {!suppressed && (
                     <p className="text-[11px] text-slate-500 mt-1.5">
-                      {row.is_emerging
-                        ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
-                        : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
+                      {projectDemand
+                        ? `Wanted by ${row.want_pct}% · typically engaged per project, not outsourced`
+                        : row.is_emerging
+                          ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
+                          : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
                     </p>
                   )}
                 </>
@@ -1010,9 +1043,11 @@ function WhitespacePanel({
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="text-sm font-medium text-slate-100">{row.category}</span>
                         <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
+                          }`}
                         >
-                          {row.tag}
+                          {projectDemand ? "Project demand" : row.tag}
                         </span>
                       </div>
                       {barAndSummary}
@@ -1032,9 +1067,11 @@ function WhitespacePanel({
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium text-slate-100">{row.category}</span>
                             <span
-                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
+                              }`}
                             >
-                              {row.tag}
+                              {projectDemand ? "Project demand" : row.tag}
                             </span>
                           </div>
                           <ChevronDown
@@ -1063,10 +1100,17 @@ function WhitespacePanel({
                               Limited sample
                             </span>
                           )}
-                          {row.is_emerging && (
-                            <p className="text-[11px] text-sky-300/80">
-                              New service line — not yet commonly outsourced
+                          {projectDemand ? (
+                            <p className="text-[11px] text-slate-500 italic">
+                              The benchmark measures interest, not project scope — what advisory work is needed varies
+                              by program.
                             </p>
+                          ) : (
+                            row.is_emerging && (
+                              <p className="text-[11px] text-sky-300/80">
+                                New service line — not yet commonly outsourced
+                              </p>
+                            )
                           )}
                         </div>
                       )}
