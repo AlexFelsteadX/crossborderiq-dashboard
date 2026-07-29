@@ -1233,7 +1233,10 @@ export function PremiumDashboardClient() {
     const themed = new Map<WorkforceTheme, GroupedQuestion[]>()
     for (const theme of THEME_ORDER) themed.set(theme, [])
     for (const q of byQ.values()) {
-      themed.get(themeForPillar(q.hrPillar))!.push(q)
+      // Questions whose theme is not a known section (e.g. the "Unclassified"
+      // discard sentinel) are skipped entirely rather than mis-sectioned.
+      const bucket = themed.get(themeForPillar(q.hrPillar) as WorkforceTheme)
+      if (bucket) bucket.push(q)
     }
     return THEME_ORDER.map((theme) => ({ sectionName: theme, questions: themed.get(theme)! }))
   }, [breakdown, filters.year])
