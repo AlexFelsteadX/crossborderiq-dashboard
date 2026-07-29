@@ -1255,6 +1255,18 @@ export function PremiumDashboardClient() {
       const bucket = themed.get(themeForPillar(q.hrPillar) as WorkforceTheme)
       if (bucket) bucket.push(q)
     }
+
+    // Assignment-volume questions (E14, E15) also appear in "Who took part" as
+    // participation context, in addition to their pillar-derived section. They
+    // are appended after the four Participation questions, in E14 then E15 order.
+    const whoTookPart = themed.get("Who took part")
+    if (whoTookPart) {
+      for (const code of ["E14", "E15"]) {
+        const q = byQ.get(code) ?? [...byQ.values()].find((x) => (x.qCode ?? "").toUpperCase() === code)
+        if (q && !whoTookPart.includes(q)) whoTookPart.push(q)
+      }
+    }
+
     return THEME_ORDER.map((theme) => ({ sectionName: theme, questions: themed.get(theme)! }))
   }, [breakdown, filters.year])
 
