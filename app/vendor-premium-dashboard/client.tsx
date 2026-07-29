@@ -843,6 +843,8 @@ function WhitespacePanel({
 }) {
   // Accordion: only one row expanded at a time.
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+  // "How to read this" definitions toggle (collapsed by default to save vertical space).
+  const [showLegend, setShowLegend] = useState(false)
 
   // Some services are engaged per project rather than outsourced continuously, so a
   // want-vs-have gap is NOT whitespace for them — it reads as interest, not unmet demand.
@@ -866,85 +868,91 @@ function WhitespacePanel({
   const topProjectDemand =
     opportunityRows.length > 0 && isProjectDemand(opportunityRows[0]) ? opportunityRows[0] : null
 
-  const takeaway = openRows
-    .slice(0, 3)
-    .map((r) => r.category)
-    .join(", ")
-
   return (
     <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
       </div>
-      <p className="text-sm text-slate-400 mb-1">
-        What the market wants vs what this segment already outsources — your biggest openings first.
-      </p>
-      <p className="text-xs text-slate-500 mb-4 italic">
-        Demand is market-wide; &apos;already outsources&apos; reflects your selected segment.
+      <p className="text-sm text-slate-400 mb-4">
+        Market demand vs what your selected segment already outsources — biggest openings first.
       </p>
 
-      {/* Hero headline summary — at-a-glance opportunity, non-suppressed rows only */}
+      {/* Slim at-a-glance strip — one line, non-suppressed continuous-service openings only */}
       {!loading && !error && openCount > 0 && (
-        <div className="rounded-xl border border-primary/30 bg-primary/[0.07] px-5 py-4 mb-5">
-          <p className="text-2xl lg:text-3xl font-bold text-slate-100 tracking-tight text-balance">
-            <span className="text-primary drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-              {openCount}
-            </span>{" "}
-            open service {openCount === 1 ? "line" : "lines"} {scope}
+        <div className="rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-2.5 mb-3">
+          <p className="text-sm text-slate-300 text-pretty">
+            <span className="font-semibold text-primary">{openCount}</span> open service{" "}
+            {openCount === 1 ? "line" : "lines"} {scope}
+            {biggest && (
+              <>
+                {" · "}Biggest: <span className="font-semibold text-primary">{biggest.category}</span>
+                {biggest.tag === "Opening" && biggest.gap !== null ? (
+                  <> (+{biggest.gap} pt)</>
+                ) : (
+                  <> ({biggest.want_pct}% wanted)</>
+                )}
+              </>
+            )}
+            {topProjectDemand && (
+              <>
+                {" · "}Strong project-based interest in{" "}
+                <span className="font-semibold text-violet-300">{topProjectDemand.category}</span> (
+                {topProjectDemand.want_pct}%)
+              </>
+            )}
+            .
           </p>
-          {biggest && (
-            <p className="text-sm text-slate-300 mt-2 text-pretty">
-              Biggest opportunity:{" "}
-              <span className="font-semibold text-primary">{biggest.category}</span> — wanted by{" "}
-              <span className="font-semibold text-slate-100">{biggest.want_pct}%</span>
-              {biggest.have_pct !== null ? (
-                <>
-                  , provided by only <span className="font-semibold text-slate-100">{biggest.have_pct}%</span>
-                </>
-              ) : (
-                <> — not yet commonly outsourced</>
-              )}
-              .
-            </p>
-          )}
-          {topProjectDemand && (
-            <p className="text-sm text-slate-400 mt-2 text-pretty">
-              Strong project-based interest in{" "}
-              <span className="font-semibold text-violet-300">{topProjectDemand.category}</span> (
-              {topProjectDemand.want_pct}%).
-            </p>
-          )}
         </div>
       )}
 
-      {/* Tag key / legend */}
-      <div className="rounded-lg border border-primary/15 bg-brand-navy-2/40 px-4 py-3 mb-5 space-y-1.5">
-        {(
-          [
-            {
-              tag: "Emerging" as WhitespaceTag,
-              def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
-            },
-            {
-              tag: "Opening" as WhitespaceTag,
-              def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
-            },
-            {
-              tag: "Saturated" as WhitespaceTag,
-              def: "provision already matches or exceeds demand. Well-served and more competitive.",
-            },
-          ]
-        ).map(({ tag, def }) => (
-          <p key={tag} className="text-[11px] text-slate-500 leading-relaxed">
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle mr-2 ${WHITESPACE_TAG_STYLES[tag]}`}
-            >
-              {tag}
-            </span>
-            {def}
-          </p>
-        ))}
+      {/* "How to read this" — definitions collapsed by default to save vertical space */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setShowLegend((v) => !v)}
+          aria-expanded={showLegend}
+          className="text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-400 transition-colors"
+        >
+          {showLegend ? "Hide guide" : "How to read this"}
+        </button>
+        {showLegend && (
+          <div className="rounded-lg border border-primary/15 bg-brand-navy-2/40 px-4 py-3 mt-2 space-y-1.5">
+            {(
+              [
+                {
+                  label: "Emerging",
+                  style: WHITESPACE_TAG_STYLES.Emerging,
+                  def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
+                },
+                {
+                  label: "Opening",
+                  style: WHITESPACE_TAG_STYLES.Opening,
+                  def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
+                },
+                {
+                  label: "Saturated",
+                  style: WHITESPACE_TAG_STYLES.Saturated,
+                  def: "provision already matches or exceeds demand. Well-served and more competitive.",
+                },
+                {
+                  label: "Project demand",
+                  style: PROJECT_DEMAND_PILL,
+                  def: "interest in services typically engaged per project rather than outsourced continuously; read as interest, not a provision gap.",
+                },
+              ]
+            ).map(({ label, style, def }) => (
+              <p key={label} className="text-[11px] text-slate-500 leading-relaxed">
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle mr-2 ${style}`}
+                >
+                  {label}
+                </span>
+                {def}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -965,13 +973,6 @@ function WhitespacePanel({
         </div>
       ) : (
         <>
-          {takeaway && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 mb-5">
-              <p className="text-sm text-slate-200">
-                <span className="font-semibold text-primary">Biggest openings:</span> {takeaway}.
-              </p>
-            </div>
-          )}
           <div className="space-y-4">
             {rows.map((row, idx) => {
               const saturated = row.tag === "Saturated"
