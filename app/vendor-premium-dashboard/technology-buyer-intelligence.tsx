@@ -143,8 +143,6 @@ export function TechnologyBuyerIntelligence({
     )
   }
 
-  const base = resolvedRows[0]?.base ?? 30
-
   return (
     <div className={cardClass}>
       {/* 1. Navy header block */}
@@ -158,9 +156,6 @@ export function TechnologyBuyerIntelligence({
             Among Global Mobility leaders who have invested in technology
           </p>
         </div>
-        <span className="shrink-0 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-          {`~${base} tech buyers`}
-        </span>
       </div>
 
       {/* 2. Highlighted callout strip */}
@@ -210,12 +205,6 @@ export function TechnologyBuyerIntelligence({
         })}
       </div>
 
-      {/* 4. Methodology footer */}
-      <p className="mt-6 text-[11px] leading-relaxed text-slate-500">
-        Directional finding among the ~{base} Global Mobility leaders in the CBIQ benchmark who report having invested
-        in Global Mobility technology. Read as a view of technology buyers, not a whole-market percentage. Proportions
-        shown; figures are indicative at this base.
-      </p>
     </div>
   )
 }
