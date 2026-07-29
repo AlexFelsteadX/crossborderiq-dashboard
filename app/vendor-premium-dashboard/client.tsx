@@ -834,6 +834,9 @@ function WhitespacePanel({
   error: string | null
   isFiltered: boolean
 }) {
+  // Accordion: only one row expanded at a time.
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+
   const takeaway = rows
     .filter((r) => r.tag === "Emerging" || r.tag === "Opening")
     .slice(0, 3)
@@ -949,42 +952,22 @@ function WhitespacePanel({
               const saturated = row.tag === "Saturated"
               const suppressed = row.confidence === "suppressed"
               const limited = row.confidence === "limited"
-              return (
-                <div
-                  key={`${row.category}-${idx}`}
-                  className={`rounded-xl border border-primary/15 bg-brand-navy-2/60 p-4 ${
-                    suppressed ? "opacity-60" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span className="text-sm font-medium text-slate-100">
-                      {row.category}
-                    </span>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
-                    >
-                      {row.tag}
-                    </span>
-                    {limited && (
-                      <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                        Limited sample
-                      </span>
-                    )}
-                    {row.is_emerging && !suppressed && (
-                      <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
-                    )}
-                  </div>
+              const isExpanded = !suppressed && expandedCategory === row.category
 
+              // The collapsed bar + number + caption, shared by both suppressed and
+              // interactive rows. Suppressed rows draw NO have fill and no number.
+              const barAndSummary = (
+                <>
                   {/* Single overlay bar: teal = market demand (want); slate overlays from the
                       left = what this segment already outsources (have). The visible teal beyond
-                      the slate IS the gap (the opening). Emerging rows draw no slate overlay. */}
+                      the slate IS the gap (the opening). Emerging + suppressed rows draw no slate. */}
                   <div className="flex items-center gap-3">
                     <div className="relative h-2.5 flex-1 bg-[#1a3344] rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 bg-[var(--brand-teal)] rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(row.want_pct, 100)}%` }}
                       />
-                      {!row.is_emerging && row.have_pct !== null && (
+                      {!suppressed && !row.is_emerging && row.have_pct !== null && (
                         <div
                           className="absolute inset-y-0 left-0 bg-slate-500/80 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(row.have_pct, 100)}%` }}
@@ -1003,7 +986,7 @@ function WhitespacePanel({
                     )}
                   </div>
 
-                  {/* One caption line */}
+                  {/* One caption line (interactive rows only) */}
                   {!suppressed && (
                     <p className="text-[11px] text-slate-500 mt-1.5">
                       {row.is_emerging
@@ -1011,11 +994,83 @@ function WhitespacePanel({
                         : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
                     </p>
                   )}
+                </>
+              )
 
-                  {suppressed && (
-                    <p className="text-[11px] text-slate-500 italic mt-2">
-                      Not enough organizations in this segment to report provision reliably
-                    </p>
+              return (
+                <div
+                  key={`${row.category}-${idx}`}
+                  className={`rounded-xl border bg-brand-navy-2/60 overflow-hidden transition-all duration-300 ${
+                    isExpanded ? "border-primary/30" : "border-primary/15"
+                  } ${suppressed ? "opacity-60" : ""}`}
+                >
+                  {suppressed ? (
+                    // Suppressed: not expandable, want bar only, no have fill, no number.
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-100">{row.category}</span>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                        >
+                          {row.tag}
+                        </span>
+                      </div>
+                      {barAndSummary}
+                      <p className="text-[11px] text-slate-500 italic mt-2">
+                        Not enough organizations in this segment to report provision reliably
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedCategory(isExpanded ? null : row.category)}
+                        aria-expanded={isExpanded}
+                        className="w-full text-left p-4 cursor-pointer transition-colors duration-300 hover:bg-primary/[0.04]"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-slate-100">{row.category}</span>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                            >
+                              {row.tag}
+                            </span>
+                          </div>
+                          <ChevronDown
+                            className={`h-4 w-4 text-slate-500 shrink-0 transition-transform duration-300 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                        {barAndSummary}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 space-y-2">
+                          <p className="text-[11px] text-slate-400">
+                            {row.is_emerging ? (
+                              <>Market demand {row.want_pct}%</>
+                            ) : (
+                              <>
+                                Market demand {row.want_pct}% · This segment outsources {row.have_pct}%
+                                {row.have_base_n > 0 && <span className="text-slate-500"> (n={row.have_base_n})</span>}
+                              </>
+                            )}
+                          </p>
+                          {limited && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                              Limited sample
+                            </span>
+                          )}
+                          {row.is_emerging && (
+                            <p className="text-[11px] text-sky-300/80">
+                              New service line — not yet commonly outsourced
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )
