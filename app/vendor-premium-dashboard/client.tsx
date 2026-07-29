@@ -956,72 +956,60 @@ function WhitespacePanel({
                     suppressed ? "opacity-60" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-slate-100">
-                        {row.category}
-                      </span>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
-                      >
-                        {row.tag}
-                      </span>
-                      {limited && (
-                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                          Limited sample
-                        </span>
-                      )}
-                      {row.is_emerging && !suppressed && (
-                        <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
-                      )}
-                    </div>
-                    {/* Confident badges are gated on having enough segment data */}
-                    {!suppressed && row.tag === "Opening" && row.gap !== null && (
-                      <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt opening</span>
-                    )}
-                    {!suppressed && saturated && row.have_pct !== null && (
-                      <span className="text-xs text-slate-500 italic shrink-0">
-                        Already outsourced by {row.have_pct}%
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-sm font-medium text-slate-100">
+                      {row.category}
+                    </span>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${WHITESPACE_TAG_STYLES[row.tag]}`}
+                    >
+                      {row.tag}
+                    </span>
+                    {limited && (
+                      <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                        Limited sample
                       </span>
                     )}
-                    {!suppressed && row.is_emerging && (
-                      <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}% opportunity</span>
+                    {row.is_emerging && !suppressed && (
+                      <span className="text-[11px] text-sky-300/80">New service line — not yet commonly outsourced</span>
                     )}
                   </div>
 
-                  {/* Market wants bar */}
-                  <div className="mb-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] text-slate-400">Market wants</span>
-                      <span className="text-[11px] font-medium text-primary">{row.want_pct}%</span>
-                    </div>
-                    <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+                  {/* Single overlay bar: teal = market demand (want); slate overlays from the
+                      left = what this segment already outsources (have). The visible teal beyond
+                      the slate IS the gap (the opening). Emerging rows draw no slate overlay. */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-2.5 flex-1 bg-[#1a3344] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        className="absolute inset-y-0 left-0 bg-[var(--brand-teal)] rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(row.want_pct, 100)}%` }}
                       />
-                    </div>
-                  </div>
-
-                  {/* Already outsources bar (omitted for emerging rows) */}
-                  {!row.is_emerging && row.have_pct !== null && (
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] text-slate-400">
-                          Already outsources
-                          {row.have_base_n > 0 && (
-                            <span className="text-slate-500 ml-1.5">n={row.have_base_n}</span>
-                          )}
-                        </span>
-                        <span className="text-[11px] font-medium text-slate-400">{row.have_pct}%</span>
-                      </div>
-                      <div className="h-2 bg-[#1a3344] rounded-full overflow-hidden">
+                      {!row.is_emerging && row.have_pct !== null && (
                         <div
-                          className="h-full bg-slate-500/70 rounded-full transition-all duration-300"
+                          className="absolute inset-y-0 left-0 bg-slate-500/80 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min(row.have_pct, 100)}%` }}
                         />
-                      </div>
+                      )}
                     </div>
+                    {/* One number only, gated on having enough segment data */}
+                    {!suppressed && row.tag === "Opening" && row.gap !== null && (
+                      <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt</span>
+                    )}
+                    {!suppressed && row.is_emerging && (
+                      <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}%</span>
+                    )}
+                    {!suppressed && saturated && row.have_pct !== null && (
+                      <span className="text-xs text-slate-500 shrink-0">{row.have_pct}% served</span>
+                    )}
+                  </div>
+
+                  {/* One caption line */}
+                  {!suppressed && (
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      {row.is_emerging
+                        ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
+                        : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
+                    </p>
                   )}
 
                   {suppressed && (
