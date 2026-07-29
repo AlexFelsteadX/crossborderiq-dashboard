@@ -21,19 +21,25 @@ export interface TechBuyerRow {
 }
 
 // The three finding groups, in render order, with their headings + insights.
-const FINDINGS: { key: string; heading: string; insight: string }[] = [
+// `questionKeys` lists every question_key that maps to this group: the exact
+// value the live RPC returns first, plus the legacy short key so the static
+// DEFAULT_ROWS preview still matches.
+const FINDINGS: { key: string; questionKeys: string[]; heading: string; insight: string }[] = [
   {
     key: "signoff",
+    questionKeys: ["tech_approver", "signoff"],
     heading: "Who signs off on the investment",
     insight: "Global Mobility technology is approved at HR-leadership level, not by Global Mobility heads.",
   },
   {
     key: "budget",
+    questionKeys: ["tech_budget_owner", "budget"],
     heading: "Whose budget it sits in",
     insight: "The budget sits with Global Mobility or HR in roughly two-thirds of cases.",
   },
   {
     key: "trigger",
+    questionKeys: ["tech_deciding_factor", "trigger"],
     heading: "What tips the decision",
     insight: "Compliance and risk reduction is the leading trigger to invest.",
   },
@@ -169,7 +175,9 @@ export function TechnologyBuyerIntelligence({
       {/* 3. Three finding sections */}
       <div className="space-y-5">
         {FINDINGS.map((finding) => {
-          const groupRows = resolvedRows.filter((r) => r.question_key === finding.key)
+          const groupRows = resolvedRows
+            .filter((r) => finding.questionKeys.includes(r.question_key))
+            .sort((a, b) => b.pct - a.pct)
           if (groupRows.length === 0) return null
           const maxPct = Math.max(...groupRows.map((r) => r.pct), 1)
           return (
