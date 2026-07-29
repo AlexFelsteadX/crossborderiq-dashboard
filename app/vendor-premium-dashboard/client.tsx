@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -845,6 +845,28 @@ function WhitespacePanel({
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   // "How to read this" definitions toggle (collapsed by default to save vertical space).
   const [showLegend, setShowLegend] = useState(false)
+  // "Your service" pin — client-side only, persisted across reloads.
+  const [pinnedCategory, setPinnedCategory] = useState<string>("")
+
+  // Hydrate the pin from localStorage on mount (client-only; avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cbiq_vendor_service_category")
+      if (saved) setPinnedCategory(saved)
+    } catch {
+      /* localStorage unavailable — pin simply stays off */
+    }
+  }, [])
+
+  const handlePinChange = (value: string) => {
+    setPinnedCategory(value)
+    try {
+      if (value) localStorage.setItem("cbiq_vendor_service_category", value)
+      else localStorage.removeItem("cbiq_vendor_service_category")
+    } catch {
+      /* ignore persistence failure */
+    }
+  }
 
   // Some services are engaged per project rather than outsourced continuously, so a
   // want-vs-have gap is NOT whitespace for them — it reads as interest, not unmet demand.
@@ -868,11 +890,55 @@ function WhitespacePanel({
   const topProjectDemand =
     opportunityRows.length > 0 && isProjectDemand(opportunityRows[0]) ? opportunityRows[0] : null
 
+  // "Your service" options are the categories present in the current rows.
+  const categoryOptions = rows.map((r) => r.category)
+  // The pin only applies when the chosen category is actually in this filtered segment.
+  const pinnedPresent = pinnedCategory !== "" && categoryOptions.includes(pinnedCategory)
+  // Reorder client-side only: pinned row first, everything else keeps RPC (best-first) order.
+  const orderedRows = pinnedPresent
+    ? [
+        ...rows.filter((r) => r.category === pinnedCategory),
+        ...rows.filter((r) => r.category !== pinnedCategory),
+      ]
+    : rows
+  // Chosen a category that isn't reportable in this segment — flag the honest note.
+  const pinnedAbsent = pinnedCategory !== "" && !pinnedPresent
+
+  // Auto-expand the pinned row once per selection (covers both picking it and reload
+  // hydration). After that, normal accordion behavior applies.
+  const autoExpandedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (pinnedPresent && autoExpandedRef.current !== pinnedCategory) {
+      autoExpandedRef.current = pinnedCategory
+      setExpandedCategory(pinnedCategory)
+    }
+    if (!pinnedCategory) autoExpandedRef.current = null
+  }, [pinnedPresent, pinnedCategory])
+
   return (
     <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
+      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
+        </div>
+        {!loading && !error && rows.length > 0 && (
+          <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
+            <span className="whitespace-nowrap">Your service:</span>
+            <select
+              value={pinnedPresent ? pinnedCategory : ""}
+              onChange={(e) => handlePinChange(e.target.value)}
+              className="rounded-md border border-primary/25 bg-brand-navy-2 px-2 py-1 text-xs text-slate-200 focus:border-primary/50 focus:outline-none"
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <p className="text-sm text-slate-400 mb-4">
         Market demand vs what your selected segment already outsources — biggest openings first.
@@ -973,12 +1039,20 @@ function WhitespacePanel({
         </div>
       ) : (
         <>
+          {pinnedAbsent && (
+            <div className="rounded-lg border border-slate-600/40 bg-brand-navy-2/60 px-4 py-2 mb-3">
+              <p className="text-[11px] text-slate-400">
+                {pinnedCategory} is not reportable in this segment — showing all categories.
+              </p>
+            </div>
+          )}
           <div className="space-y-4">
-            {rows.map((row, idx) => {
+            {orderedRows.map((row, idx) => {
               const saturated = row.tag === "Saturated"
               const suppressed = row.confidence === "suppressed"
               const limited = row.confidence === "limited"
               const projectDemand = isProjectDemand(row)
+              const isPinnedRow = pinnedPresent && row.category === pinnedCategory
               const isExpanded = !suppressed && expandedCategory === row.category
 
               // The collapsed bar + number + caption, shared by both suppressed and
@@ -1036,7 +1110,7 @@ function WhitespacePanel({
                   key={`${row.category}-${idx}`}
                   className={`rounded-xl border bg-brand-navy-2/60 overflow-hidden transition-all duration-300 ${
                     isExpanded ? "border-primary/30" : "border-primary/15"
-                  } ${suppressed ? "opacity-60" : ""}`}
+                  } ${isPinnedRow ? "ring-1 ring-primary/40" : ""} ${suppressed ? "opacity-60" : ""}`}
                 >
                   {suppressed ? (
                     // Suppressed: not expandable, want bar only, no have fill, no number.
