@@ -524,6 +524,13 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
   const visibleAnswers =
     isLongMultiSelect && !showAllOptions ? answers.slice(0, TOP_OPTIONS) : answers
 
+  // Single-row guard: a question with exactly one answer row at or near 100%
+  // must not render as a lone full-width bar, since that reads as a striking
+  // finding when it is really just an unanimous or overall figure. Render it as
+  // a short factual sentence instead.
+  const singleDominantRow =
+    !isAgreementScale && q.answers.length === 1 && shownPct(q.answers[0]) >= 95
+
   // Divergence highlighting applies only to the STANDARD answer-bar rows when a
   // segment comparison is active. Agreement-scale cards (and the early-returned
   // direction matrix) are left exactly as-is.
@@ -791,9 +798,20 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </button>
       )}
 
-      {(!isAgreementScale || showDistribution) && (
-      <div className="space-y-2.5">
-        {visibleAnswers.map((answer, idx) => {
+      {suppressed && (
+        <p className="border border-slate-700/60 rounded-md px-3 py-2 text-xs text-slate-400 mb-3">
+          Not enough organizations in this segment to compare. Showing the overall benchmark.
+        </p>
+      )}
+
+      {(!isAgreementScale || showDistribution) &&
+        (singleDominantRow ? (
+          <p className="text-sm text-slate-300">
+            {`Overall, ${shownPct(q.answers[0])}% answered '${q.answers[0].option}'`}
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {visibleAnswers.map((answer, idx) => {
           const segDisplay = Math.round(answer.segPct * 100)
           const overallDisplay = Math.round(answer.overallPct * 100)
           const shown = suppressed ? overallDisplay : segDisplay
@@ -844,7 +862,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
               </div>
               <div className="relative h-2 bg-[#1a3344] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full"
+                  className={`h-full rounded-full ${suppressed ? "bg-slate-500/70" : "bg-gradient-to-r from-primary to-primary/70"}`}
                   style={{ width: `${Math.min(shown, 100)}%` }}
                 />
                 {/* Faint overall marker (only meaningful on a filtered segment view) */}
@@ -859,8 +877,8 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
             </div>
           )
         })}
-      </div>
-      )}
+          </div>
+        ))}
 
       {isLongMultiSelect && (
         <button
@@ -877,7 +895,6 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </button>
       )}
 
-      {suppressed && <FallbackNote className="mt-3" />}
       {showComparison && (!isAgreementScale || showDistribution) && (
         <p className="text-[10px] text-slate-500 mt-3">
           Teal = your segment · marker = overall benchmark
