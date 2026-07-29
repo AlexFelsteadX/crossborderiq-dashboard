@@ -16,8 +16,17 @@ export const THEME_ORDER = [
 
 export type WorkforceTheme = (typeof THEME_ORDER)[number]
 
-// Map a raw hr_pillar label to one of the themed sections.
-export function themeForPillar(rawPillar: string): WorkforceTheme {
+// Sentinel theme for questions that map to no known section. It is deliberately
+// NOT part of THEME_ORDER, so the premium client skips (hides) these questions
+// rather than dumping them into a user-facing section.
+export const UNCLASSIFIED_THEME = "Unclassified" as const
+
+// A question's theme is either a real section or the discard sentinel.
+export type ThemeAssignment = WorkforceTheme | typeof UNCLASSIFIED_THEME
+
+// Map a raw hr_pillar label to one of the themed sections, or to the
+// "Unclassified" discard sentinel when nothing matches.
+export function themeForPillar(rawPillar: string): ThemeAssignment {
   const p = (rawPillar || "").toLowerCase()
   if (/strateg|maturity/.test(p)) return "Strategy & maturity"
   if (/\bai\b|technolog|tech|digital|automation/.test(p)) return "AI & technology"
@@ -27,5 +36,6 @@ export function themeForPillar(rawPillar: string): WorkforceTheme {
   if (/operational|pressure|workload|capacity|compliance/.test(p)) return "Operational pressure"
   if (/investment|vendor|budget|spend|supplier|provider/.test(p)) return "Investment & vendors"
   if (/international remote|remote work|remote|cross-border work/.test(p)) return "International remote work"
-  return "Who took part"
+  if (/participation|demographic/.test(p)) return "Who took part"
+  return UNCLASSIFIED_THEME
 }
