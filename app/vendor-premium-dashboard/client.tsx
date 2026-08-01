@@ -264,6 +264,25 @@ const Q52_ANSWER_LABELS: Record<string, string> = {
   considering: "Considering an RFP",
 }
 
+// Display-only finding sentences for yes/no cards, keyed by q_code. The rendered
+// card reads "{yesPct}% {finding sentence}". Unmapped yes/no codes fall back to
+// "answer yes" so the card reads "{yesPct}% answer yes" - never invent a phrase.
+const YES_NO_FINDINGS: Record<string, string> = {
+  Q6: "of organizations run Global Mobility as a Center of Excellence",
+  Q28: "of organizations measure Global Mobility ROI",
+  Q32: "of organizations are reviewing or redesigning policy",
+  Q40: "of programs use assignment management technology",
+  Q43: "of those without technology are considering purchasing it",
+  Q57: "of organizations support International Remote Work",
+  Q58: "of organizations have a formal International Remote Work policy in place",
+  Q62: "require legal working rights in the International Remote Work location",
+  Q63: "apply a maximum period to International Remote Work",
+  Q66: "have a formal International Remote Work approval process",
+  Q67: "are tracking their International Remote Work population",
+  Q68: "have analyzed International Remote Work data for talent goals",
+  Q71: "of organizations have a Business Traveler policy",
+}
+
 // =============================================================================
 // MOVE-TYPE NET DEMAND (Q39) — shared net formula
 // Replicates the exact per-move-type net used inside QuestionCard so the promoted
@@ -584,6 +603,37 @@ function QuestionCard({
             </div>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // Yes/No finding-led variant: detected after agreement-scale and direction-matrix.
+  // Exactly two options that are "yes" and "no" (case-insensitive). Q52 has three
+  // options so it is never matched here and keeps its existing special-casing.
+  const yesNoNorm = answers.map((a) => a.answer_option.trim().toLowerCase())
+  const isYesNo =
+    !isAgreementScale && answers.length === 2 && yesNoNorm.includes("yes") && yesNoNorm.includes("no")
+
+  if (isYesNo) {
+    const yesPct = Math.round(answers[yesNoNorm.indexOf("yes")].pct)
+    const noPct = Math.round(answers[yesNoNorm.indexOf("no")].pct)
+    const finding = YES_NO_FINDINGS[(qCode ?? "").toUpperCase()] ?? "answer yes"
+    return (
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
+          {subtag && (
+            <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+              {subtag}
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-500 mb-3">{displayCaption}</p>
+        <div className="flex items-baseline gap-3">
+          <span className="text-3xl font-bold text-[var(--brand-teal)] tabular-nums">{yesPct}%</span>
+          <span className="text-sm text-slate-300 text-pretty">{finding}</span>
+        </div>
+        <p className="text-[11px] text-slate-500 mt-2">{`No: ${noPct}%`}</p>
       </div>
     )
   }
