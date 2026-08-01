@@ -277,9 +277,15 @@ function q39SplitOption(option: string): { prefix: string; direction: Q39Directi
   return { prefix: option.slice(0, idx).trim(), direction: dir }
 }
 
-function computeMoveTypeNets(answers: { answer_option: string; pct: number }[]): { prefix: string; net: number }[] {
+function computeMoveTypeNets(
+  answers: { answer_option: string; pct: number; base_n?: number }[],
+): { prefix: string; net: number; baseN: number }[] {
   const groups = new Map<string, Record<Q39Direction, number>>()
   const order: string[] = []
+  // Per-move-type respondent base: the four direction options for a move type
+  // share the same respondent set, so the base is the max base_n across them
+  // (robust to any single option arriving with a 0 count).
+  const bases = new Map<string, number>()
   for (const a of answers) {
     const parts = q39SplitOption(a.answer_option)
     if (!parts) continue
@@ -289,6 +295,7 @@ function computeMoveTypeNets(answers: { answer_option: string; pct: number }[]):
     }
     // pct is already a whole number (0–100).
     groups.get(parts.prefix)![parts.direction] += a.pct
+    bases.set(parts.prefix, Math.max(bases.get(parts.prefix) ?? 0, a.base_n ?? 0))
   }
   return order
     .map((prefix) => {
@@ -296,7 +303,7 @@ function computeMoveTypeNets(answers: { answer_option: string; pct: number }[]):
       const total = sums.Increase + sums["Remain the same"] + sums.Decrease + sums["Not applicable"]
       const pct = (v: number) => (total > 0 ? (v / total) * 100 : 0)
       const net = Math.round(pct(sums.Increase) - pct(sums.Decrease))
-      return { prefix, net }
+      return { prefix, net, baseN: bases.get(prefix) ?? 0 }
     })
     .sort((a, b) => b.net - a.net)
 }
@@ -309,7 +316,17 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
   const q39 = rows.filter((r) => r.q_code === "Q39")
   if (q39.length === 0) return null
 
-  const nets = computeMoveTypeNets(q39.map((r) => ({ answer_option: r.answer_option, pct: r.pct })))
+  const allNets = computeMoveTypeNets(
+    q39.map((r) => ({ answer_option: r.answer_option, pct: r.pct, base_n: r.base_n })),
+  )
+  if (allNets.length === 0) return null
+
+  // Minimum-base guard: a move type with fewer than 10 respondents does not have
+  // enough responses to report a reliable direction, so it is omitted from the
+  // list. A single muted note is shown at the bottom when any were dropped.
+  const MIN_BASE = 10
+  const nets = allNets.filter((n) => n.baseN >= MIN_BASE)
+  const hasOmitted = nets.length < allNets.length
   if (nets.length === 0) return null
 
   const maxAbs = Math.max(1, ...nets.map((n) => Math.abs(n.net)))
@@ -354,6 +371,11 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
           </div>
         ))}
       </div>
+      {hasOmitted && (
+        <p className="mt-4 text-xs text-slate-500">
+          Some move types are not shown yet - not enough responses to report a direction.
+        </p>
+      )}
     </div>
   )
 }
