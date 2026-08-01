@@ -243,6 +243,20 @@ function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: str
   return VENDOR_BREAKDOWN_LABELS[qCode.toUpperCase()] ?? fallbackLabel
 }
 
+// Display-only presentation for Q52 (Recent and planned RFP activity). The
+// subtitle surfaces the underlying survey question, and the answer map relabels
+// the stored answer_option values for readability. These are presentation-layer
+// only; the stored question_text / answer_option values (join keys) are never
+// modified.
+const Q52_SUBTITLE =
+  "Have you recently been through an RFP, or are you planning one in the next 12 months?"
+
+const Q52_ANSWER_LABELS: Record<string, string> = {
+  yes: "Recently completed or planning within 12 months",
+  no: "No recent or planned RFP",
+  considering: "Considering an RFP",
+}
+
 // =============================================================================
 // MOVE-TYPE NET DEMAND (Q39) — shared net formula
 // Replicates the exact per-move-type net used inside QuestionCard so the promoted
@@ -399,6 +413,13 @@ function QuestionCard({
   answers: { answer_option: string; pct: number }[]
   subtag?: string
 }) {
+  // Q52 (RFP activity) gets a display-only subtitle, answer relabeling, and an
+  // answering-base caption. Scoped to Q52 so no other card is affected.
+  const isQ52 = (qCode ?? "").toUpperCase() === "Q52"
+  const displayCaption = isQ52
+    ? caption.replace("% of respondents", `% of respondents answering (n=${baseN})`)
+    : caption
+
   // Agreement-scale detection: every option is a single digit, >=4 distinct
   // values, and the maximum numeric option is exactly 7.
   const distinctOptions = Array.from(new Set(answers.map((a) => a.answer_option)))
@@ -570,7 +591,10 @@ function QuestionCard({
             </span>
           )}
         </div>
-        <p className="text-[11px] text-slate-500 mb-3">{caption}</p>
+        {isQ52 && (
+          <p className="text-xs text-slate-400 mb-1 text-pretty">{Q52_SUBTITLE}</p>
+        )}
+        <p className="text-[11px] text-slate-500 mb-3">{displayCaption}</p>
       {agreementSummary && (
         <div className="mb-4 grid grid-cols-3 gap-2">
           {agreementSummary.map((s) => (
@@ -594,6 +618,9 @@ function QuestionCard({
             if (Number(answer.answer_option) === 7) optionLabel = `${answer.answer_option} · strongly agree`
             else if (Number(answer.answer_option) === lowestValue)
               optionLabel = `${answer.answer_option} · strongly disagree`
+          } else if (isQ52) {
+            // Display-only relabel; answer.answer_option (join key) is unchanged.
+            optionLabel = Q52_ANSWER_LABELS[answer.answer_option.trim().toLowerCase()] ?? optionLabel
           }
           return (
             <div key={idx}>
