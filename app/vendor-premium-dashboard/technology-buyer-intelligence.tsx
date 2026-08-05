@@ -333,10 +333,6 @@ export function TechnologyBuyerIntelligence({
             )}
           </div>
 
-          {/* 5. Methodology footer covering both zones */}
-          <p className="mt-6 border-t border-slate-700/40 pt-4 text-[11px] leading-relaxed text-slate-500">
-            {`Zone one reflects the ~${buyerBase} leaders who report having invested in Global Mobility technology; zone two the ~${nonBuyerBase} who have not. Read each as a view of its segment, not a whole-market percentage. Proportions shown; figures are indicative at these bases.`}
-          </p>
         </>
       )}
     </div>
