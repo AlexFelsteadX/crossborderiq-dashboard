@@ -66,6 +66,27 @@ const DEFAULT_ROWS: TechBuyerRow[] = [
   { question_key: "trigger", answer_option: "Data and reporting", pct: 13, base: 30 },
   { question_key: "trigger", answer_option: "Vendor-provided ROI model", pct: 6, base: 30 },
   { question_key: "trigger", answer_option: "Headcount efficiency", pct: 3, base: 30 },
+  // ---------------------------------------------------------------------------
+  // Second zone — leaders who have NOT invested in technology (different, smaller
+  // base). Uses the REAL question_key strings returned by the RPC so the preview
+  // exercises the same filtering path as live data.
+  // ---------------------------------------------------------------------------
+  // What holds them back
+  { question_key: "tech_investment_barrier", answer_option: "Cost", pct: 43, base: 21 },
+  { question_key: "tech_investment_barrier", answer_option: "Program too small to justify it", pct: 33, base: 21 },
+  { question_key: "tech_investment_barrier", answer_option: "No clear business case", pct: 24, base: 21 },
+  { question_key: "tech_investment_barrier", answer_option: "Lack of internal resource", pct: 19, base: 21 },
+  { question_key: "tech_investment_barrier", answer_option: "Competing priorities", pct: 14, base: 21 },
+  // What would build the case (multi-select — percentages total more than 100%)
+  { question_key: "tech_business_case_needs", answer_option: "Cost benchmarks", pct: 62, base: 21 },
+  { question_key: "tech_business_case_needs", answer_option: "Peer and market data", pct: 52, base: 21 },
+  { question_key: "tech_business_case_needs", answer_option: "Proof of ROI", pct: 48, base: 21 },
+  { question_key: "tech_business_case_needs", answer_option: "Leadership support", pct: 33, base: 21 },
+  { question_key: "tech_business_case_needs", answer_option: "Vendor guidance", pct: 29, base: 21 },
+  // Funding attempted (consumed by the zone callout, never rendered as bars)
+  { question_key: "tech_funding_attempted", answer_option: "No, never proposed", pct: 67, base: 21 },
+  { question_key: "tech_funding_attempted", answer_option: "Yes, and it was approved", pct: 19, base: 21 },
+  { question_key: "tech_funding_attempted", answer_option: "Yes, it is in progress", pct: 14, base: 21 },
 ]
 
 // % of technology buyers who cannot state their annual GM technology spend.
@@ -143,6 +164,57 @@ export function TechnologyBuyerIntelligence({
     )
   }
 
+  // ---- Second zone: leaders who have NOT invested in technology ----
+  // A different, smaller denominator than the tech-buyers zone above, so the two
+  // must be impossible to confuse. Each group is matched by its exact RPC
+  // question_key string.
+  const barrierRows = resolvedRows
+    .filter((r) => r.question_key === "tech_investment_barrier")
+    .sort((a, b) => b.pct - a.pct)
+  const caseRows = resolvedRows
+    .filter((r) => r.question_key === "tech_business_case_needs")
+    .sort((a, b) => b.pct - a.pct)
+  const fundingRows = resolvedRows.filter((r) => r.question_key === "tech_funding_attempted")
+
+  // The whole second zone (divider included) only renders when at least one of
+  // the three new keys returned rows; otherwise the card is exactly as before.
+  const hasSecondZone = barrierRows.length > 0 || caseRows.length > 0 || fundingRows.length > 0
+
+  // Non-buyer base comes specifically from the investment-barrier rows.
+  const nonBuyerBase = barrierRows[0]?.base ?? 0
+  // Buyer base comes from the first row matching any existing (zone one) key.
+  const buyerKeys = FINDINGS.flatMap((f) => f.questionKeys)
+  const buyerBase = resolvedRows.find((r) => buyerKeys.includes(r.question_key))?.base ?? 0
+
+  // Funding-attempted percentages, matched by exact answer_option strings.
+  const fundingPct = (option: string) => fundingRows.find((r) => r.answer_option === option)?.pct ?? 0
+  const neverProposedPct = fundingPct("No, never proposed")
+  const approvedPct = fundingPct("Yes, and it was approved")
+  const inProgressPct = fundingPct("Yes, it is in progress")
+
+  // Shared bar treatment, identical to zone one (teal bar on a dark track).
+  const renderBars = (groupRows: TechBuyerRow[]) => {
+    const maxPct = Math.max(...groupRows.map((r) => r.pct), 1)
+    return (
+      <div className="space-y-2.5">
+        {groupRows.map((row) => (
+          <div key={row.answer_option} className="grid grid-cols-[minmax(0,40%)_1fr_3rem] items-center gap-3">
+            <span className="text-xs text-slate-300 truncate" title={row.answer_option}>
+              {row.answer_option}
+            </span>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#1a3344]">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${(row.pct / maxPct) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-slate-100 text-right tabular-nums">{row.pct}%</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className={cardClass}>
       {/* 1. Navy header block */}
@@ -205,6 +277,68 @@ export function TechnologyBuyerIntelligence({
         })}
       </div>
 
+      {/* 4. Second zone — leaders who have NOT invested in technology */}
+      {hasSecondZone && (
+        <>
+          {/* Zone divider */}
+          <div className="mt-8 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-700/40" />
+            <span className="text-[11px] tracking-wide text-slate-500">THE OTHER SIDE OF THE MARKET</span>
+            <div className="h-px flex-1 bg-slate-700/40" />
+          </div>
+
+          {/* Subheader row: title + slate base pill */}
+          <div className="mt-4 mb-5 flex items-center justify-between gap-4">
+            <h3 className="text-sm font-semibold text-slate-200">Leaders who have not invested in technology</h3>
+            <span className="shrink-0 rounded-full border border-slate-600/50 bg-slate-700/30 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
+              {`~${nonBuyerBase} not yet invested`}
+            </span>
+          </div>
+
+          {/* Zone callout (mirrors the zone-one callout styling) */}
+          <div className="rounded-xl border border-slate-700/40 bg-slate-800/40 p-4 mb-6">
+            <div className="flex items-center gap-4">
+              <span className="text-3xl font-bold text-slate-100 tabular-nums leading-none">{neverProposedPct}%</span>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                have never proposed technology funding - most of this market is unasked, not unsold.
+              </p>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              {`${approvedPct}% have funding approved and ${inProgressPct}% are in progress - an active pipeline inside the non-buyer segment.`}
+            </p>
+          </div>
+
+          {/* Zone findings */}
+          <div className="space-y-5">
+            {barrierRows.length > 0 && (
+              <div className="border-t border-slate-700/40 pt-5">
+                <h3 className="text-sm font-semibold text-slate-100 mb-3">What holds them back</h3>
+                {renderBars(barrierRows)}
+                <p className="mt-3 text-xs italic text-slate-400">
+                  Cost and program size account for most resistance - an economics objection, not a product one.
+                </p>
+              </div>
+            )}
+            {caseRows.length > 0 && (
+              <div className="border-t border-slate-700/40 pt-5">
+                <h3 className="text-sm font-semibold text-slate-100 mb-1">What would build the case</h3>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Multiple answers allowed · percentages total more than 100%
+                </p>
+                {renderBars(caseRows)}
+                <p className="mt-3 text-xs italic text-slate-400">
+                  Non-buyers want evidence: cost benchmarks, peer data and proof of ROI top the list.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Methodology footer covering both zones */}
+          <p className="mt-6 border-t border-slate-700/40 pt-4 text-[11px] leading-relaxed text-slate-500">
+            {`Zone one reflects the ~${buyerBase} leaders who report having invested in Global Mobility technology; zone two the ~${nonBuyerBase} who have not. Read each as a view of its segment, not a whole-market percentage. Proportions shown; figures are indicative at these bases.`}
+          </p>
+        </>
+      )}
     </div>
   )
 }
