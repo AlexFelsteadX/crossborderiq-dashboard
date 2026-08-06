@@ -76,7 +76,7 @@ const MEMBER_TIERS = ["contributor", "premium", "vendor"]
 // visitors go through a lightweight lead-capture modal, signed-in users
 // download directly. Cover image lives in /public/reports.
 const SYDNEY_PDF = "/reports/gme-cbiq-sydney-leaders-exchange-2026.pdf"
-const SYDNEY_COVER = "/reports/sydney-leaders-exchange-cover.png"
+const SYDNEY_COVER = "/reports/covers/sydney-leaders-exchange-2026.png"
 const SYDNEY_SLUG = "sydney-leaders-exchange-2026"
 const SYDNEY_TITLE = "Global Mobility in Focus: Sydney Leaders Exchange"
 const SYDNEY_DESCRIPTION =
