@@ -1,12 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Download, BookOpen, ArrowRight, Check } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
+import { createClient } from "@/lib/supabase/client"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
@@ -67,9 +72,68 @@ const freeReports: ReportItem[] = [
 // Tiers allowed to download gated, members-only reports.
 const MEMBER_TIERS = ["contributor", "premium", "vendor"]
 
+// Sydney Leaders Exchange free report. Served as a static PDF; anonymous
+// visitors go through a lightweight lead-capture modal, signed-in users
+// download directly. Cover image lives in /public/reports.
+const SYDNEY_PDF = "/reports/gme-cbiq-sydney-leaders-exchange-2026.pdf"
+const SYDNEY_COVER = "/reports/sydney-leaders-exchange-cover.png"
+const SYDNEY_SLUG = "sydney-leaders-exchange-2026"
+const SYDNEY_TITLE = "Global Mobility in Focus: Sydney Leaders Exchange"
+const SYDNEY_DESCRIPTION =
+  "What 30 Global Mobility leaders reported at the Sydney Leaders Exchange, set against the CBIQ benchmark of 800+ leaders. Cost pressure, AI adoption and the discussions inside the room."
+
 export default function ReportsPage() {
-  const { tier } = useAuth()
+  const { tier, user } = useAuth()
   const isMember = !!tier && MEMBER_TIERS.includes(tier)
+  const isSignedIn = !!user
+
+  // Sydney report lead-capture modal state (anonymous visitors only).
+  const [sydneyModalOpen, setSydneyModalOpen] = useState(false)
+  const [sydneySuccess, setSydneySuccess] = useState(false)
+  const [sydneySubmitting, setSydneySubmitting] = useState(false)
+  const [sydneyEmail, setSydneyEmail] = useState("")
+  const [sydneyName, setSydneyName] = useState("")
+  const [sydneyCompany, setSydneyCompany] = useState("")
+  const [sydneyEmailError, setSydneyEmailError] = useState<string | null>(null)
+  // Honeypot: real users leave this empty; bots tend to fill every field.
+  const [sydneyHoneypot, setSydneyHoneypot] = useState("")
+
+  const openSydneyModal = () => {
+    setSydneySuccess(false)
+    setSydneyEmailError(null)
+    setSydneyModalOpen(true)
+  }
+
+  const handleSydneySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    // Email must contain an "@" and a "." (basic shape check).
+    if (!/.+@.+\..+/.test(sydneyEmail.trim())) {
+      setSydneyEmailError("Enter a valid work email.")
+      return
+    }
+    setSydneyEmailError(null)
+    setSydneySubmitting(true)
+
+    // Skip the insert entirely if the honeypot was filled (likely a bot).
+    if (!sydneyHoneypot) {
+      try {
+        const supabase = createClient()
+        const { error } = await supabase.from("report_leads").insert({
+          report_slug: SYDNEY_SLUG,
+          email: sydneyEmail.trim(),
+          full_name: sydneyName.trim() || null,
+          company: sydneyCompany.trim() || null,
+        })
+        // Never block the report on a write failure; just log it.
+        if (error) console.log("[v0] report_leads insert error:", error)
+      } catch (err) {
+        console.log("[v0] report_leads insert exception:", err)
+      }
+    }
+
+    setSydneySubmitting(false)
+    setSydneySuccess(true)
+  }
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -188,6 +252,75 @@ export default function ReportsPage() {
         <div className="mb-16">
           <h2 className="text-lg font-semibold text-slate-100 mb-5">Research Library</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Sydney Leaders Exchange — pinned first. Matches the standard tile
+                exactly; only the download behavior is auth-conditional. */}
+            {(() => {
+              const sydneyCardClassName =
+                "rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group transition-all duration-200 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
+
+              const sydneyInner = (
+                <>
+                  {/* Report Cover Image */}
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
+                    <img
+                      src={SYDNEY_COVER || "/placeholder.svg"}
+                      alt={SYDNEY_TITLE}
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Report Badge */}
+                    <div className="absolute top-3 right-3">
+                      <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
+                        FREE REPORT
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Report Info */}
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-slate-400">Event Intelligence</span>
+                      <span className="text-xs text-slate-400">•</span>
+                      <span className="text-xs text-slate-400">2026</span>
+                      <span className="text-xs text-slate-400">•</span>
+                      <span className="text-xs text-slate-400">7 pages</span>
+                    </div>
+                    <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight">{SYDNEY_TITLE}</h3>
+                    <p className="text-sm text-slate-400 flex-1 mb-5">{SYDNEY_DESCRIPTION}</p>
+                    <span
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "w-full gap-2 bg-transparent border-primary/40 text-primary group-hover:bg-primary/10",
+                      )}
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Report
+                    </span>
+                  </div>
+                </>
+              )
+
+              // Signed-in visitors download directly in a new tab (matching the
+              // whole-card anchor pattern of the other free reports).
+              if (isSignedIn) {
+                return (
+                  <a
+                    href={SYDNEY_PDF}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={sydneyCardClassName}
+                  >
+                    {sydneyInner}
+                  </a>
+                )
+              }
+
+              // Anonymous visitors open the lead-capture modal instead.
+              return (
+                <button type="button" onClick={openSydneyModal} className={cn(sydneyCardClassName, "text-left w-full")}>
+                  {sydneyInner}
+                </button>
+              )
+            })()}
             {[...freeReports]
               .sort((a, b) => Number(b.year) - Number(a.year))
               .map((report, index) => {
@@ -316,6 +449,97 @@ export default function ReportsPage() {
       </main>
 
       <GlobalFooter />
+
+      {/* Sydney report lead-capture modal (anonymous visitors) */}
+      <Dialog open={sydneyModalOpen} onOpenChange={setSydneyModalOpen}>
+        <DialogContent className="border-primary/20 bg-brand-navy-2 text-slate-100 sm:max-w-md">
+          {!sydneySuccess ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-slate-100">Get the report</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSydneySubmit} className="flex flex-col gap-4 pt-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="sydney-email" className="text-slate-300">
+                    Work email
+                  </Label>
+                  <Input
+                    id="sydney-email"
+                    type="email"
+                    required
+                    value={sydneyEmail}
+                    onChange={(e) => setSydneyEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                  {sydneyEmailError && <p className="text-xs text-red-400">{sydneyEmailError}</p>}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="sydney-name" className="text-slate-300">
+                    Full name <span className="text-slate-500">(optional)</span>
+                  </Label>
+                  <Input
+                    id="sydney-name"
+                    value={sydneyName}
+                    onChange={(e) => setSydneyName(e.target.value)}
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="sydney-company" className="text-slate-300">
+                    Company <span className="text-slate-500">(optional)</span>
+                  </Label>
+                  <Input
+                    id="sydney-company"
+                    value={sydneyCompany}
+                    onChange={(e) => setSydneyCompany(e.target.value)}
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                {/* Honeypot — hidden from real users */}
+                <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden">
+                  <label htmlFor="sydney-website">Website</label>
+                  <input
+                    id="sydney-website"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={sydneyHoneypot}
+                    onChange={(e) => setSydneyHoneypot(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={sydneySubmitting}
+                  className="w-full gap-2 bg-primary hover:bg-primary/90"
+                >
+                  {sydneySubmitting ? "Sending..." : "Get the report"}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-slate-100">Your report is ready.</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 pt-2">
+                <Button className="w-full gap-2 bg-primary hover:bg-primary/90" asChild>
+                  <a href={SYDNEY_PDF} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4" />
+                    Download the report (PDF)
+                  </a>
+                </Button>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  See where your program sits.{" "}
+                  <Link href="/mobility-maturity-scorecard" className="text-primary hover:underline">
+                    Take the Mobility Maturity Scorecard (about 3 minutes)
+                  </Link>
+                </p>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
