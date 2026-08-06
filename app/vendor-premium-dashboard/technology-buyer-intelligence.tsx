@@ -87,6 +87,17 @@ const DEFAULT_ROWS: TechBuyerRow[] = [
   { question_key: "tech_funding_attempted", answer_option: "No, never proposed", pct: 67, base: 21 },
   { question_key: "tech_funding_attempted", answer_option: "Yes, and it was approved", pct: 19, base: 21 },
   { question_key: "tech_funding_attempted", answer_option: "Yes, it is in progress", pct: 14, base: 21 },
+  // ---------------------------------------------------------------------------
+  // Annual technology spend (zone one). "Don't know" feeds the callout; the five
+  // dollar bands feed the fixed-order bar section. Percentages are of ALL buyers,
+  // so they sum to ~100% across all six options including "Don't know".
+  // ---------------------------------------------------------------------------
+  { question_key: "tech_annual_spend", answer_option: "Don't know", pct: 52, base: 30 },
+  { question_key: "tech_annual_spend", answer_option: "Under $25,000", pct: 20, base: 30 },
+  { question_key: "tech_annual_spend", answer_option: "$25,000 to $49,999", pct: 8, base: 30 },
+  { question_key: "tech_annual_spend", answer_option: "$50,000 to $99,999", pct: 6, base: 30 },
+  { question_key: "tech_annual_spend", answer_option: "$100,000 to $249,999", pct: 5, base: 30 },
+  { question_key: "tech_annual_spend", answer_option: "$250,000 or more", pct: 9, base: 30 },
 ]
 
 // % of technology buyers who cannot state their annual GM technology spend.
@@ -186,6 +197,32 @@ export function TechnologyBuyerIntelligence({
   const buyerKeys = FINDINGS.flatMap((f) => f.questionKeys)
   const buyerBase = resolvedRows.find((r) => buyerKeys.includes(r.question_key))?.base ?? 0
 
+  // ---- Annual technology spend (zone one) ----
+  // Matched by the exact answer_option strings the RPC returns. If the whole key
+  // returns no rows, hasSpend stays false: the section is not rendered and the
+  // callout keeps its prop default (unchanged behavior).
+  const spendRows = resolvedRows.filter((r) => r.question_key === "tech_annual_spend")
+  const hasSpend = spendRows.length > 0
+  const spendPct = (option: string) => spendRows.find((r) => r.answer_option === option)?.pct ?? 0
+  // Callout figure: live "Don't know" pct when spend rows exist, else the prop.
+  const dontKnowSpendPct = spendPct("Don't know")
+  const calloutSpendPct = hasSpend ? dontKnowSpendPct : cannotStateSpendPct
+  // Five dollar bands in FIXED display order (never sorted by pct); a band with
+  // no returned row renders at 0%. "Don't know" is excluded (the callout owns it).
+  const SPEND_BANDS = [
+    "Under $25,000",
+    "$25,000 to $49,999",
+    "$50,000 to $99,999",
+    "$100,000 to $249,999",
+    "$250,000 or more",
+  ]
+  const spendBarRows: TechBuyerRow[] = SPEND_BANDS.map((band) => ({
+    question_key: "tech_annual_spend",
+    answer_option: band,
+    pct: spendPct(band),
+    base: spendRows[0]?.base ?? 0,
+  }))
+
   // Funding-attempted percentages, matched by exact answer_option strings.
   const fundingPct = (option: string) => fundingRows.find((r) => r.answer_option === option)?.pct ?? 0
   const neverProposedPct = fundingPct("No, never proposed")
@@ -232,12 +269,27 @@ export function TechnologyBuyerIntelligence({
 
       {/* 2. Highlighted callout strip */}
       <div className="flex items-center gap-4 rounded-xl border border-slate-700/40 bg-slate-800/40 p-4 mb-6">
-        <span className="text-3xl font-bold text-slate-100 tabular-nums leading-none">{cannotStateSpendPct}%</span>
+        <span className="text-3xl font-bold text-slate-100 tabular-nums leading-none">{calloutSpendPct}%</span>
         <p className="text-sm text-slate-300 leading-relaxed">
-          of technology buyers cannot state their annual Global Mobility technology spend — a signal of how immature
+          of technology buyers cannot state their annual Global Mobility technology spend, a signal of how immature
           tech budgeting still is.
         </p>
       </div>
+
+      {/* 2b. Annual technology spend (fixed-order bands; callout owns "Don't know") */}
+      {hasSpend && (
+        <div className="mb-6 border-t border-slate-700/40 pt-5">
+          <h3 className="text-sm font-semibold text-slate-100 mb-1">Annual technology spend</h3>
+          <p className="text-[11px] text-slate-500 mb-3">
+            % of all technology buyers · the remainder cannot state their spend
+          </p>
+          {renderBars(spendBarRows)}
+          <p className="mt-3 text-xs italic text-slate-400">
+            Stated budgets are barbelled: the largest group spends under $25,000, yet a meaningful tier sits at $250,000
+            or more. Two different markets, two different sales.
+          </p>
+        </div>
+      )}
 
       {/* 3. Three finding sections */}
       <div className="space-y-5">
