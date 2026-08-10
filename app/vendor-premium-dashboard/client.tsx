@@ -17,11 +17,14 @@ import { TechnologyBuyerIntelligence } from "./technology-buyer-intelligence"
 // =============================================================================
 
 interface MarketOpportunity {
+  scope: string
   market_opportunity_score: number
   transformation_pct: number
   operational_pressure_pct: number
   ai_activity_pct: number
   tech_intent_pct: number
+  min_component_base: number
+  reportable: boolean
 }
 
 interface YoYRow {
@@ -1343,7 +1346,10 @@ export function VendorPremiumDashboardClient() {
   const SHOW_YOY = false
 
   // State
+  // Market Opportunity Score: market row drives the unfiltered view; segment row
+  // is the demographic-filtered comparison. Both come from get_market_opportunity.
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
+  const [marketOpportunitySegment, setMarketOpportunitySegment] = useState<MarketOpportunity | null>(null)
   const [yoyData, setYoyData] = useState<YoYRow[]>([])
   const [currentCommercial, setCurrentCommercial] = useState<CommercialCurrentRow[]>([])
   const [earlierCommercial, setEarlierCommercial] = useState<CommercialEarlierRow[]>([])
@@ -1428,6 +1434,14 @@ export function VendorPremiumDashboardClient() {
     selectedTraveller
   )
 
+  // Market Opportunity Score card: same five-demographic-filter rule as the
+  // vs-market cards (tech/AI ignored). Segment view only when the segment row
+  // exists and is reportable; otherwise fall back to the market view.
+  const moIsFiltered = e12IsFiltered
+  const moShowSegment = moIsFiltered && !!marketOpportunitySegment && marketOpportunitySegment.reportable
+  const moShowSuppressedNote = moIsFiltered && !!marketOpportunitySegment && !marketOpportunitySegment.reportable
+  const moSource = moShowSegment ? marketOpportunitySegment : marketOpportunity
+
   const regionOptions = [
     { value: null, label: "All" },
     { value: "Americas", label: "Americas" },
@@ -1495,24 +1509,12 @@ export function VendorPremiumDashboardClient() {
   ]
 
   // ---------------------------------------------------------------------------
-  // FETCH STATIC DATA ON MOUNT (Market Opportunity, YoY Trends)
+  // FETCH STATIC DATA ON MOUNT (YoY Trends)
   // ---------------------------------------------------------------------------
   
   useEffect(() => {
     async function fetchStaticData() {
       try {
-        // Fetch Market Opportunity Score
-        const { data: mosData, error: mosError } = await supabase
-          .from('v_market_opportunity')
-          .select('*')
-          .single()
-        
-        if (mosError) {
-          console.log("[v0] Market opportunity error:", mosError)
-        } else {
-          setMarketOpportunity(mosData)
-        }
-        
         // Fetch Year-on-Year trends (same view as Premium Dashboard)
         const { data: yoyRows, error: yoyError } = await supabase
           .from('v_premium_yoy')
@@ -1655,7 +1657,7 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes, reshapeRes] =
+      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes, reshapeRes, moRes] =
         await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
         supabase.rpc("get_vendor_breakdown", params),
@@ -1705,8 +1707,27 @@ export function VendorPremiumDashboardClient() {
           p_assignee: selectedAssignee,
           p_traveller: selectedTraveller,
         }),
+        // Market Opportunity Score: returns market + segment rows (identical when
+        // unfiltered). Same five demographic filters, null when "All".
+        supabase.rpc("get_market_opportunity", {
+          p_industry: selectedIndustry,
+          p_region: selectedRegion,
+          p_size: selectedSize,
+          p_assignee: selectedAssignee,
+          p_traveller: selectedTraveller,
+        }),
       ])
       if (cancelled) return
+
+      if (moRes.error) {
+        console.log("[v0] Market opportunity RPC error:", moRes.error)
+        setMarketOpportunity(null)
+        setMarketOpportunitySegment(null)
+      } else {
+        const moRows = (moRes.data as MarketOpportunity[]) ?? []
+        setMarketOpportunity(moRows.find((r) => r.scope === "market") ?? null)
+        setMarketOpportunitySegment(moRows.find((r) => r.scope === "segment") ?? null)
+      }
 
       if (reshapeRes.error) {
         console.log("[v0] E12 reshape segment-vs-market RPC error:", reshapeRes.error)
@@ -2004,10 +2025,21 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-6">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
+                {moIsFiltered ? (
+                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                    Filtered
+                  </span>
+                ) : (
+                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                    Market-wide
+                  </span>
+                )}
               </div>
+              {moShowSuppressedNote && (
+                <div className="mb-6 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                  Not enough organizations in this segment to compare, showing the market-wide view.
+                </div>
+              )}
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Score Gauge - Matching homepage ring style */}
@@ -2028,7 +2060,7 @@ export function VendorPremiumDashboardClient() {
                         stroke="url(#mosGradient)" 
                         strokeWidth="14" 
                         strokeDasharray={534}
-                        strokeDashoffset={534 * (1 - (marketOpportunity?.market_opportunity_score || 0) / 100)}
+                        strokeDashoffset={534 * (1 - (moSource?.market_opportunity_score || 0) / 100)}
                         strokeLinecap="round"
                         className="transition-all duration-1000"
                         filter="url(#mosGlow)"
@@ -2050,24 +2082,50 @@ export function VendorPremiumDashboardClient() {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                        {marketOpportunity?.market_opportunity_score || 0}%
+                        {moSource?.market_opportunity_score || 0}%
                       </span>
                       <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
                     </div>
                   </div>
+                  {moShowSegment && (
+                    <p className="mt-3 text-xs text-slate-400 tabular-nums">
+                      market: {marketOpportunity?.market_opportunity_score || 0}%
+                    </p>
+                  )}
                 </div>
 
                 {/* Supporting Metrics */}
                 <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                   {[
-                    { label: "Transformation Activity", value: marketOpportunity?.transformation_pct },
-                    { label: "Operational Pressure", value: marketOpportunity?.operational_pressure_pct },
-                    { label: "AI Activity", value: marketOpportunity?.ai_activity_pct },
-                    { label: "Technology Intent", value: marketOpportunity?.tech_intent_pct },
+                    {
+                      label: "Transformation Activity",
+                      value: moSource?.transformation_pct,
+                      marketValue: marketOpportunity?.transformation_pct,
+                    },
+                    {
+                      label: "Operational Pressure",
+                      value: moSource?.operational_pressure_pct,
+                      marketValue: marketOpportunity?.operational_pressure_pct,
+                    },
+                    {
+                      label: "AI Activity",
+                      value: moSource?.ai_activity_pct,
+                      marketValue: marketOpportunity?.ai_activity_pct,
+                    },
+                    {
+                      label: "Technology Intent",
+                      value: moSource?.tech_intent_pct,
+                      marketValue: marketOpportunity?.tech_intent_pct,
+                    },
                   ].map((metric) => (
                     <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
                       <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
-                      <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
+                        {moShowSegment && (
+                          <span className="text-xs font-normal text-slate-500 tabular-nums">market {metric.marketValue ?? 0}%</span>
+                        )}
+                      </div>
                       <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
                         <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
                       </div>
