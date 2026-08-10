@@ -1352,6 +1352,9 @@ export function VendorPremiumDashboardClient() {
   const [aiAdoption, setAiAdoption] = useState<AiAdoptionRow[]>([])
   const [aiVsMarket, setAiVsMarket] = useState<SegmentVsMarketRow[]>([])
   const [programVsMarket, setProgramVsMarket] = useState<SegmentVsMarketRow[]>([])
+  // E12 "forces that will reshape Global Mobility" — filtered segment vs whole-pool
+  // market, via the same get_vendor_segment_vs_market RPC the other responsive cards use.
+  const [reshapeVsMarket, setReshapeVsMarket] = useState<SegmentVsMarketRow[]>([])
   const [segmentSummary, setSegmentSummary] = useState<SegmentSummaryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1642,7 +1645,8 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes] = await Promise.all([
+      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes, reshapeRes] =
+        await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
         supabase.rpc("get_vendor_breakdown", params),
         supabase.rpc("get_vendor_whitespace", params),
@@ -1681,8 +1685,25 @@ export function VendorPremiumDashboardClient() {
           p_assignee: selectedAssignee,
           p_traveller: selectedTraveller,
         }),
+        // E12 forces reshaping Global Mobility: multi-select, so no allowlist.
+        // Same five demographic filters (null when "All") as the other vs-market calls.
+        supabase.rpc("get_vendor_segment_vs_market", {
+          p_question_key: "reshaping_forces",
+          p_region: selectedRegion,
+          p_industry: selectedIndustry,
+          p_size: selectedSize,
+          p_assignee: selectedAssignee,
+          p_traveller: selectedTraveller,
+        }),
       ])
       if (cancelled) return
+
+      if (reshapeRes.error) {
+        console.log("[v0] E12 reshape segment-vs-market RPC error:", reshapeRes.error)
+        setReshapeVsMarket([])
+      } else {
+        setReshapeVsMarket((reshapeRes.data as SegmentVsMarketRow[]) ?? [])
+      }
 
       if (summaryRes.error) {
         console.log("[v0] Segment summary RPC error:", summaryRes.error)
@@ -2741,40 +2762,131 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">
                   {displayVendorLabel("E12", reshapeSignals.questionLabel)}
                 </h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Market-wide
-                </span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Forward-looking market signal — the forces buyers expect to reshape Global Mobility over the next three years.
+              <p className="text-sm text-slate-400 mb-1">
+                Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
               </p>
+              <p className="text-xs text-slate-500 mb-6">Segment views are directional; multiple answers allowed.</p>
 
-              {reshapeSignals.items.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No data available.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {reshapeSignals.items.map((item, idx) => {
-                    const pctDisplay = Math.round(item.pct)
-                    return (
-                      <div key={idx}>
-                        <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                          <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
-                          <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                        </div>
-                        <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                          />
-                        </div>
+              {(() => {
+                // E12 keeps pct-descending order in every state. The RPC already
+                // returns rows pct-descending, so filtered/suppressed views are
+                // rendered in RPC order (never re-sorted); the unfiltered view
+                // keeps the existing pct-descending reshapeSignals sort.
+                const hasVsMarket = reshapeVsMarket.length > 0
+                const segmentReportable = hasVsMarket && reshapeVsMarket.every((r) => r.segment_reportable)
+
+                // ---- Filtered + reportable: segment bars with market marker ----
+                if (isFiltered && hasVsMarket && segmentReportable) {
+                  return (
+                    <>
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-slate-500">Segment figures</span>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                      <p className="mb-4 text-xs text-slate-500">
+                        Teal bar = your selected segment. Vertical marker = market-wide benchmark.
+                      </p>
+                      <div className="space-y-2">
+                        {reshapeVsMarket.map((row, idx) => {
+                          const seg = Math.round(row.segment_pct)
+                          const mkt = Math.round(row.market_pct)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
+                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">
+                                  {seg}%
+                                  <span className="ml-1.5 text-xs font-normal text-slate-500">market: {mkt}%</span>
+                                </span>
+                              </div>
+                              <div className="relative h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.min(seg, 100)}%` }}
+                                />
+                                <span
+                                  className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
+                                  style={{ left: `${Math.min(mkt, 100)}%` }}
+                                  title={`Market ${mkt}%`}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                }
+
+                // ---- Filtered but segment too thin: market-wide view, muted bars ----
+                if (isFiltered && hasVsMarket && !segmentReportable) {
+                  return (
+                    <>
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-slate-500">Market-wide figures</span>
+                      </div>
+                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                        Not enough organizations in this segment to compare, showing the market-wide view.
+                      </div>
+                      <div className="space-y-2">
+                        {reshapeVsMarket.map((row, idx) => {
+                          const pctDisplay = Math.round(row.market_pct)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
+                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                              </div>
+                              <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-slate-500/50 rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                }
+
+                // ---- Unfiltered (or no vs-market rows): existing market-wide view ----
+                if (reshapeSignals.items.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">No data available.</p>
+                    </div>
+                  )
+                }
+                return (
+                  <>
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] text-slate-500">Segment figures</span>
+                    </div>
+                    <div className="space-y-2">
+                      {reshapeSignals.items.map((item, idx) => {
+                        const pctDisplay = Math.round(item.pct)
+                        return (
+                          <div key={idx}>
+                            <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                              <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
+                              <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                            </div>
+                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
             </div>
 
             {/* =================================================================== */}
