@@ -1415,8 +1415,18 @@ export function VendorPremiumDashboardClient() {
     selectedSize !== null ||
     selectedAssignee !== null ||
     selectedTraveller !== null ||
-    selectedTech !== null ||
-    selectedAi !== null
+  selectedTech !== null ||
+  selectedAi !== null
+
+  // E12 card only: its RPC passes just the five demographic filters, so tech/AI
+  // selections must not flip it into segment mode. Do not reuse for other cards.
+  const e12IsFiltered = !!(
+    selectedRegion ||
+    selectedIndustry ||
+    selectedSize ||
+    selectedAssignee ||
+    selectedTraveller
+  )
 
   const regionOptions = [
     { value: null, label: "All" },
@@ -2762,6 +2772,11 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">
                   {displayVendorLabel("E12", reshapeSignals.questionLabel)}
                 </h2>
+                {e12IsFiltered && (
+                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                    Filtered
+                  </span>
+                )}
               </div>
               <p className="text-sm text-slate-400 mb-1">
                 Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
@@ -2777,7 +2792,7 @@ export function VendorPremiumDashboardClient() {
                 const segmentReportable = hasVsMarket && reshapeVsMarket.every((r) => r.segment_reportable)
 
                 // ---- Filtered + reportable: segment bars with market marker ----
-                if (isFiltered && hasVsMarket && segmentReportable) {
+                if (e12IsFiltered && hasVsMarket && segmentReportable) {
                   return (
                     <>
                       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -2819,7 +2834,7 @@ export function VendorPremiumDashboardClient() {
                 }
 
                 // ---- Filtered but segment too thin: market-wide view, muted bars ----
-                if (isFiltered && hasVsMarket && !segmentReportable) {
+                if (e12IsFiltered && hasVsMarket && !segmentReportable) {
                   return (
                     <>
                       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -2863,7 +2878,7 @@ export function VendorPremiumDashboardClient() {
                 return (
                   <>
                     <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] text-slate-500">Segment figures</span>
+                      <span className="text-[10px] text-slate-500">Market-wide figures</span>
                     </div>
                     <div className="space-y-2">
                       {reshapeSignals.items.map((item, idx) => {
