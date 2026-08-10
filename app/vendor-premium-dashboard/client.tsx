@@ -2264,7 +2264,7 @@ export function VendorPremiumDashboardClient() {
                   ) : (
                     <>
                       Based on{" "}
-                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> responses
+                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organizations
                     </>
                   )}
                 </p>
