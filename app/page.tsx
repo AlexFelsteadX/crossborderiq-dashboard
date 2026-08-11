@@ -21,7 +21,7 @@ import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
 export const metadata = {
   title: { absolute: "CBIQ | Global Workforce & Mobility Intelligence" },
   description:
-    "CBIQ benchmarks your workforce strategy, AI adoption and mobility program against 1,500+ HR, Talent and Global Mobility leaders. Powered by Global Mobility Executive (GME).",
+    "CBIQ benchmarks your workforce strategy, AI adoption and mobility program against 2,000+ HR, Talent and Global Mobility leader contributions. Powered by Global Mobility Executive (GME).",
 }
 
 // Format decimal pct values (e.g., 0.35) as whole percentages (e.g., 35%)
@@ -119,7 +119,7 @@ export default async function HomePage() {
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed text-pretty">
-                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against 2,000+ global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
+                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against a benchmark built from 2,000+ contributions by global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -298,7 +298,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-primary/25 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_60px_-15px_rgb(var(--brand-teal-deep-rgb)/0.45)] px-6 py-10 md:px-10">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-10">
                 {[
-                  { icon: Users, value: "1,500+", label: "Leaders benchmarked" },
+                  { icon: Users, value: "2,000+", label: "Leader contributions" },
                   { icon: Globe2, value: "35+", label: "Countries represented" },
                   { icon: Briefcase, value: "Senior", label: "HR, Mobility & Talent leaders" },
                   { icon: ShieldCheck, value: "Anonymous", label: "Confidential, aggregated insight" },
@@ -488,7 +488,7 @@ export default async function HomePage() {
                 {
                   icon: BarChart3,
                   title: "Benchmarking",
-                  description: "Compare your workforce mobility maturity against 1,500+ leaders across regions, industries and workforce sizes.",
+                  description: "Compare your workforce mobility maturity against a benchmark built from 2,000+ leader contributions across regions, industries and workforce sizes.",
                 },
                 {
                   icon: Globe2,
@@ -740,7 +740,7 @@ export default async function HomePage() {
               <div className="relative">
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/15 px-4 py-2 rounded-full border border-primary/30 mb-6">
                   <Users className="h-3.5 w-3.5" />
-                  Join 1,500+ Global Workforce Leaders
+                  Join 2,000+ Global Workforce Leaders
                 </div>
                 <h2 className="text-3xl md:text-5xl font-bold text-slate-50 mb-4 text-balance">
                   Make Smarter Global Workforce Decisions

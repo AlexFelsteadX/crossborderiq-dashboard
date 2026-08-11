@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: 'CBIQ | Global Workforce & Mobility Intelligence',
     template: '%s | CBIQ',
   },
-  description: 'Global workforce and mobility intelligence — benchmark your strategy, AI adoption and the future of work against 1,500+ HR, Talent and Mobility leaders.',
+  description: 'Global workforce and mobility intelligence - benchmark your strategy, AI adoption and the future of work against 2,000+ HR, Talent and Mobility leader contributions.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -30,13 +30,13 @@ export const metadata: Metadata = {
     siteName: 'CBIQ',
     url: 'https://www.cbiq.ai',
     title: 'CBIQ | Global Workforce & Mobility Intelligence',
-    description: 'Global workforce and mobility intelligence — benchmark your strategy, AI adoption and the future of work against 1,500+ HR, Talent and Mobility leaders.',
-    images: [{ url: '/og-image.png?v=2', width: 1200, height: 630, alt: 'CBIQ — Global Workforce Deployment benchmarks from 1,500+ mobility & HR leaders' }],
+    description: 'Global workforce and mobility intelligence - benchmark your strategy, AI adoption and the future of work against 2,000+ HR, Talent and Mobility leader contributions.',
+    images: [{ url: '/og-image.png?v=2', width: 1200, height: 630, alt: 'CBIQ - Global Workforce Deployment benchmarks from 2,000+ mobility & HR leader contributions' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'CBIQ | Global Workforce & Mobility Intelligence',
-    description: 'Global workforce and mobility intelligence — benchmark your strategy, AI adoption and the future of work against 1,500+ HR, Talent and Mobility leaders.',
+    description: 'Global workforce and mobility intelligence - benchmark your strategy, AI adoption and the future of work against 2,000+ HR, Talent and Mobility leader contributions.',
     images: ['/og-image.png?v=2'],
   },
 }
