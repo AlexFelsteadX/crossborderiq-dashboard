@@ -51,7 +51,7 @@ export default async function VendorIntelligencePage() {
             across regions, industries, and company sizes.
           </p>
           <p className="text-xs text-slate-400">
-            Based on insights from 1,500+ global HR, Talent and Mobility leaders across Europe, the Americas, Asia-Pacific and the Middle East.
+            Based on 2,000+ contributions from global HR, Talent and Mobility leaders across Europe, the Americas, Asia-Pacific and the Middle East.
           </p>
 
           <div className="mt-6 flex justify-center">

@@ -40,7 +40,7 @@ export default function MethodologyPage() {
               </div>
               <h3 className="text-base font-semibold text-slate-100 mb-2">Executive Event Intelligence</h3>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Insights gathered from over 1,500 HR, Mobility, Talent and Workforce leaders engaging at industry events throughout the year.
+                Insights gathered from HR, Mobility, Talent and Workforce leaders engaging at industry events throughout the year.
               </p>
             </div>
             
@@ -73,8 +73,8 @@ export default function MethodologyPage() {
           <h2 className="text-xl font-semibold text-slate-100 mb-6 text-center">Who Participates</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-              <p className="text-3xl font-bold text-primary mb-1 drop-shadow-[0_0_15px_rgb(var(--brand-teal-rgb)_/_0.4)]">1,500+</p>
-              <p className="text-xs text-slate-400">Annual Participants</p>
+              <p className="text-3xl font-bold text-primary mb-1 drop-shadow-[0_0_15px_rgb(var(--brand-teal-rgb)_/_0.4)]">2,000+</p>
+              <p className="text-xs text-slate-400">Leader Contributions</p>
             </div>
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
               <p className="text-3xl font-bold text-primary mb-1 drop-shadow-[0_0_15px_rgb(var(--brand-teal-rgb)_/_0.4)]">35+</p>
@@ -89,6 +89,9 @@ export default function MethodologyPage() {
               <p className="text-xs text-slate-400">Employee Populations</p>
             </div>
           </div>
+          <p className="text-sm text-slate-400 text-center max-w-2xl mx-auto mb-4">
+            The CBIQ intelligence pool holds more than 2,000 contributions from Global Mobility, HR and Talent leaders across our surveys, events and benchmark instruments. Every published figure states the base of leaders who answered that specific question.
+          </p>
           <p className="text-sm text-slate-400 text-center max-w-2xl mx-auto">
             Participants span Global Mobility, HR, Talent and Workforce Strategy leaders, alongside operational decision-makers, across organizations of every size.
           </p>

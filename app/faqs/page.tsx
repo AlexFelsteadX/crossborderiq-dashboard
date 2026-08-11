@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     question: "Where does the data come from?",
-    answer: "CBIQ intelligence is built from three primary sources:\n\n• 1,500+ HR, Mobility, Talent and Workforce leaders participating in Global Mobility Executive (GME) industry events annually\n• The annual Global Workforce Deployment Survey™\n• Ongoing intelligence surveys completed by CBIQ members throughout the year\n\nAll reporting is anonymized and presented in aggregate form.",
+    answer: "CBIQ intelligence is built from three primary sources:\n\n• HR, Mobility, Talent and Workforce leaders registering for and attending Global Mobility Executive (GME) industry events\n• The annual Global Workforce Deployment Survey™\n• Ongoing intelligence surveys completed by CBIQ members throughout the year\n\nAll reporting is anonymized and presented in aggregate form.",
   },
   {
     question: "How many organizations participate?",
