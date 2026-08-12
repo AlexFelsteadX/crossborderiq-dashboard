@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   TrendingUp,
   TrendingDown,
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Loader2,
   Download,
+  ArrowLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -915,17 +916,33 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
 }
 
 // Collapsible themed section — matches the Contributor dashboard accordion.
+// Count of questions in a section that show a reportable segment-vs-market
+// difference. Mirrors the thresholds used by the section headline summary below.
+function countSegmentFindings(questions: GroupedQuestion[], isFiltered: boolean): number {
+  if (!isFiltered) return 0
+  const NOTABLE = 0.1
+  const LOW_BASE = 5
+  let count = 0
+  for (const q of questions) {
+    if (q.confidence === "suppressed") continue
+    const hasFinding = q.answers.some(
+      (a) =>
+        a.segN >= LOW_BASE &&
+        isDirectionalRow(q.qCode, a.option) &&
+        Math.abs(a.segPct - a.overallPct) >= NOTABLE,
+    )
+    if (hasFinding) count++
+  }
+  return count
+}
+
+// Focused pillar view: renders a single section's questions expanded (no accordion
+// of its own). The overview grid and focus header are owned by the page below.
 function BreakdownSection({
-  sectionName,
   questions,
-  isOpen,
-  onToggle,
   isFiltered,
 }: {
-  sectionName: string
   questions: GroupedQuestion[]
-  isOpen: boolean
-  onToggle: () => void
   isFiltered: boolean
 }) {
   // Per-section headline — comments ONLY on directional questions (where
@@ -982,53 +999,27 @@ function BreakdownSection({
     : null
 
   return (
-    <section
-      className={`group rounded-xl border overflow-hidden shadow-sm transition-all duration-200 ${
-        isOpen
-          ? "border-l-4 border-l-primary/70 border-y border-r border-slate-700/50 bg-brand-navy-2/70"
-          : "border border-slate-700/50 bg-brand-navy-2/40 hover:border-slate-600"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className={`w-full flex items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer transition-colors ${
-          isOpen ? "bg-primary/10" : "hover:bg-primary/5"
-        }`}
-      >
-        <h3 className="text-base font-semibold text-slate-200">{sectionName}</h3>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="rounded-full border border-primary/20 bg-brand-navy-3/60 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-            {questions.length}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 text-primary transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-      {isOpen && (
-        <div className="px-5 pb-5 pt-1">
-          {summaryNode && (
-            <div className="flex items-start gap-2.5 rounded-xl rounded-l-none border border-slate-700/60 border-l-2 border-l-primary/50 bg-slate-800/40 px-4 py-3 mb-4">
-              <img
-                src="/cbiq-mark.png"
-                alt=""
-                aria-hidden="true"
-                width={18}
-                height={18}
-                className="h-[18px] w-[18px] shrink-0 mt-0.5"
-              />
-              <p className="text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
-            </div>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {questions.map((q) => (
-              <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
-            ))}
+    <section className="rounded-xl border border-l-4 border-l-primary/70 border-y border-r border-slate-700/50 bg-brand-navy-2/70 overflow-hidden shadow-sm">
+      <div className="px-5 pb-5 pt-5">
+        {summaryNode && (
+          <div className="flex items-start gap-2.5 rounded-xl rounded-l-none border border-slate-700/60 border-l-2 border-l-primary/50 bg-slate-800/40 px-4 py-3 mb-4">
+            <img
+              src="/cbiq-mark.png"
+              alt=""
+              aria-hidden="true"
+              width={18}
+              height={18}
+              className="h-[18px] w-[18px] shrink-0 mt-0.5"
+            />
+            <p className="text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
           </div>
+        )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {questions.map((q) => (
+            <PremiumQuestionCard key={q.qCode} q={q} isFiltered={isFiltered} />
+          ))}
         </div>
-      )}
+      </div>
     </section>
   )
 }
@@ -1151,7 +1142,18 @@ export function PremiumDashboardClient() {
   const [loadingMain, setLoadingMain] = useState(true)
   const [loadingYoY, setLoadingYoY] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [openSection, setOpenSection] = useState<WorkforceTheme | null>(THEME_ORDER[0])
+  // null = overview grid; a section name = focused single-pillar view.
+  const [focusedSection, setFocusedSection] = useState<string | null>(null)
+  const breakdownTopRef = useRef<HTMLDivElement | null>(null)
+
+  // Scroll the breakdown block into view whenever the focused pillar changes
+  // (entering focus or switching between pills). Filter changes keep the same
+  // focusedSection value, so they do not trigger a scroll.
+  useEffect(() => {
+    if (focusedSection !== null) {
+      breakdownTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [focusedSection])
 
   // Params for the first four RPCs (all six dimensions).
   const segmentParams = useMemo(
@@ -1861,29 +1863,97 @@ export function PremiumDashboardClient() {
 
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/60">
+          <div
+            ref={breakdownTopRef}
+            className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/60 scroll-mt-24"
+          >
             <h2 className="text-xl font-bold text-slate-100">Detailed breakdowns</h2>
             {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
-          {sections.map(({ sectionName, questions }) =>
-            questions.length > 0 ? (
-              <BreakdownSection
-                key={sectionName}
-                sectionName={sectionName}
-                questions={questions}
-                isOpen={openSection === sectionName}
-                onToggle={() =>
-                  setOpenSection((prev) => (prev === sectionName ? null : sectionName))
-                }
-                isFiltered={isFiltered}
-              />
-            ) : null,
-          )}
-          {!loadingMain && sections.every((s) => s.questions.length === 0) && (
-            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-              No breakdown data for this selection.
-            </div>
-          )}
+          {(() => {
+            const nonEmpty = sections.filter((s) => s.questions.length > 0)
+
+            if (!loadingMain && nonEmpty.length === 0) {
+              return (
+                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+                  No breakdown data for this selection.
+                </div>
+              )
+            }
+
+            // OVERVIEW — responsive grid of pillar cards (3/2/1 columns).
+            if (focusedSection === null) {
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {nonEmpty.map(({ sectionName, questions }) => {
+                    const findings = countSegmentFindings(questions, isFiltered)
+                    return (
+                      <button
+                        key={sectionName}
+                        type="button"
+                        onClick={() => setFocusedSection(sectionName)}
+                        className="group flex flex-col gap-2 rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5 text-left transition-all duration-200 hover:border-slate-600 hover:bg-brand-navy-2/70 cursor-pointer"
+                      >
+                        <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                        <p className="text-sm text-slate-400">
+                          {questions.length} question{questions.length === 1 ? "" : "s"}
+                        </p>
+                        {isFiltered && findings > 0 && (
+                          <p className="text-xs font-medium text-primary">
+                            {findings} segment finding{findings === 1 ? "" : "s"}
+                          </p>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            }
+
+            // FOCUS — single pillar, full width, with back button + pill bar.
+            const focused = nonEmpty.find((s) => s.sectionName === focusedSection)
+            return (
+              <div>
+                <div className="mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setFocusedSection(null)}
+                    className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200 mb-3 cursor-pointer"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    All sections
+                  </button>
+                  <h3 className="text-lg font-semibold text-slate-100 text-pretty mb-3">{focusedSection}</h3>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {nonEmpty.map(({ sectionName }) => {
+                      const active = sectionName === focusedSection
+                      return (
+                        <button
+                          key={sectionName}
+                          type="button"
+                          onClick={() => setFocusedSection(sectionName)}
+                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                            active
+                              ? "border-primary/40 bg-primary/15 text-primary"
+                              : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                          }`}
+                        >
+                          {sectionName}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {focused ? (
+                  <BreakdownSection questions={focused.questions} isFiltered={isFiltered} />
+                ) : (
+                  <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+                    No data for this section in the current selection.
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       </main>
 
