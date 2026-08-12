@@ -9,6 +9,7 @@ export const THEME_ORDER = [
   "Employee experience",
   "Leadership expectations",
   "Operational pressure",
+  "Business travel",
   "Investment & vendors",
   "International remote work",
   "Who took part",
@@ -28,6 +29,7 @@ export type ThemeAssignment = WorkforceTheme | typeof UNCLASSIFIED_THEME
 // "Unclassified" discard sentinel when nothing matches.
 export function themeForPillar(rawPillar: string): ThemeAssignment {
   const p = (rawPillar || "").toLowerCase()
+  if (/business travel|business traveller|business traveler/.test(p)) return "Business travel"
   if (/strateg|maturity/.test(p)) return "Strategy & maturity"
   if (/\bai\b|technolog|tech|digital|automation/.test(p)) return "AI & technology"
   if (/future/.test(p)) return "Future of mobility"
