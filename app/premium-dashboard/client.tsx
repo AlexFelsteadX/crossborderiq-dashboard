@@ -9,6 +9,7 @@ import {
   RotateCcw,
   BarChart3,
   ChevronDown,
+  ChevronRight,
   Loader2,
   Download,
   ArrowLeft,
@@ -1881,31 +1882,52 @@ export function PremiumDashboardClient() {
               )
             }
 
-            // OVERVIEW — responsive grid of pillar cards (3/2/1 columns).
+            // OVERVIEW — responsive grid of pillar cards (3/2/1 columns), read as
+            // a navigable index into each topic's benchmarks.
             if (focusedSection === null) {
               return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nonEmpty.map(({ sectionName, questions }) => {
-                    const findings = countSegmentFindings(questions, isFiltered)
-                    return (
-                      <button
-                        key={sectionName}
-                        type="button"
-                        onClick={() => setFocusedSection(sectionName)}
-                        className="group flex flex-col gap-2 rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5 text-left transition-all duration-200 hover:border-slate-600 hover:bg-brand-navy-2/70 cursor-pointer"
-                      >
-                        <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
-                        <p className="text-sm text-slate-400">
-                          {questions.length} question{questions.length === 1 ? "" : "s"}
-                        </p>
-                        {isFiltered && findings > 0 && (
-                          <p className="text-xs font-medium text-primary">
-                            {findings} segment finding{findings === 1 ? "" : "s"}
+                <div>
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-slate-100">Explore the benchmark</h3>
+                    <p className="text-sm text-slate-400">Select a topic to see how your peers responded.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {nonEmpty.map(({ sectionName, questions }) => {
+                      const findings = countSegmentFindings(questions, isFiltered)
+                      return (
+                        <button
+                          key={sectionName}
+                          type="button"
+                          onClick={() => setFocusedSection(sectionName)}
+                          className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5 pr-10 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-teal)]/50 hover:bg-brand-navy-2/70 hover:shadow-[0_4px_20px_rgb(var(--brand-teal-rgb)_/_0.08)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-teal)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-2"
+                        >
+                          {/* Top accent strip: teal at 40%, full opacity on hover. */}
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-x-0 top-0 h-0.5 bg-[var(--brand-teal)]/40 transition-opacity duration-200 group-hover:opacity-100 opacity-40"
+                          />
+                          {/* Right-edge chevron affordance. */}
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
+                          />
+                          <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                          <p className="text-sm text-slate-400">
+                            {questions.length} question{questions.length === 1 ? "" : "s"}
                           </p>
-                        )}
-                      </button>
-                    )
-                  })}
+                          {isFiltered && findings > 0 && (
+                            <p className="text-xs font-medium text-primary">
+                              {findings} segment finding{findings === 1 ? "" : "s"}
+                            </p>
+                          )}
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
+                            View benchmarks
+                            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )
             }
