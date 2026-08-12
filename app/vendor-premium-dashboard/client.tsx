@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, RotateCcw, Cpu, Triangle, Layers
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -68,6 +68,16 @@ interface GroupedQuestion {
   vendorPillar: string
   baseN: number
   answers: { answer_option: string; pct: number }[]
+}
+
+// Base-range summary line for a breakdown theme, derived from its questions'
+// answering bases. Shown on the overview cards and the focused theme header.
+function breakdownBaseRange(questions: GroupedQuestion[]): string {
+  const bases = questions.map((q) => q.baseN).filter((n) => typeof n === "number" && n > 0)
+  if (bases.length === 0) return ""
+  const min = Math.min(...bases)
+  const max = Math.max(...bases)
+  return min === max ? `Base n=${min}` : `Bases n=${min}-${max}`
 }
 
 interface ServiceInterestRow {
@@ -1365,15 +1375,12 @@ export function VendorPremiumDashboardClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Single-open accordion for the top-level commercial-breakdown pillars.
-  // null = none open. Opening a pillar collapses whichever was previously open.
-  const [activePillar, setActivePillar] = useState<string | null>(null)
+  // Commercial breakdowns view: null = overview grid of themes; a pillar name =
+  // focused single-theme view. Switching between themes stays in focus mode.
+  const [focusedBreakdown, setFocusedBreakdown] = useState<string | null>(null)
+  const breakdownTopRef = useRef<HTMLDivElement | null>(null)
   // Accordion state for the "Earlier research" studies (collapsed by default)
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
-  
-  const togglePillar = (pillarName: string) => {
-    setActivePillar(prev => (prev === pillarName ? null : pillarName))
-  }
 
   const toggleStudy = (studyKey: string) => {
     setExpandedStudies(prev => {
@@ -1931,16 +1938,13 @@ export function VendorPremiumDashboardClient() {
       .sort((a, b) => b.sourceYear - a.sourceYear)
   }, [earlierCommercial])
   
-  // Expand first pillar by default when data loads (only runs once when groupedByPillar first populates)
-  const [hasInitializedAccordion, setHasInitializedAccordion] = useState(false)
-  
+  // Scroll the breakdowns zone into view whenever a theme is focused (entering
+  // focus or switching themes via the pill bar). Overview (null) does not scroll.
   useEffect(() => {
-    if (groupedByPillar.length > 0 && !hasInitializedAccordion) {
-      // Open the first pillar by default.
-      setActivePillar(groupedByPillar[0][0])
-      setHasInitializedAccordion(true)
+    if (focusedBreakdown !== null) {
+      breakdownTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     }
-  }, [groupedByPillar, hasInitializedAccordion])
+  }, [focusedBreakdown])
 
   // ---------------------------------------------------------------------------
   // RENDER
@@ -3025,90 +3029,153 @@ export function VendorPremiumDashboardClient() {
             {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
             {/* =================================================================== */}
             
-            <div className="space-y-4">
+            <div ref={breakdownTopRef} id="commercial-breakdowns" className="space-y-4 scroll-mt-24">
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
                 <p className="text-sm text-slate-400">
                   Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
                 </p>
               </div>
-              
-              {groupedByPillar.length === 0 ? (
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No breakdowns to report for this segment.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {groupedByPillar
-                    .map(([pillarName, questions]) => {
-                      // Filter questions for display
-                      const visibleQuestions = questions.filter(q => {
-                        // Always hide "Do you have a central budget in the GM function?"
-                        if (q.questionLabel === "Do you have a central budget in the GM function?") return false
-                        // Hide "Are you switching from business class to economy class travel on planes?" in default (unfiltered) view
-                        const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
-                        if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
-                        return true
-                      })
-                      
-                      // Skip pillar if no visible questions remain
-                      if (visibleQuestions.length === 0) return null
-                      
-                      const isExpanded = activePillar === pillarName
-                      
-                      return (
-                        <div
-                          key={pillarName}
-                          className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
-                        >
-                          {/* Accordion Header */}
-                          <button
-                            onClick={() => togglePillar(pillarName)}
-                            className="w-full px-6 py-5 flex items-center justify-between hover:bg-primary/5 transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-base font-semibold text-slate-100">{pillarName}</h3>
-                              <span className="text-xs text-slate-500">({visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"})</span>
-                            </div>
-                            <ChevronDown 
-                              className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            />
-                          </button>
-                          
-                          {/* Accordion Content */}
-                          <div 
-                            className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                              isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'
-                            }`}
-                          >
-                            <div className="px-6 pb-6">
-                              {pillarName === "Sustainable Service Demand" && (
-                                <p className="text-xs text-slate-500 mb-4">
-                                  Historical ESG benchmark (2023 survey) — shown for context.
-                                </p>
-                              )}
-                              
-                              <div className={`grid grid-cols-1 gap-4 ${visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
-                                {visibleQuestions.map((q, idx) => (
-                                  <QuestionCard
-              key={`${pillarName}-${idx}`}
-                        qCode={q.qCode}
-                        questionLabel={q.questionLabel}
-                        caption="Global Workforce Deployment · % of respondents"
-                                    baseN={q.baseN}
-                                    answers={q.answers}
-                                  />
-                                ))}
-                              </div>
-                            </div>
+
+              {(() => {
+                // Build the list of non-empty themes once, applying the same
+                // display-visibility rules used by the original accordion.
+                const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
+                const sections = groupedByPillar
+                  .map(([pillarName, questions]) => {
+                    const visibleQuestions = questions.filter(q => {
+                      // Always hide "Do you have a central budget in the GM function?"
+                      if (q.questionLabel === "Do you have a central budget in the GM function?") return false
+                      // Hide the business-class switch question in the default (unfiltered) view
+                      if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
+                      return true
+                    })
+                    return { pillarName, visibleQuestions }
+                  })
+                  .filter(s => s.visibleQuestions.length > 0)
+
+                if (sections.length === 0) {
+                  return (
+                    <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">No breakdowns to report for this segment.</p>
+                    </div>
+                  )
+                }
+
+                // OVERVIEW — responsive grid of theme cards.
+                if (focusedBreakdown === null) {
+                  return (
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold text-slate-100">Commercial intelligence by theme</h3>
+                        <p className="text-sm text-slate-400">Select a theme to see the full breakdown.</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {sections.map(({ pillarName, visibleQuestions }) => {
+                          const baseRange = breakdownBaseRange(visibleQuestions)
+                          return (
+                            <button
+                              key={pillarName}
+                              type="button"
+                              onClick={() => setFocusedBreakdown(pillarName)}
+                              className="group relative flex flex-col gap-2 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 pr-10 text-left shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-teal)]/50 hover:shadow-[0_6px_24px_-8px_rgb(var(--brand-teal-rgb)_/_0.25)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-teal)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-2"
+                            >
+                              {/* Top accent strip: teal at 40%, full on hover. */}
+                              <span
+                                aria-hidden="true"
+                                className="absolute inset-x-0 top-0 h-0.5 bg-[var(--brand-teal)]/40 opacity-40 transition-opacity duration-200 group-hover:opacity-100"
+                              />
+                              {/* Right-edge chevron affordance. */}
+                              <ChevronRight
+                                aria-hidden="true"
+                                className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
+                              />
+                              <h4 className="text-base font-semibold text-slate-100 text-pretty">{pillarName}</h4>
+                              {baseRange && <p className="text-xs text-slate-500">{baseRange}</p>}
+                              <p className="text-xs text-slate-400">
+                                {visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"}
+                              </p>
+                              <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
+                                View intelligence
+                                <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                }
+
+                // FOCUS — one theme, full width, with back button + theme pill bar.
+                const focused = sections.find(s => s.pillarName === focusedBreakdown)
+                const focusedBaseRange = focused ? breakdownBaseRange(focused.visibleQuestions) : ""
+                return (
+                  <div>
+                    <div className="mb-5">
+                      <button
+                        type="button"
+                        onClick={() => setFocusedBreakdown(null)}
+                        className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200 mb-3 cursor-pointer"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        All sections
+                      </button>
+                      <h3 className="text-lg font-semibold text-slate-100 text-pretty">{focusedBreakdown}</h3>
+                      {focusedBaseRange && <p className="text-xs text-slate-500 mt-1">{focusedBaseRange}</p>}
+                      <div className="flex gap-2 overflow-x-auto pb-2 mt-3">
+                        {sections.map(({ pillarName }) => {
+                          const active = pillarName === focusedBreakdown
+                          return (
+                            <button
+                              key={pillarName}
+                              type="button"
+                              onClick={() => setFocusedBreakdown(pillarName)}
+                              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                                active
+                                  ? "border-[var(--brand-teal)]/40 bg-[var(--brand-teal)]/15 text-[var(--brand-teal)]"
+                                  : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                              }`}
+                            >
+                              {pillarName}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {focused ? (
+                      <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-hidden shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                        <div className="px-6 py-6">
+                          {focusedBreakdown === "Sustainable Service Demand" && (
+                            <p className="text-xs text-slate-500 mb-4">
+                              Historical ESG benchmark (2023 survey) - shown for context.
+                            </p>
+                          )}
+                          <div className={`grid grid-cols-1 gap-4 ${focused.visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
+                            {focused.visibleQuestions.map((q, idx) => (
+                              <QuestionCard
+                                key={`${focusedBreakdown}-${idx}`}
+                                qCode={q.qCode}
+                                questionLabel={q.questionLabel}
+                                caption="Global Workforce Deployment · % of respondents"
+                                baseN={q.baseN}
+                                answers={q.answers}
+                              />
+                            ))}
                           </div>
                         </div>
-                      )
-                    })
-                    .filter(Boolean)}
-                </div>
-              )}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                        <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                        <p className="text-slate-400">No data for this theme in the current selection.</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             {/* =================================================================== */}
