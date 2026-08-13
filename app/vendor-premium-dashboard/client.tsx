@@ -3033,7 +3033,7 @@ export function VendorPremiumDashboardClient() {
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
                 <p className="text-sm text-slate-400">
-                  Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
+                  Data points grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
                 </p>
               </div>
 
