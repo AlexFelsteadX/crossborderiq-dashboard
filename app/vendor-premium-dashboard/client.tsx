@@ -3067,13 +3067,8 @@ export function VendorPremiumDashboardClient() {
                 if (focusedBreakdown === null) {
                   return (
                     <div>
-                      <div className="mb-4">
-                        <h3 className="text-lg font-semibold text-slate-100">Commercial intelligence by theme</h3>
-                        <p className="text-sm text-slate-400">Select a theme to see the full breakdown.</p>
-                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {sections.map(({ pillarName, visibleQuestions }) => {
-                          const baseRange = breakdownBaseRange(visibleQuestions)
                           return (
                             <button
                               key={pillarName}
@@ -3092,7 +3087,6 @@ export function VendorPremiumDashboardClient() {
                                 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                               />
                               <h4 className="text-base font-semibold text-slate-100 text-pretty">{pillarName}</h4>
-                              {baseRange && <p className="text-xs text-slate-500">{baseRange}</p>}
                               <p className="text-xs text-slate-400">
                                 {visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"}
                               </p>
