@@ -3088,7 +3088,7 @@ export function VendorPremiumDashboardClient() {
                               />
                               <h4 className="text-base font-semibold text-slate-100 text-pretty">{pillarName}</h4>
                               <p className="text-xs text-slate-400">
-                                {visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"}
+                                {visibleQuestions.length} {visibleQuestions.length === 1 ? "data point" : "data points"}
                               </p>
                               <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
                                 View intelligence
