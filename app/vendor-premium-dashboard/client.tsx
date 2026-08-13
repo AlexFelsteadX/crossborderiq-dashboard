@@ -3033,7 +3033,7 @@ export function VendorPremiumDashboardClient() {
               <div className="mb-4">
                 <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
                 <p className="text-sm text-slate-400">
-                  Questions grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
+                  Data points grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
                 </p>
               </div>
 
@@ -3088,7 +3088,7 @@ export function VendorPremiumDashboardClient() {
                               />
                               <h4 className="text-base font-semibold text-slate-100 text-pretty">{pillarName}</h4>
                               <p className="text-xs text-slate-400">
-                                {visibleQuestions.length} {visibleQuestions.length === 1 ? "question" : "questions"}
+                                {visibleQuestions.length} {visibleQuestions.length === 1 ? "data point" : "data points"}
                               </p>
                               <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
                                 View intelligence
