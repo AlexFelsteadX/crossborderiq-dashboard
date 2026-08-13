@@ -1913,7 +1913,7 @@ export function PremiumDashboardClient() {
                           />
                           <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
                           <p className="text-sm text-slate-400">
-                            {questions.length} question{questions.length === 1 ? "" : "s"}
+                            {questions.length} {questions.length === 1 ? "data point" : "data points"}
                           </p>
                           {isFiltered && findings > 0 && (
                             <p className="text-xs font-medium text-primary">
