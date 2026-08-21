@@ -1449,6 +1449,13 @@ export function VendorPremiumDashboardClient() {
   const moShowSuppressedNote = moIsFiltered && !!marketOpportunitySegment && !marketOpportunitySegment.reportable
   const moSource = moShowSegment ? marketOpportunitySegment : marketOpportunity
 
+  // Demand Pipeline RPC (f_demand_pipeline) receives only region/industry/size,
+  // so its pill must reflect exactly those three, not the full filter set.
+  const pipelineIsFiltered = !!(selectedRegion || selectedIndustry || selectedSize)
+  // Stated service interest RPC (f_service_interest) receives only the region,
+  // so its pill reflects region alone.
+  const serviceInterestIsFiltered = selectedRegion !== null
+
   const regionOptions = [
     { value: null, label: "All" },
     { value: "Americas", label: "Americas" },
@@ -2044,6 +2051,11 @@ export function VendorPremiumDashboardClient() {
                   Not enough organizations in this segment to compare, showing the market-wide view.
                 </div>
               )}
+              {(moSource?.min_component_base ?? 0) > 0 && (
+                <p className="-mt-2 mb-6 text-xs text-slate-500">
+                  Smallest component base: n={moSource?.min_component_base}
+                </p>
+              )}
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Score Gauge - Matching homepage ring style */}
@@ -2120,6 +2132,7 @@ export function VendorPremiumDashboardClient() {
                       label: "Technology Intent",
                       value: moSource?.tech_intent_pct,
                       marketValue: marketOpportunity?.tech_intent_pct,
+                      caption: "Evaluating, implementing, or considering technology (2026 wave)",
                     },
                   ].map((metric) => (
                     <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
@@ -2133,6 +2146,9 @@ export function VendorPremiumDashboardClient() {
                       <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
                         <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
                       </div>
+                      {metric.caption && (
+                        <p className="mt-2 text-[11px] leading-snug text-slate-500">{metric.caption}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2315,7 +2331,7 @@ export function VendorPremiumDashboardClient() {
                   barColor="#2dd4bf"
                   loading={demandLoading}
                   isFiltered={isFiltered}
-                  badge="Filtered"
+                  badge={isFiltered ? "Filtered" : "Market-wide"}
                 />
 
                 {/* Established demand (Q49, segment-aware) */}
@@ -2328,6 +2344,7 @@ export function VendorPremiumDashboardClient() {
                   barColor="var(--brand-teal)"
                   loading={demandLoading}
                   isFiltered={isFiltered}
+                  badge={isFiltered ? "Filtered" : "Market-wide"}
                 />
               </div>
             </div>
@@ -2339,10 +2356,13 @@ export function VendorPremiumDashboardClient() {
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-lg font-semibold text-slate-100">Stated service interest</h3>
                     <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                      Market-wide
+                      {serviceInterestIsFiltered ? "Filtered" : "Market-wide"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">Services GME event audiences are actively seeking</p>
+                  {serviceInterest.length > 0 && (serviceInterest[0]?.base_n ?? 0) > 0 && (
+                    <p className="mt-1 text-xs text-slate-500">Base {serviceInterest[0].base_n} organizations</p>
+                  )}
                 </div>
 
                 {serviceInterest.length === 0 ? (
@@ -2377,7 +2397,7 @@ export function VendorPremiumDashboardClient() {
               </div>
 
               <p className="text-xs text-slate-500 mt-6 italic">
-                Stated service interest is market-wide and does not vary by segment.
+                Reflects the selected region where one is chosen; industry and size filters do not apply to this signal.
               </p>
             </div>
 
@@ -2398,7 +2418,7 @@ export function VendorPremiumDashboardClient() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
                 <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
+                  {pipelineIsFiltered ? "Filtered" : "Market-wide"}
                 </span>
               </div>
               <p className="text-sm text-slate-400 mb-6">
@@ -2416,7 +2436,12 @@ export function VendorPremiumDashboardClient() {
                     <div key={idx} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5">
                       <p className="text-sm font-medium text-slate-200 mb-3">{row.signal}</p>
                       {row.is_reportable ? (
-                        <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
+                          {(row.base_n ?? 0) > 0 && (
+                            <span className="text-xs text-slate-500 tabular-nums">n={row.base_n}</span>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-sm text-slate-400">Not enough data for this segment</p>
                       )}
@@ -2435,7 +2460,7 @@ export function VendorPremiumDashboardClient() {
                 <Layers className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
                 <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
+                  {e12IsFiltered ? "Filtered" : "Market-wide"}
                 </span>
               </div>
 
@@ -2479,8 +2504,11 @@ export function VendorPremiumDashboardClient() {
                   </>
                 )
 
-                // ---- Comparison mode: a filter is applied and we have vs-market data ----
-                if (isFiltered && programVsMarket.length > 0) {
+                // ---- Comparison mode: a demographic filter is applied and we have vs-market data ----
+                // Gated on the five-demographic boolean because program_state's RPC receives
+                // only those filters; a tech-only or AI-only selection must not present
+                // market-wide data as segment data.
+                if (e12IsFiltered && programVsMarket.length > 0) {
                   const rows = [...programVsMarket].sort(byOrder)
                   const marketBase = programVsMarket[0]?.market_base ?? 0
                   const segmentReportable = rows.every((r) => r.segment_reportable)
@@ -2573,7 +2601,7 @@ export function VendorPremiumDashboardClient() {
             {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
             {/* =================================================================== */}
 
-            {isFiltered && segmentSummary.length > 0 && (() => {
+            {e12IsFiltered && segmentSummary.length > 0 && (() => {
               // Keep it scannable: top 3 divergences only (RPC may return up to 5),
               // already ranked by abs_delta descending.
               const top = segmentSummary.slice(0, 3)
@@ -2642,7 +2670,7 @@ export function VendorPremiumDashboardClient() {
                 <Cpu className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
                 <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  Filtered
+                  {e12IsFiltered ? "Filtered" : "Market-wide"}
                 </span>
               </div>
 
