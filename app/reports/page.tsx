@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Download, BookOpen, ArrowRight, Check } from "lucide-react"
+import { Download, BookOpen, ArrowRight, Lock } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -83,16 +83,55 @@ const SYDNEY_DESCRIPTION =
   "What 30 Global Mobility leaders reported at the Sydney Leaders Exchange, set against the CBIQ benchmark of 800+ leaders. Cost pressure, AI adoption and the discussions inside the room."
 
 // Global Workforce Deployment Survey Report. The 2025 edition is retired to the
-// members-only library; the 2026 cover fronts the Featured "coming soon" slot.
+// members-only library below.
 const GWD_2025_COVER =
   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Workforce%20Deployment%20Report%202025%20cover-iQoHta36RBL4UJGKzbRayxfc4sst1F.png"
 const GWD_2025_DOWNLOAD_ID = "global-workforce-deployment-survey-2025"
-const GWD_2026_COVER = "/reports/covers/gwd-survey-report-2026.png"
+
+// Flagship report: Global Workforce Deployment Report 2026. Premium entitlement
+// (paid subscription, live survey trial, or vendor tier) unlocks Read/Download;
+// everyone else sees the locked hero with a survey-unlock and subscribe path.
+const FLAGSHIP = {
+  cover: "/reports/covers/gwd-2026-cover.png",
+  file: "/reports/GME_x_CBIQ_Global_Workforce_Deployment_Report_2026.pdf",
+  title: "Global Workforce Deployment Report 2026",
+  description:
+    "The 2026 benchmark of how Global Mobility programs are deploying talent, from strategy and structure to technology, vendors and remote work. Built with the CBIQ benchmark and directly comparable with the 2025 wave.",
+  meta: "GME x CBIQ · 2026 · PDF",
+}
+
+// Event briefings grid. Data-driven so future briefings are one array entry.
+// Each briefing gates at sign-in only (any tier).
+type EventBriefing = {
+  title: string
+  description: string
+  cover: string
+  file: string
+  date: string
+  tag: string
+}
+const EVENT_BRIEFINGS: EventBriefing[] = [
+  {
+    title: "The Room and the Market: GME Live APAC, Singapore",
+    description:
+      "What 45 Global Mobility leaders told the CBIQ benchmark before the Singapore room convened, set against the wider market. August 2026.",
+    cover: "/reports/covers/apac-singapore-cover.png",
+    file: "/reports/GME_Live_APAC_CBIQ_Market_Insights_Report.pdf",
+    date: "August 2026",
+    tag: "Event briefing",
+  },
+]
+
+// Tiers with an active Premium entitlement. current_tier() already resolves a
+// live survey trial into "premium", so this also covers trial access.
+const PREMIUM_TIERS = ["premium", "vendor"]
 
 export default function ReportsPage() {
   const { tier, user } = useAuth()
   const isMember = !!tier && MEMBER_TIERS.includes(tier)
   const isSignedIn = !!user
+  // Premium entitlement for the flagship report (paid, live trial, or vendor).
+  const isPremium = !!tier && PREMIUM_TIERS.includes(tier)
 
   // Sydney report lead-capture modal state (anonymous visitors only).
   const [sydneyModalOpen, setSydneyModalOpen] = useState(false)
@@ -161,79 +200,149 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        {/* SECTION 1: Featured Research */}
-        <div className="mb-12">
-          <h2 className="text-lg font-semibold text-slate-100 mb-5">Featured Research</h2>
-          
-          <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] overflow-hidden" style={{ maxHeight: "420px" }}>
-            <div className="flex flex-col lg:flex-row h-full">
-              {/* Left Column - Report Info (45%) */}
-              <div className="lg:w-[45%] p-6 lg:p-8 flex flex-col justify-center relative">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-                <div className="relative">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 mb-4">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Coming Soon
-                  </span>
-                  
-                  <h2 className="text-xl lg:text-2xl font-bold text-slate-100 mb-3 leading-tight">
-                    Global Workforce Deployment Survey Report 2026
-                  </h2>
-                  
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mb-3">
-                    <span>Global Workforce Intelligence</span>
-                    <span>•</span>
-                    <span>2026</span>
-                  </div>
-                  
-                  <p className="text-sm text-slate-300 mb-5 leading-relaxed">
-                    The next edition of the flagship benchmarking study, built from the 2026 Global Workforce Deployment Survey and the CBIQ benchmark. Publishing later this year.
-                  </p>
-
-                  <Button className="gap-2 bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" size="sm" asChild>
-                    <Link href="/contributor-dashboard">
-                      Contribute to the Survey
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Right Column - Report Cover Image (55%) */}
-              <div className="lg:w-[55%] relative bg-[#0d1a3a] flex items-center justify-center p-4 lg:p-6">
-                <img 
-                  src={GWD_2026_COVER || "/placeholder.svg"}
-                  alt="Global Workforce Deployment Survey Report 2026"
-                  className="max-h-[360px] w-auto object-contain rounded-lg shadow-2xl"
+        {/* SECTION 1: Flagship report */}
+        <div className="mb-14">
+          <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] overflow-hidden">
+            <div className="flex flex-col lg:flex-row">
+              {/* Cover image (left) */}
+              <div className="lg:w-[45%] relative bg-[#0d1a3a] flex items-center justify-center p-6 lg:p-8">
+                <img
+                  src={FLAGSHIP.cover || "/placeholder.svg"}
+                  alt={`${FLAGSHIP.title} cover`}
+                  className="max-h-[380px] w-auto object-contain rounded-lg shadow-2xl"
                 />
+              </div>
+
+              {/* Content (right) */}
+              <div className="lg:w-[55%] p-6 lg:p-10 flex flex-col justify-center">
+                <p className="text-sm font-semibold uppercase tracking-wide text-primary mb-3">Flagship report</p>
+                <h2 className="text-2xl lg:text-3xl font-bold text-slate-100 mb-4 leading-tight text-balance">
+                  {FLAGSHIP.title}
+                </h2>
+                <p className="text-sm text-slate-300 leading-relaxed mb-4 text-pretty">{FLAGSHIP.description}</p>
+                <p className="text-xs text-slate-400 mb-6">{FLAGSHIP.meta}</p>
+
+                {isPremium ? (
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Button
+                      asChild
+                      className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                    >
+                      <a href={FLAGSHIP.file} target="_blank" rel="noopener noreferrer">
+                        <BookOpen className="h-4 w-4" />
+                        Read the report
+                      </a>
+                    </Button>
+                    <a
+                      href={FLAGSHIP.file}
+                      download
+                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline underline-offset-4"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </a>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 bg-brand-navy-3/80 px-3 py-1.5 rounded-full border border-primary/20 mb-4">
+                      <Lock className="h-3.5 w-3.5 text-primary" />
+                      Premium report
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Button
+                        asChild
+                        className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                      >
+                        <Link href="/survey">
+                          Unlock with the 15-minute survey
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Link
+                        href="/pricing"
+                        className="text-sm font-medium text-primary hover:underline underline-offset-4"
+                      >
+                        Subscribe
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          
-          {/* Contributor Access Messaging */}
-          <div className="mt-4 rounded-xl border border-primary/20 bg-brand-navy-2/60 p-5">
-            <p className="text-sm text-slate-300 mb-3">
-              <span className="font-medium text-slate-100">Access available to organizations contributing data to CBIQ Intelligence Indices.</span>
-            </p>
-            <p className="text-sm text-slate-300 mb-4">
-              Complete the annual Workforce Deployment Survey and receive:
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-              {[
-                "Global Workforce Deployment Survey Report",
-                "Mobility Maturity Index™",
-                "AI Adoption Index™",
-                "Future of Mobility Index™",
-                "Executive Benchmark Reports",
-                "Quarterly Intelligence Updates",
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-xs text-slate-200">{item}</span>
+        </div>
+
+        {/* SECTION 2: Event briefings */}
+        <div className="mb-14">
+          <h2 className="text-lg font-semibold text-slate-100 mb-5">Event briefings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {EVENT_BRIEFINGS.map((briefing) => (
+              <div
+                key={briefing.title}
+                className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col"
+              >
+                {/* Cover */}
+                <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
+                  <img
+                    src={briefing.cover || "/placeholder.svg"}
+                    alt={`${briefing.title} cover`}
+                    className="w-full h-full object-cover object-top"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
+                      {briefing.tag}
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-primary font-medium">No cost to participate.</p>
+
+                {/* Info */}
+                <div className="p-5 flex flex-col flex-1">
+                  <p className="text-xs text-slate-400 mb-2">{`Event briefing · ${briefing.date} · PDF`}</p>
+                  <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight text-balance">
+                    {briefing.title}
+                  </h3>
+                  <p className="text-sm text-slate-400 flex-1 mb-5 text-pretty">{briefing.description}</p>
+
+                  {isSignedIn ? (
+                    <div className="flex items-center gap-4">
+                      <Button
+                        asChild
+                        size="sm"
+                        className="gap-2 bg-primary hover:bg-primary/90"
+                      >
+                        <a href={briefing.file} target="_blank" rel="noopener noreferrer">
+                          <BookOpen className="h-4 w-4" />
+                          Read
+                        </a>
+                      </Button>
+                      <a
+                        href={briefing.file}
+                        download
+                        className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline underline-offset-4"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download
+                      </a>
+                    </div>
+                  ) : (
+                    <div>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 bg-transparent border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+                      >
+                        <Link href="/login?next=/reports">
+                          <Lock className="h-4 w-4" />
+                          Sign in to read
+                        </Link>
+                      </Button>
+                      <p className="text-xs text-slate-500 mt-2">Reports are free to access with a CBIQ account.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

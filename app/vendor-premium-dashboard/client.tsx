@@ -3297,19 +3297,27 @@ export function VendorPremiumDashboardClient() {
                   <MessageSquare className="h-8 w-8 text-primary mb-3" />
                   <h3 className="text-sm font-medium text-slate-200 mb-1">Bi-Annual Executive Summary</h3>
                   <p className="text-xs text-slate-400 mb-3">Live market intelligence sessions for vendors</p>
-                  <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-400" disabled>
+                  <span className="inline-flex items-center rounded-full border border-slate-700 bg-brand-navy-3/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Coming Q3 2026
-                  </Button>
+                  </span>
                 </div>
                 
                 <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
                   <TrendingUp className="h-8 w-8 text-primary mb-3" />
                   <h3 className="text-sm font-medium text-slate-200 mb-1">Market Demand Snapshot</h3>
                   <p className="text-xs text-slate-400 mb-3">Quarterly PDF summary of key trends</p>
-                  <Button variant="outline" size="sm" className="w-full border-slate-700 text-slate-400" disabled>
+                  <span className="inline-flex items-center rounded-full border border-slate-700 bg-brand-navy-3/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Coming Q3 2026
-                  </Button>
+                  </span>
                 </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button variant="outline" size="sm" className="gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary bg-transparent" asChild>
+                  <Link href="/reports">
+                    Browse all reports
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
             </div>
 
