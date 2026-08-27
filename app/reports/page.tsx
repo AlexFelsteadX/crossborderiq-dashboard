@@ -343,71 +343,9 @@ export default function ReportsPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* SECTION 2: Research Library */}
-        <div className="mb-16">
-          <h2 className="text-lg font-semibold text-slate-100 mb-5">Research Library</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Global Workforce Deployment Survey Report 2025 — retired from the
-                Featured panel to the members-only library. Reuses the exact gating
-                behavior of the crisis-response MEMBERS ONLY tile below. */}
-            {(() => {
-              const locked = !isMember
-              const href = isMember ? `/api/reports/${GWD_2025_DOWNLOAD_ID}/download` : "/contribute"
-              const ctaLabel = locked ? "Unlock with Contributor Access" : "Download Report"
-
-              return (
-                <a
-                  href={href}
-                  className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group transition-all duration-200 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
-                >
-                  {/* Report Cover Image */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
-                    <img
-                      src={GWD_2025_COVER || "/placeholder.svg"}
-                      alt="Global Workforce Deployment Survey Report 2025"
-                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                    />
-                    {/* Report Badge */}
-                    <div className="absolute top-3 right-3">
-                      <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
-                        MEMBERS ONLY
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Report Info */}
-                  <div className="p-5 flex flex-col flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs text-slate-400">Global Workforce Intelligence</span>
-                      <span className="text-xs text-slate-400">•</span>
-                      <span className="text-xs text-slate-400">2025</span>
-                      <span className="text-xs text-slate-400">•</span>
-                      <span className="text-xs text-slate-400">31 pages</span>
-                    </div>
-                    <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight">
-                      Global Workforce Deployment Survey Report 2025
-                    </h3>
-                    <p className="text-sm text-slate-400 flex-1 mb-5">
-                      The annual flagship benchmarking study covering workforce deployment, mobility strategy, talent alignment, International Remote Work, policy transformation and future workforce planning.
-                    </p>
-                    <span
-                      className={cn(
-                        buttonVariants({ variant: "outline" }),
-                        "w-full gap-2 bg-transparent border-primary/40 text-primary group-hover:bg-primary/10",
-                      )}
-                    >
-                      <Download className="h-4 w-4" />
-                      {ctaLabel}
-                    </span>
-                  </div>
-                </a>
-              )
-            })()}
-            {/* Sydney Leaders Exchange — pinned first. Matches the standard tile
-                exactly; only the download behavior is auth-conditional. */}
+            {/* Sydney Leaders Exchange — second in the Event briefings grid,
+                after the Singapore card. Matches the standard tile exactly;
+                only the download behavior is auth-conditional. */}
             {(() => {
               const sydneyCardClassName =
                 "rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group transition-all duration-200 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
@@ -473,6 +411,69 @@ export default function ReportsPage() {
                 <button type="button" onClick={openSydneyModal} className={cn(sydneyCardClassName, "text-left w-full")}>
                   {sydneyInner}
                 </button>
+              )
+            })()}
+          </div>
+        </div>
+
+        {/* SECTION 2: Research Library */}
+        <div className="mb-16">
+          <h2 className="text-lg font-semibold text-slate-100 mb-5">Research Library</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Global Workforce Deployment Survey Report 2025 — retired from the
+                Featured panel to the members-only library. Reuses the exact gating
+                behavior of the crisis-response MEMBERS ONLY tile below. */}
+            {(() => {
+              const locked = !isMember
+              const href = isMember ? `/api/reports/${GWD_2025_DOWNLOAD_ID}/download` : "/contribute"
+              const ctaLabel = locked ? "Unlock with Contributor Access" : "Download Report"
+
+              return (
+                <a
+                  href={href}
+                  className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)] overflow-hidden flex flex-col group transition-all duration-200 hover:border-primary/40 hover:-translate-y-1 hover:shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
+                >
+                  {/* Report Cover Image */}
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#1a2744]">
+                    <img
+                      src={GWD_2025_COVER || "/placeholder.svg"}
+                      alt="Global Workforce Deployment Survey Report 2025"
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Report Badge */}
+                    <div className="absolute top-3 right-3">
+                      <span className="inline-flex items-center text-xs font-bold text-primary-foreground bg-primary px-2.5 py-1 rounded-full shadow-lg">
+                        MEMBERS ONLY
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Report Info */}
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-slate-400">Global Workforce Intelligence</span>
+                      <span className="text-xs text-slate-400">•</span>
+                      <span className="text-xs text-slate-400">2025</span>
+                      <span className="text-xs text-slate-400">•</span>
+                      <span className="text-xs text-slate-400">31 pages</span>
+                    </div>
+                    <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight">
+                      Global Workforce Deployment Survey Report 2025
+                    </h3>
+                    <p className="text-sm text-slate-400 flex-1 mb-5">
+                      The annual flagship benchmarking study covering workforce deployment, mobility strategy, talent alignment, International Remote Work, policy transformation and future workforce planning.
+                    </p>
+                    <span
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "w-full gap-2 bg-transparent border-primary/40 text-primary group-hover:bg-primary/10",
+                      )}
+                    >
+                      <Download className="h-4 w-4" />
+                      {ctaLabel}
+                    </span>
+                  </div>
+                </a>
               )
             })()}
             {[...freeReports]
