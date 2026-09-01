@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
+import { isVendorEmail } from "@/lib/vendor-domains"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
@@ -150,6 +151,70 @@ export default function ReportsPage() {
     setSydneyModalOpen(true)
   }
 
+  // "Request a copy" route for service providers who cannot take the survey.
+  const [requestModalOpen, setRequestModalOpen] = useState(false)
+  const [requestSuccess, setRequestSuccess] = useState(false)
+  const [requestSubmitting, setRequestSubmitting] = useState(false)
+  const [requestError, setRequestError] = useState<string | null>(null)
+  // When true, the modal shows the vendor-steering note at the top.
+  const [requestVendorNote, setRequestVendorNote] = useState(false)
+  const [reqName, setReqName] = useState("")
+  const [reqEmail, setReqEmail] = useState("")
+  const [reqCompany, setReqCompany] = useState("")
+  const [reqRole, setReqRole] = useState("")
+  // Email shown back in the success message.
+  const [requestSubmittedEmail, setRequestSubmittedEmail] = useState("")
+
+  // A signed-in visitor whose email domain is a known service-provider domain
+  // is steered to the request route instead of the practitioner survey.
+  const isVendorUser = isVendorEmail(user?.email)
+
+  const openRequestModal = (vendorNote: boolean) => {
+    setRequestSuccess(false)
+    setRequestError(null)
+    setRequestVendorNote(vendorNote)
+    // Pre-fill the work email for signed-in users.
+    if (user?.email && !reqEmail) setReqEmail(user.email)
+    setRequestModalOpen(true)
+  }
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRequestError(null)
+
+    const fullName = reqName.trim()
+    const email = reqEmail.trim()
+    const company = reqCompany.trim()
+    if (!fullName || !company || !/.+@.+\..+/.test(email)) {
+      setRequestError("Enter your name, a valid work email and your company.")
+      return
+    }
+
+    setRequestSubmitting(true)
+    try {
+      const res = await fetch("/api/report-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: fullName, email, company, role: reqRole.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (data?.ok) {
+        setRequestSubmittedEmail(email)
+        setRequestSuccess(true)
+      } else if (data?.code === "duplicate") {
+        setRequestError("We already have your request and will be in touch shortly.")
+      } else {
+        setRequestError("Something went wrong, please email crossborderiq@gemevents.co.")
+      }
+    } catch (err) {
+      console.log("[v0] report-request submit exception:", err)
+      setRequestError("Something went wrong, please email crossborderiq@gemevents.co.")
+    } finally {
+      setRequestSubmitting(false)
+    }
+  }
+
   const handleSydneySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     // Email must contain an "@" and a "." (basic shape check).
@@ -249,15 +314,28 @@ export default function ReportsPage() {
                       Premium report
                     </div>
                     <div className="flex flex-wrap items-center gap-4">
-                      <Button
-                        asChild
-                        className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
-                      >
-                        <Link href="/survey">
+                      {isVendorUser ? (
+                        // Signed-in service provider: steer to the request route
+                        // rather than the practitioner survey.
+                        <Button
+                          type="button"
+                          onClick={() => openRequestModal(true)}
+                          className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                        >
                           Unlock with the 15-minute survey
                           <ArrowRight className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                        </Button>
+                      ) : (
+                        <Button
+                          asChild
+                          className="gap-2 bg-primary hover:bg-primary/90 px-6 transition-shadow hover:shadow-[0_0_24px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                        >
+                          <Link href="/survey">
+                            Unlock with the 15-minute survey
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      )}
                       <Link
                         href="/pricing"
                         className="text-sm font-medium text-primary hover:underline underline-offset-4"
@@ -265,6 +343,16 @@ export default function ReportsPage() {
                         Subscribe
                       </Link>
                     </div>
+                    <p className="mt-4 text-xs text-slate-400">
+                      Service provider?{" "}
+                      <button
+                        type="button"
+                        onClick={() => openRequestModal(false)}
+                        className="font-medium text-primary hover:underline underline-offset-4"
+                      >
+                        Request a copy.
+                      </button>
+                    </p>
                   </div>
                 )}
               </div>
@@ -691,6 +779,96 @@ export default function ReportsPage() {
                   </Link>
                 </p>
               </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Flagship report "Request a copy" modal (service providers) */}
+      <Dialog open={requestModalOpen} onOpenChange={setRequestModalOpen}>
+        <DialogContent className="border-primary/20 bg-brand-navy-2 text-slate-100 sm:max-w-md">
+          {!requestSuccess ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-slate-100">Request the report</DialogTitle>
+              </DialogHeader>
+              {requestVendorNote && (
+                <p className="rounded-lg border border-primary/20 bg-brand-navy-3/60 px-3 py-2 text-sm text-slate-300">
+                  The benchmark survey is for corporate practitioners. As a service provider, request the
+                  report here and we will send it personally.
+                </p>
+              )}
+              <p className="pt-1 text-sm text-slate-400">
+                For service providers and consultancies. We send the report personally, usually within a day.
+              </p>
+              <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4 pt-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="req-name" className="text-slate-300">
+                    Full name
+                  </Label>
+                  <Input
+                    id="req-name"
+                    required
+                    value={reqName}
+                    onChange={(e) => setReqName(e.target.value)}
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="req-email" className="text-slate-300">
+                    Work email
+                  </Label>
+                  <Input
+                    id="req-email"
+                    type="email"
+                    required
+                    value={reqEmail}
+                    onChange={(e) => setReqEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="req-company" className="text-slate-300">
+                    Company
+                  </Label>
+                  <Input
+                    id="req-company"
+                    required
+                    value={reqCompany}
+                    onChange={(e) => setReqCompany(e.target.value)}
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="req-role" className="text-slate-300">
+                    Role <span className="text-slate-500">(optional)</span>
+                  </Label>
+                  <Input
+                    id="req-role"
+                    value={reqRole}
+                    onChange={(e) => setReqRole(e.target.value)}
+                    className="bg-brand-navy-3 border-primary/20 text-slate-100 placeholder:text-slate-500"
+                  />
+                </div>
+                {requestError && <p className="text-sm text-red-400">{requestError}</p>}
+                <Button
+                  type="submit"
+                  disabled={requestSubmitting}
+                  className="w-full gap-2 bg-primary hover:bg-primary/90"
+                >
+                  {requestSubmitting ? "Sending..." : "Request a copy"}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-slate-100">Thank you.</DialogTitle>
+              </DialogHeader>
+              <p className="pt-2 text-sm text-slate-300 leading-relaxed">
+                We will send the report to {requestSubmittedEmail} personally within a day.
+              </p>
             </>
           )}
         </DialogContent>
