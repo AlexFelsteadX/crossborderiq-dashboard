@@ -345,6 +345,37 @@ function FallbackNote({ className = "" }: { className?: string }) {
 }
 
 // Resolve which figure to show given a confidence value.
+// CBIQ publishing rule: every figure states its base. Below the reporting floor
+// (n < 10) we never present a number as a finding. The RPCs already return the
+// distinct-respondent base (count of distinct response_ref), filtered to the
+// active segment, so these render straight from state.
+const REPORTING_FLOOR = 10
+
+function baseText(base: number | null | undefined, multiSelect = false): string {
+  const n = typeof base === "number" && Number.isFinite(base) ? Math.round(base) : null
+  if (n === null || n < REPORTING_FLOOR) return "Base below reporting floor"
+  return `Base: ${n.toLocaleString()} leaders${multiSelect ? " \u00b7 multiple selections" : ""}`
+}
+
+// Year/wave-scoped variant: each wave states its own base separately.
+function waveBaseText(label: string, base: number | null | undefined): string {
+  const n = typeof base === "number" && Number.isFinite(base) ? Math.round(base) : null
+  if (n === null || n < REPORTING_FLOOR) return `${label} base below reporting floor`
+  return `${label} base: ${n.toLocaleString()} leaders`
+}
+
+function BaseLine({
+  base,
+  multiSelect = false,
+  className = "",
+}: {
+  base: number | null | undefined
+  multiSelect?: boolean
+  className?: string
+}) {
+  return <p className={`text-[11px] text-slate-500 ${className}`}>{baseText(base, multiSelect)}</p>
+}
+
 function resolve(confidence: Confidence, segValue: number, overallValue: number) {
   const suppressed = confidence === "suppressed"
   return {
@@ -588,6 +619,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </h4>
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
+          <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
         </div>
 
@@ -659,11 +691,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           </h4>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-          {SHOW_COUNTS && (
-            <span className="text-[11px] text-slate-500">
-              {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-            </span>
-          )}
+          <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
         </div>
 
@@ -716,11 +744,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </h4>
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        {SHOW_COUNTS && (
-          <span className="text-[11px] text-slate-500">
-            {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-          </span>
-        )}
+        <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} multiSelect={isMultiSelect} />
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
 
@@ -1109,11 +1133,9 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {SHOW_COUNTS && (
-          <span className="text-[11px] text-slate-500">
-            n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
-          </span>
-        )}
+        <span className="text-[11px] text-slate-500">
+          {waveBaseText("2025", row.base_2025)} {"\u00b7"} {waveBaseText("2026", row.base_2026)}
+        </span>
         {row.confidence === "limited" && <LimitedChip base={row.base_2026} />}
       </div>
       {suppressed && <FallbackNote className="mt-2" />}
@@ -1614,11 +1636,7 @@ export function PremiumDashboardClient() {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and technology & AI maturity.
                 </p>
-                {SHOW_COUNTS && (
-                  <p className="text-xs text-slate-400 mt-3">
-                    Based on {Math.round(mmi.base_n).toLocaleString()} organizations
-                  </p>
-                )}
+                <BaseLine base={mmi.base_n} className="mt-3" />
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
                 {/* "You vs market" — only when a segment filter is active and the
                     segment index is shown (not a suppression fallback). Mirrors the
@@ -1793,7 +1811,7 @@ export function PremiumDashboardClient() {
                           </div>
                         )
                       })()}
-                    {SHOW_COUNTS && <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>}
+                    <BaseLine base={p.seg_base_n} className="mt-2" />
                     {r.isLimited && (
                       <span className="mt-1 text-[10px] font-medium text-amber-400">Limited sample</span>
                     )}
@@ -1825,9 +1843,7 @@ export function PremiumDashboardClient() {
                           {remotePillar.metric_label}
                         </span>
                       )}
-                      {SHOW_COUNTS && (
-                        <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
-                      )}
+                      <BaseLine base={remotePillar.seg_base_n} className="block" />
                       {r.isFallback && <FallbackNote />}
                     </div>
                   </div>
