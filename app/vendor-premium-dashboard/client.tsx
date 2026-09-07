@@ -287,6 +287,44 @@ function NewPill() {
   )
 }
 
+// -----------------------------------------------------------------------------
+// EXPERIENCE & OUTCOMES focus-view layout (vendor_pillar = NEW_VENDOR_PILLAR).
+// Display-only. The stored q_codes for this pillar are full question sentences,
+// so the helpers below match on the q_code / question_label text rather than a
+// short code. None of this touches the data, the grouping, or the overview key.
+// -----------------------------------------------------------------------------
+
+// Hidden on the VENDOR surface only (this question stays on the Premium
+// dashboard untouched). Value is the stored q_code, a full question sentence.
+const EXPERIENCE_OUTCOMES_HIDE_QCODE =
+  "How does your organization measure the success of its Global Mobility program?"
+
+function isHiddenExperienceOutcomesQuestion(q: { qCode?: string; questionLabel?: string }): boolean {
+  const hay = `${q.qCode ?? ""} ${q.questionLabel ?? ""}`.toLowerCase()
+  return q.qCode === EXPERIENCE_OUTCOMES_HIDE_QCODE || hay.includes("measure the success")
+}
+
+// Two labelled sub-blocks rendered within the focus view, in this order.
+type ExperienceOutcomesSubgroup = "picture" | "market"
+
+const EXPERIENCE_OUTCOMES_SUBHEADS: { key: ExperienceOutcomesSubgroup; title: string }[] = [
+  { key: "picture", title: "The experience picture" },
+  { key: "market", title: "Market sizing and climate" },
+]
+
+// Assigns each remaining question to a sub-block. "The experience picture" is the
+// default bucket, so an unrecognized card is never dropped: only the spend and
+// pressure-outlook questions are pulled out into "Market sizing and climate".
+function experienceOutcomesSubgroup(q: { qCode?: string; questionLabel?: string }): ExperienceOutcomesSubgroup {
+  const hay = `${q.qCode ?? ""} ${q.questionLabel ?? ""}`.toLowerCase()
+  // The three experience questions all reference "experience" — keep them together.
+  if (hay.includes("experience")) return "picture"
+  // Pressure outlook + total annual program spend form the market/climate block.
+  if (hay.includes("pressure")) return "market"
+  if (hay.includes("spend") || hay.includes("annual") || hay.includes("cost")) return "market"
+  return "picture"
+}
+
 // Display-only presentation for Q52 (Recent and planned RFP activity). The
 // subtitle surfaces the underlying survey question, and the answer map relabels
 // the stored answer_option values for readability. These are presentation-layer
@@ -3106,6 +3144,10 @@ export function VendorPremiumDashboardClient() {
                       if (q.questionLabel === "Do you have a central budget in the GM function?") return false
                       // Hide the business-class switch question in the default (unfiltered) view
                       if (isDefaultView && q.questionLabel === "Are you switching from business class to economy class travel on planes?") return false
+                      // Vendor surface only: hide the practitioner-leaning success-measures
+                      // question from Experience & Outcomes. Applying it here means the
+                      // overview tile's count reflects the five rendered questions too.
+                      if (pillarName === NEW_VENDOR_PILLAR && isHiddenExperienceOutcomesQuestion(q)) return false
                       return true
                     })
                     return { pillarName, visibleQuestions }
@@ -3216,19 +3258,50 @@ export function VendorPremiumDashboardClient() {
                               Historical ESG benchmark (2023 survey) - shown for context.
                             </p>
                           )}
-                          <div className={`grid grid-cols-1 gap-4 ${focused.visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
-                            {focused.visibleQuestions.map((q, idx) => (
-                              <QuestionCard
-                                key={`${focusedBreakdown}-${idx}`}
-                                qCode={q.qCode}
-                                questionLabel={q.questionLabel}
-                                caption="Global Workforce Deployment · % of respondents"
-                                baseN={q.baseN}
-                                answers={q.answers}
-                                neutralizeDirection={focusedBreakdown === NEW_VENDOR_PILLAR}
-                              />
-                            ))}
-                          </div>
+                          {focusedBreakdown === NEW_VENDOR_PILLAR ? (
+                            <div className="space-y-8">
+                              {EXPERIENCE_OUTCOMES_SUBHEADS.map(({ key, title }) => {
+                                const groupQuestions = focused.visibleQuestions.filter(
+                                  (q) => experienceOutcomesSubgroup(q) === key,
+                                )
+                                if (groupQuestions.length === 0) return null
+                                return (
+                                  <div key={key}>
+                                    <h4 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">
+                                      {title}
+                                    </h4>
+                                    <div className={`grid grid-cols-1 gap-4 ${groupQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
+                                      {groupQuestions.map((q, idx) => (
+                                        <QuestionCard
+                                          key={`${focusedBreakdown}-${key}-${idx}`}
+                                          qCode={q.qCode}
+                                          questionLabel={q.questionLabel}
+                                          caption="Global Workforce Deployment · % of respondents"
+                                          baseN={q.baseN}
+                                          answers={q.answers}
+                                          neutralizeDirection
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <div className={`grid grid-cols-1 gap-4 ${focused.visibleQuestions.length > 1 ? "md:grid-cols-2" : ""}`}>
+                              {focused.visibleQuestions.map((q, idx) => (
+                                <QuestionCard
+                                  key={`${focusedBreakdown}-${idx}`}
+                                  qCode={q.qCode}
+                                  questionLabel={q.questionLabel}
+                                  caption="Global Workforce Deployment · % of respondents"
+                                  baseN={q.baseN}
+                                  answers={q.answers}
+                                  neutralizeDirection={focusedBreakdown === NEW_VENDOR_PILLAR}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
