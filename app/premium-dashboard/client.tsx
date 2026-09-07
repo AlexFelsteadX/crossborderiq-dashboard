@@ -305,6 +305,14 @@ const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
   E14: "Annual long-term assignment and permanent transfer volumes",
   E15: "Annual short-term assignment and business traveler volumes",
   E16: "How organizations use technology to manage Global Mobility",
+  // Experience & Outcomes — six keys opened this month. Keys are uppercased here
+  // because displayQuestionLabel() looks them up by the uppercased q_code.
+  OUTLOOK_CONFIDENCE: "Pressure outlook",
+  PROGRAM_ANNUAL_SPEND: "Total annual program spend",
+  SUCCESS_MEASURES: "How success is measured",
+  EXPERIENCE_PROVISIONS: "Experience provision",
+  EE_EXPERIENCE_PRIORITY: "Leadership priority: assignee experience",
+  EE_EXPERIENCE_INVESTMENT_CHANGE: "Experience budget outlook",
 }
 
 // Mirrors isDirectionalRow's case-normalisation (q_code casing is inconsistent).
@@ -344,7 +352,53 @@ function FallbackNote({ className = "" }: { className?: string }) {
   )
 }
 
+// Sky "NEW" pill. The established sky/cyan semantic for newly added benchmark
+// dimensions (mirrors the vendor dashboard's "new" treatment). Uppercase micro-pill.
+function NewPill() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+      New
+    </span>
+  )
+}
+
+// The benchmark section opened this month. Named once so the section render, its
+// NEW pill, and its caption stay in sync. Must match a THEME_ORDER entry.
+const NEW_SECTION_NAME: WorkforceTheme = "Experience & Outcomes"
+const NEW_SECTION_CAPTION = "Opened this month. Early readings, growing with every event registration."
+
 // Resolve which figure to show given a confidence value.
+// CBIQ publishing rule: every figure states its base. Below the reporting floor
+// (n < 10) we never present a number as a finding. The RPCs already return the
+// distinct-respondent base (count of distinct response_ref), filtered to the
+// active segment, so these render straight from state.
+const REPORTING_FLOOR = 10
+
+function baseText(base: number | null | undefined, multiSelect = false): string {
+  const n = typeof base === "number" && Number.isFinite(base) ? Math.round(base) : null
+  if (n === null || n < REPORTING_FLOOR) return "Base below reporting floor"
+  return `Base: ${n.toLocaleString()} leaders${multiSelect ? " \u00b7 multiple selections" : ""}`
+}
+
+// Year/wave-scoped variant: each wave states its own base separately.
+function waveBaseText(label: string, base: number | null | undefined): string {
+  const n = typeof base === "number" && Number.isFinite(base) ? Math.round(base) : null
+  if (n === null || n < REPORTING_FLOOR) return `${label} base below reporting floor`
+  return `${label} base: ${n.toLocaleString()} leaders`
+}
+
+function BaseLine({
+  base,
+  multiSelect = false,
+  className = "",
+}: {
+  base: number | null | undefined
+  multiSelect?: boolean
+  className?: string
+}) {
+  return <p className={`text-[11px] text-slate-500 ${className}`}>{baseText(base, multiSelect)}</p>
+}
+
 function resolve(confidence: Confidence, segValue: number, overallValue: number) {
   const suppressed = confidence === "suppressed"
   return {
@@ -588,6 +642,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </h4>
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
+          <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
         </div>
 
@@ -659,11 +714,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           </h4>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-          {SHOW_COUNTS && (
-            <span className="text-[11px] text-slate-500">
-              {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-            </span>
-          )}
+          <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
           {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
         </div>
 
@@ -716,11 +767,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         </h4>
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        {SHOW_COUNTS && (
-          <span className="text-[11px] text-slate-500">
-            {suppressed ? `Overall base n=${q.overallBaseN}` : `Segment base n=${q.segBaseN}`}
-          </span>
-        )}
+        <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} multiSelect={isMultiSelect} />
         {q.confidence === "limited" && <LimitedChip base={q.segBaseN} />}
       </div>
 
@@ -1109,11 +1156,9 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {SHOW_COUNTS && (
-          <span className="text-[11px] text-slate-500">
-            n {Math.round(row.base_2025)} → {Math.round(row.base_2026)}
-          </span>
-        )}
+        <span className="text-[11px] text-slate-500">
+          {waveBaseText("2025", row.base_2025)} {"\u00b7"} {waveBaseText("2026", row.base_2026)}
+        </span>
         {row.confidence === "limited" && <LimitedChip base={row.base_2026} />}
       </div>
       {suppressed && <FallbackNote className="mt-2" />}
@@ -1614,11 +1659,7 @@ export function PremiumDashboardClient() {
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and technology & AI maturity.
                 </p>
-                {SHOW_COUNTS && (
-                  <p className="text-xs text-slate-400 mt-3">
-                    Based on {Math.round(mmi.base_n).toLocaleString()} organizations
-                  </p>
-                )}
+                <BaseLine base={mmi.base_n} className="mt-3" />
                 {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
                 {/* "You vs market" — only when a segment filter is active and the
                     segment index is shown (not a suppression fallback). Mirrors the
@@ -1793,7 +1834,7 @@ export function PremiumDashboardClient() {
                           </div>
                         )
                       })()}
-                    {SHOW_COUNTS && <p className="text-[10px] text-slate-500 mt-2">n={p.seg_base_n}</p>}
+                    <BaseLine base={p.seg_base_n} className="mt-2" />
                     {r.isLimited && (
                       <span className="mt-1 text-[10px] font-medium text-amber-400">Limited sample</span>
                     )}
@@ -1825,9 +1866,7 @@ export function PremiumDashboardClient() {
                           {remotePillar.metric_label}
                         </span>
                       )}
-                      {SHOW_COUNTS && (
-                        <span className="text-[10px] text-slate-500 block">n={remotePillar.seg_base_n}</span>
-                      )}
+                      <BaseLine base={remotePillar.seg_base_n} className="block" />
                       {r.isFallback && <FallbackNote />}
                     </div>
                   </div>
@@ -1911,7 +1950,10 @@ export function PremiumDashboardClient() {
                             aria-hidden="true"
                             className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                           />
-                          <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                            {sectionName === NEW_SECTION_NAME && <NewPill />}
+                          </div>
                           <p className="text-sm text-slate-400">
                             {questions.length} {questions.length === 1 ? "data point" : "data points"}
                           </p>
@@ -1945,7 +1987,13 @@ export function PremiumDashboardClient() {
                     <ArrowLeft className="h-4 w-4" />
                     All sections
                   </button>
-                  <h3 className="text-lg font-semibold text-slate-100 text-pretty mb-3">{focusedSection}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">{focusedSection}</h3>
+                    {focusedSection === NEW_SECTION_NAME && <NewPill />}
+                  </div>
+                  {focusedSection === NEW_SECTION_NAME && (
+                    <p className="text-sm text-slate-400 mb-3">{NEW_SECTION_CAPTION}</p>
+                  )}
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {nonEmpty.map(({ sectionName }) => {
                       const active = sectionName === focusedSection
