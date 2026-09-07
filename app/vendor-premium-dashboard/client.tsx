@@ -263,15 +263,16 @@ function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: str
   return VENDOR_BREAKDOWN_LABELS[qCode.toUpperCase()] ?? fallbackLabel
 }
 
-// The stored vendor_pillar key for the Experience & Outcomes group. The grouping
-// key stays this exact string everywhere (React keys, focus comparisons); only
-// the on-screen label is swapped, via displayPillarName below.
-const NEW_VENDOR_PILLAR = "Market Demand Intelligence"
+// The stored vendor_pillar key for the newly opened benchmark group. The six new
+// questions now live under their own server-side vendor_pillar, so the key equals
+// its display name and every gate (NewPill, subgrouping, exclusion,
+// neutralizeDirection) keys off this constant.
+const NEW_VENDOR_PILLAR = "Experience & Outcomes"
 
 // Render-site-only display names for vendor pillars. Group keys are never mutated.
-const VENDOR_PILLAR_DISPLAY: Record<string, string> = {
-  [NEW_VENDOR_PILLAR]: "Experience & Outcomes",
-}
+// Empty today: the new pillar renders under its own name, and every pre-existing
+// pillar (including Market Demand Intelligence) renders unadorned as before.
+const VENDOR_PILLAR_DISPLAY: Record<string, string> = {}
 
 function displayPillarName(pillar: string): string {
   return VENDOR_PILLAR_DISPLAY[pillar] ?? pillar
