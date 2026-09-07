@@ -263,6 +263,30 @@ function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: str
   return VENDOR_BREAKDOWN_LABELS[qCode.toUpperCase()] ?? fallbackLabel
 }
 
+// The stored vendor_pillar key for the Experience & Outcomes group. The grouping
+// key stays this exact string everywhere (React keys, focus comparisons); only
+// the on-screen label is swapped, via displayPillarName below.
+const NEW_VENDOR_PILLAR = "Market Demand Intelligence"
+
+// Render-site-only display names for vendor pillars. Group keys are never mutated.
+const VENDOR_PILLAR_DISPLAY: Record<string, string> = {
+  [NEW_VENDOR_PILLAR]: "Experience & Outcomes",
+}
+
+function displayPillarName(pillar: string): string {
+  return VENDOR_PILLAR_DISPLAY[pillar] ?? pillar
+}
+
+// Sky "NEW" pill marking a newly opened benchmark group. Matches the Premium
+// dashboard NewPill geometry and the established sky/cyan "new" semantic.
+function NewPill() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+      New
+    </span>
+  )
+}
+
 // Display-only presentation for Q52 (Recent and planned RFP activity). The
 // subtitle surfaces the underlying survey question, and the answer map relabels
 // the stored answer_option values for readability. These are presentation-layer
@@ -444,6 +468,7 @@ function QuestionCard({
   baseN,
   answers,
   subtag,
+  neutralizeDirection,
 }: { 
   qCode?: string
   questionLabel: string
@@ -451,6 +476,10 @@ function QuestionCard({
   baseN: number
   answers: { answer_option: string; pct: number }[]
   subtag?: string
+  // When true, disables direction-matrix mode so answers render as neutral teal
+  // percentage bars. Used for outlook questions where "Increase" (e.g. rising
+  // pressure) must not be styled as positive/green.
+  neutralizeDirection?: boolean
 }) {
   // Q52 (RFP activity) gets a display-only subtitle, answer relabeling, and an
   // answering-base caption. Scoped to Q52 so no other card is affected.
@@ -525,6 +554,7 @@ function QuestionCard({
   }
   const parsedMatrix = answers.map((a) => ({ a, parts: splitMatrixOption(a.answer_option) }))
   const isDirectionMatrix =
+    !neutralizeDirection &&
     !isAgreementScale &&
     parsedMatrix.length > 0 &&
     parsedMatrix.every((p) => p.parts !== null) &&
@@ -3114,7 +3144,10 @@ export function VendorPremiumDashboardClient() {
                                 aria-hidden="true"
                                 className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                               />
-                              <h4 className="text-base font-semibold text-slate-100 text-pretty">{pillarName}</h4>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="text-base font-semibold text-slate-100 text-pretty">{displayPillarName(pillarName)}</h4>
+                                {pillarName === NEW_VENDOR_PILLAR && <NewPill />}
+                              </div>
                               <p className="text-xs text-slate-400">
                                 {visibleQuestions.length} {visibleQuestions.length === 1 ? "data point" : "data points"}
                               </p>
@@ -3144,7 +3177,15 @@ export function VendorPremiumDashboardClient() {
                         <ArrowLeft className="h-4 w-4" />
                         All sections
                       </button>
-                      <h3 className="text-lg font-semibold text-slate-100 text-pretty">{focusedBreakdown}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold text-slate-100 text-pretty">{displayPillarName(focusedBreakdown)}</h3>
+                        {focusedBreakdown === NEW_VENDOR_PILLAR && <NewPill />}
+                      </div>
+                      {focusedBreakdown === NEW_VENDOR_PILLAR && (
+                        <p className="text-sm text-slate-400 mt-2">
+                          Opened this month. Early readings, growing with every event registration.
+                        </p>
+                      )}
                       {focusedBaseRange && <p className="text-xs text-slate-500 mt-1">{focusedBaseRange}</p>}
                       <div className="flex gap-2 overflow-x-auto pb-2 mt-3">
                         {sections.map(({ pillarName }) => {
@@ -3160,7 +3201,7 @@ export function VendorPremiumDashboardClient() {
                                   : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
                               }`}
                             >
-                              {pillarName}
+                              {displayPillarName(pillarName)}
                             </button>
                           )
                         })}
@@ -3184,6 +3225,7 @@ export function VendorPremiumDashboardClient() {
                                 caption="Global Workforce Deployment · % of respondents"
                                 baseN={q.baseN}
                                 answers={q.answers}
+                                neutralizeDirection={focusedBreakdown === NEW_VENDOR_PILLAR}
                               />
                             ))}
                           </div>
