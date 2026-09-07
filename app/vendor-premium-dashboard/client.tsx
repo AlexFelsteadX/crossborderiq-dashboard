@@ -2730,6 +2730,75 @@ export function VendorPremiumDashboardClient() {
 
             <TechnologyBuyerIntelligence supabase={supabase} />
 
+            {/* Featured strip: Experience & Outcomes — total annual GM program spend.
+                Presentational only; reads the live get_vendor_commercial_current
+                payload already grouped in state. Renders nothing if the pillar
+                group, the spend question, or its answers are absent. */}
+            {(() => {
+              const group = groupedByPillar.find(([pillarName]) => pillarName === NEW_VENDOR_PILLAR)
+              if (!group) return null
+              const questions = group[1]
+              if (!questions.length) return null
+              // The spend distribution question within the pillar (matched on text,
+              // never hardcoded values). No match -> render nothing.
+              const spend = questions.find((q) =>
+                `${q.qCode} ${q.questionLabel}`.toLowerCase().includes("spend"),
+              )
+              if (!spend || !spend.answers.length) return null
+              const maxBase = Math.max(...questions.map((q) => q.baseN))
+              return (
+                <div className="mb-10 rounded-2xl border border-sky-400/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 md:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+                  <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <NewPill />
+                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">
+                      Total annual Global Mobility program spend
+                    </h3>
+                    <span className="ml-auto shrink-0 text-xs text-slate-500 tabular-nums">
+                      {`Base: ${maxBase} organizations`}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {spend.answers.map((answer, idx) => {
+                      const pctDisplay = Math.round(answer.pct)
+                      return (
+                        <div key={idx}>
+                          <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                            <span className="text-slate-400 break-words flex-1 min-w-0">{answer.answer_option}</span>
+                            <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                          </div>
+                          <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="mt-5 text-xs text-slate-500">
+                    {"Part of the "}
+                    <button
+                      type="button"
+                      onClick={() => setFocusedBreakdown(NEW_VENDOR_PILLAR)}
+                      className="font-medium text-sky-300 underline underline-offset-2 transition-colors hover:text-sky-200 cursor-pointer"
+                    >
+                      Experience &amp; Outcomes
+                    </button>
+                    {" panel, opened this month."}
+                  </p>
+                </div>
+              )
+            })()}
+
+            {/* ================= ZONE 04 - WHAT IS COMING ================= */}
+
+            <ZoneHeader
+              number="04"
+              title="What is coming"
+              description="Directional signals for the next 12-36 months."
+            />
+
             {/* =================================================================== */}
             {/* AI ADOPTION (event-sourced GM leaders — filterable, precedes breakdowns) */}
             {/* =================================================================== */}
@@ -2906,75 +2975,6 @@ export function VendorPremiumDashboardClient() {
                 )
               })()}
             </div>
-
-            {/* Featured strip: Experience & Outcomes — total annual GM program spend.
-                Presentational only; reads the live get_vendor_commercial_current
-                payload already grouped in state. Renders nothing if the pillar
-                group, the spend question, or its answers are absent. */}
-            {(() => {
-              const group = groupedByPillar.find(([pillarName]) => pillarName === NEW_VENDOR_PILLAR)
-              if (!group) return null
-              const questions = group[1]
-              if (!questions.length) return null
-              // The spend distribution question within the pillar (matched on text,
-              // never hardcoded values). No match -> render nothing.
-              const spend = questions.find((q) =>
-                `${q.qCode} ${q.questionLabel}`.toLowerCase().includes("spend"),
-              )
-              if (!spend || !spend.answers.length) return null
-              const maxBase = Math.max(...questions.map((q) => q.baseN))
-              return (
-                <div className="mb-10 rounded-2xl border border-sky-400/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 md:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <NewPill />
-                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">
-                      Total annual Global Mobility program spend
-                    </h3>
-                    <span className="ml-auto shrink-0 text-xs text-slate-500 tabular-nums">
-                      {`Base: ${maxBase} organizations`}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {spend.answers.map((answer, idx) => {
-                      const pctDisplay = Math.round(answer.pct)
-                      return (
-                        <div key={idx}>
-                          <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                            <span className="text-slate-400 break-words flex-1 min-w-0">{answer.answer_option}</span>
-                            <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                          </div>
-                          <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <p className="mt-5 text-xs text-slate-500">
-                    {"Part of the "}
-                    <button
-                      type="button"
-                      onClick={() => setFocusedBreakdown(NEW_VENDOR_PILLAR)}
-                      className="font-medium text-sky-300 underline underline-offset-2 transition-colors hover:text-sky-200 cursor-pointer"
-                    >
-                      Experience &amp; Outcomes
-                    </button>
-                    {" panel, opened this month."}
-                  </p>
-                </div>
-              )
-            })()}
-
-            {/* ================= ZONE 04 - WHAT IS COMING ================= */}
-
-            <ZoneHeader
-              number="04"
-              title="What is coming"
-              description="Directional signals for the next 12-36 months."
-            />
 
             {/* =================================================================== */}
             {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
