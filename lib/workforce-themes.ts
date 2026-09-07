@@ -5,6 +5,7 @@
 export const THEME_ORDER = [
   "Strategy & maturity",
   "AI & technology",
+  "Experience & Outcomes",
   "Future of mobility",
   "Employee experience",
   "Leadership expectations",
@@ -33,6 +34,9 @@ export function themeForPillar(rawPillar: string): ThemeAssignment {
   if (/strateg|maturity/.test(p)) return "Strategy & maturity"
   if (/\bai\b|technolog|tech|digital|automation/.test(p)) return "AI & technology"
   if (/future/.test(p)) return "Future of mobility"
+  // Must precede the broader "experience" matcher below, which would otherwise
+  // capture "Experience & Outcomes" first. Matches the exact new pillar label.
+  if (/experience & outcomes|experience and outcomes/.test(p)) return "Experience & Outcomes"
   if (/employee|experience|wellbeing|talent/.test(p)) return "Employee experience"
   if (/leadership|executive|board|c-suite/.test(p)) return "Leadership expectations"
   if (/operational|pressure|workload|capacity|compliance/.test(p)) return "Operational pressure"

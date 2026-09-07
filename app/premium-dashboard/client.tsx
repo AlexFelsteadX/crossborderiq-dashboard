@@ -305,6 +305,14 @@ const BREAKDOWN_STATEMENT_LABELS: Record<string, string> = {
   E14: "Annual long-term assignment and permanent transfer volumes",
   E15: "Annual short-term assignment and business traveler volumes",
   E16: "How organizations use technology to manage Global Mobility",
+  // Experience & Outcomes — six keys opened this month. Keys are uppercased here
+  // because displayQuestionLabel() looks them up by the uppercased q_code.
+  OUTLOOK_CONFIDENCE: "Pressure outlook",
+  PROGRAM_ANNUAL_SPEND: "Total annual program spend",
+  SUCCESS_MEASURES: "How success is measured",
+  EXPERIENCE_PROVISIONS: "Experience provision",
+  EE_EXPERIENCE_PRIORITY: "Leadership priority: assignee experience",
+  EE_EXPERIENCE_INVESTMENT_CHANGE: "Experience budget outlook",
 }
 
 // Mirrors isDirectionalRow's case-normalisation (q_code casing is inconsistent).
@@ -343,6 +351,21 @@ function FallbackNote({ className = "" }: { className?: string }) {
     </p>
   )
 }
+
+// Sky "NEW" pill. The established sky/cyan semantic for newly added benchmark
+// dimensions (mirrors the vendor dashboard's "new" treatment). Uppercase micro-pill.
+function NewPill() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+      New
+    </span>
+  )
+}
+
+// The benchmark section opened this month. Named once so the section render, its
+// NEW pill, and its caption stay in sync. Must match a THEME_ORDER entry.
+const NEW_SECTION_NAME: WorkforceTheme = "Experience & Outcomes"
+const NEW_SECTION_CAPTION = "Opened this month. Early readings, growing with every event registration."
 
 // Resolve which figure to show given a confidence value.
 // CBIQ publishing rule: every figure states its base. Below the reporting floor
@@ -1927,7 +1950,10 @@ export function PremiumDashboardClient() {
                             aria-hidden="true"
                             className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                           />
-                          <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                            {sectionName === NEW_SECTION_NAME && <NewPill />}
+                          </div>
                           <p className="text-sm text-slate-400">
                             {questions.length} {questions.length === 1 ? "data point" : "data points"}
                           </p>
@@ -1961,7 +1987,13 @@ export function PremiumDashboardClient() {
                     <ArrowLeft className="h-4 w-4" />
                     All sections
                   </button>
-                  <h3 className="text-lg font-semibold text-slate-100 text-pretty mb-3">{focusedSection}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">{focusedSection}</h3>
+                    {focusedSection === NEW_SECTION_NAME && <NewPill />}
+                  </div>
+                  {focusedSection === NEW_SECTION_NAME && (
+                    <p className="text-sm text-slate-400 mb-3">{NEW_SECTION_CAPTION}</p>
+                  )}
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {nonEmpty.map(({ sectionName }) => {
                       const active = sectionName === focusedSection
