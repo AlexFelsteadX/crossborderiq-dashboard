@@ -21,7 +21,7 @@ import { TrialBanner } from "@/components/trial-banner"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
-import { THEME_ORDER, themeForPillar, type WorkforceTheme } from "@/lib/workforce-themes"
+import { THEME_ORDER, themeForPillar, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
 
 // Temporary master switch: hide every respondent-count / base-size display across
 // the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
@@ -966,6 +966,53 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
 // Collapsible themed section — matches the Contributor dashboard accordion.
 // Count of questions in a section that show a reportable segment-vs-market
 // difference. Mirrors the thresholds used by the section headline summary below.
+// Reusable "What this means" teal callout. Presentational only; the narrative
+// text is passed in as children. The eyebrow defaults to "What this means" and
+// is overridden (e.g. "Start here") at the top-of-page market summary.
+function WhatThisMeans({
+  children,
+  eyebrow = "What this means",
+}: {
+  children: React.ReactNode
+  eyebrow?: string
+}) {
+  return (
+    <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
+      <div className="flex items-center gap-2 mb-2">
+        <img src="/cbiq-mark.png" alt="" aria-hidden="true" width={20} height={20} className="h-5 w-5 shrink-0" />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{eyebrow}</p>
+      </div>
+      <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{children}</p>
+    </div>
+  )
+}
+
+// One-line, neutral, market-level summary of a section, derived entirely from the
+// grouped questions already in state. Picks the most reliable representative
+// question (largest base, not suppressed, preferring a plain single-select over
+// numeric agreement scales or "prefix: direction" matrices) and states its
+// leading market response(s). No hardcoded figures; returns null when nothing
+// reliable is available.
+function sectionSummary(questions: GroupedQuestion[]): string | null {
+  const usable = questions.filter((q) => q.confidence !== "suppressed" && q.answers.length > 0)
+  if (usable.length === 0) return null
+  const isNumericScale = (q: GroupedQuestion) => q.answers.every((a) => /^\d+$/.test(a.option.trim()))
+  const isMatrixLike = (q: GroupedQuestion) => q.answers.every((a) => a.option.includes(":"))
+  const preferred = usable.filter((q) => !isNumericScale(q) && !isMatrixLike(q))
+  const pool = preferred.length > 0 ? preferred : usable
+  const q = pool.reduce((best, c) => (c.overallBaseN > best.overallBaseN ? c : best), pool[0])
+  const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
+  const top = sorted[0]
+  const topPct = Math.round(top.overallPct * 100)
+  if (topPct <= 0) return null
+  const second = sorted[1]
+  const secondPct = second ? Math.round(second.overallPct * 100) : 0
+  if (second && secondPct >= 20) {
+    return `The most common responses here are "${top.option}" (${topPct}%) and "${second.option}" (${secondPct}%).`
+  }
+  return `The most common response here is "${top.option}" (${topPct}%).`
+}
+
 function countSegmentFindings(questions: GroupedQuestion[], isFiltered: boolean): number {
   if (!isFiltered) return 0
   const NOTABLE = 0.1
@@ -1191,6 +1238,10 @@ export function PremiumDashboardClient() {
   // null = overview grid; a section name = focused single-pillar view.
   const [focusedSection, setFocusedSection] = useState<string | null>(null)
   const breakdownTopRef = useRef<HTMLDivElement | null>(null)
+
+  // Peer-segment filters are collapsed by default so the market summary reads
+  // first; expanding reveals the same controls (RPC flow is unchanged either way).
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Scroll the breakdown block into view whenever the focused pillar changes
   // (entering focus or switching between pills). Filter changes keep the same
@@ -1418,7 +1469,7 @@ export function PremiumDashboardClient() {
   if (aheadPillars.length > 0 && behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Compared with similar organizations, your program sits above the market on{" "}
+        Compared with the market, your selected segment sits above on{" "}
         {colorNames(aheadPillars, "text-slate-200")} and below on {colorNames(behindPillars, "text-slate-200")}. Both
         may be worth a closer look.
       </>
@@ -1426,20 +1477,20 @@ export function PremiumDashboardClient() {
   } else if (aheadPillars.length > 0) {
     pillarNarrative = (
       <>
-        Your program sits above the market for similar organizations, most notably on{" "}
+        Your selected segment sits above the market, most notably on{" "}
         {colorNames(aheadPillars, "text-slate-200")}, and broadly in line elsewhere.
       </>
     )
   } else if (behindPillars.length > 0) {
     pillarNarrative = (
       <>
-        Your program sits below the market on{" "}
+        Your selected segment sits below the market on{" "}
         {colorNames(behindPillars, "text-slate-200")}, which may be worth a closer look, and is broadly in line
         elsewhere.
       </>
     )
   } else {
-    pillarNarrative = "Your mobility maturity is broadly in line with similar organizations across all pillars."
+    pillarNarrative = "Your selected segment is broadly in line with the market across all pillars."
   }
 
   // Market-only observational read shown when NO segment filter is active.
@@ -1539,6 +1590,16 @@ export function PremiumDashboardClient() {
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFiltersOpen((o) => !o)}
+                aria-expanded={filtersOpen}
+                className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
+              >
+                {filtersOpen ? "Hide filters" : "Compare my segment"}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+              </Button>
               <span className="text-sm text-slate-300 inline-flex items-center gap-2">
                 {loadingMain ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -1579,6 +1640,7 @@ export function PremiumDashboardClient() {
             </div>
           </div>
 
+          {filtersOpen && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <FilterSelect
               label="Industry"
@@ -1611,7 +1673,11 @@ export function PremiumDashboardClient() {
               onChange={(v) => handleFilterChange("traveller", v)}
             />
           </div>
+          )}
         </div>
+
+        {/* ===================== START HERE — plain-language market summary ===================== */}
+        {!is2025 && marketRead && <WhatThisMeans eyebrow="Start here">{marketRead}</WhatThisMeans>}
 
         {/* 2025 event-wave explainer banner */}
         {is2025 && (
@@ -1720,38 +1786,7 @@ export function PremiumDashboardClient() {
 
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
-          {isFiltered && primaryPillars.length > 0 && (
-            <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <img
-                  src="/cbiq-mark.png"
-                  alt=""
-                  aria-hidden="true"
-                  width={20}
-                  height={20}
-                  className="h-5 w-5 shrink-0"
-                />
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
-              </div>
-              <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{pillarNarrative}</p>
-            </div>
-          )}
-          {!isFiltered && marketRead && (
-            <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <img
-                  src="/cbiq-mark.png"
-                  alt=""
-                  aria-hidden="true"
-                  width={20}
-                  height={20}
-                  className="h-5 w-5 shrink-0"
-                />
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">What this means</p>
-              </div>
-              <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{marketRead}</p>
-            </div>
-          )}
+          {isFiltered && primaryPillars.length > 0 && <WhatThisMeans>{pillarNarrative}</WhatThisMeans>}
           <h2 className="text-xl font-bold text-slate-100 mb-6 pb-3 border-b border-slate-700/60">Pillar snapshot</h2>
           {primaryPillars.length === 0 ? (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
@@ -1951,12 +1986,18 @@ export function PremiumDashboardClient() {
                             className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                           />
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{sectionName}</h3>
+                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
                             {sectionName === NEW_SECTION_NAME && <NewPill />}
                           </div>
                           <p className="text-sm text-slate-400">
                             {questions.length} {questions.length === 1 ? "data point" : "data points"}
                           </p>
+                          {(() => {
+                            const summary = sectionSummary(questions)
+                            return summary ? (
+                              <p className="text-xs text-slate-400 leading-relaxed text-pretty">{summary}</p>
+                            ) : null
+                          })()}
                           {isFiltered && findings > 0 && (
                             <p className="text-xs font-medium text-primary">
                               {findings} segment finding{findings === 1 ? "" : "s"}
@@ -1988,7 +2029,7 @@ export function PremiumDashboardClient() {
                     All sections
                   </button>
                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">{focusedSection}</h3>
+                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">{themeLabel(focusedSection)}</h3>
                     {focusedSection === NEW_SECTION_NAME && <NewPill />}
                   </div>
                   {focusedSection === NEW_SECTION_NAME && (
@@ -2008,7 +2049,7 @@ export function PremiumDashboardClient() {
                               : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
                           }`}
                         >
-                          {sectionName}
+                          {themeLabel(sectionName)}
                         </button>
                       )
                     })}
