@@ -13,6 +13,17 @@ import {
   Loader2,
   Download,
   ArrowLeft,
+  Compass,
+  Cpu,
+  Sparkles,
+  Users,
+  Target,
+  Gauge,
+  Plane,
+  Handshake,
+  Globe,
+  PieChart,
+  type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -987,30 +998,171 @@ function WhatThisMeans({
   )
 }
 
-// One-line, neutral, market-level summary of a section, derived entirely from the
-// grouped questions already in state. Picks the most reliable representative
-// question (largest base, not suppressed, preferring a plain single-select over
-// numeric agreement scales or "prefix: direction" matrices) and states its
-// leading market response(s). No hardcoded figures; returns null when nothing
-// reliable is available.
-function sectionSummary(questions: GroupedQuestion[]): string | null {
-  const usable = questions.filter((q) => q.confidence !== "suppressed" && q.answers.length > 0)
-  if (usable.length === 0) return null
-  const isNumericScale = (q: GroupedQuestion) => q.answers.every((a) => /^\d+$/.test(a.option.trim()))
-  const isMatrixLike = (q: GroupedQuestion) => q.answers.every((a) => a.option.includes(":"))
-  const preferred = usable.filter((q) => !isNumericScale(q) && !isMatrixLike(q))
-  const pool = preferred.length > 0 ? preferred : usable
-  const q = pool.reduce((best, c) => (c.overallBaseN > best.overallBaseN ? c : best), pool[0])
-  const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
-  const top = sorted[0]
-  const topPct = Math.round(top.overallPct * 100)
-  if (topPct <= 0) return null
-  const second = sorted[1]
-  const secondPct = second ? Math.round(second.overallPct * 100) : 0
-  if (second && secondPct >= 20) {
-    return `The most common responses here are "${top.option}" (${topPct}%) and "${second.option}" (${secondPct}%).`
-  }
-  return `The most common response here is "${top.option}" (${topPct}%).`
+// =============================================================================
+// FLAGSHIP STATS — curated one-line stat per Detailed-breakdowns overview card.
+// Keyed by theme KEY. Each stat is computed live from ONE named question inside
+// that section, so an answer never appears without its question. The q_code for
+// each question is not known here (it lives in the RPC payload), so questions are
+// matched by text signals WITHIN their own section, which keeps matching narrow.
+// Every claim is self-validating: if the question or expected answers are absent,
+// compute returns null and the card falls back to no sentence.
+// =============================================================================
+
+const pctOf = (frac: number) => Math.round(frac * 100)
+
+// First question in the section whose q_code + label contains every needle.
+function findFlagshipQuestion(questions: GroupedQuestion[], ...needles: string[]): GroupedQuestion | undefined {
+  return questions.find((q) => {
+    const hay = `${q.qCode} ${q.questionLabel}`.toLowerCase()
+    return needles.every((n) => hay.includes(n))
+  })
+}
+
+function topFlagshipAnswer(q: GroupedQuestion) {
+  return [...q.answers].sort((a, b) => b.overallPct - a.overallPct)[0]
+}
+
+function sumFlagshipPct(q: GroupedQuestion, re: RegExp): number {
+  return q.answers.filter((a) => re.test(a.option)).reduce((s, a) => s + a.overallPct, 0)
+}
+
+type FlagshipStat = {
+  icon: LucideIcon
+  compute: (questions: GroupedQuestion[]) => string | null
+}
+
+const FLAGSHIP_STATS: Partial<Record<WorkforceTheme, FlagshipStat>> = {
+  "Strategy & maturity": {
+    icon: Compass,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "scope") ?? findFlagshipQuestion(questions, "complex")
+      if (!q) return null
+      const top3 = q.answers
+        .filter((a) => ["5", "6", "7"].includes(a.option.trim()))
+        .reduce((s, a) => s + a.overallPct, 0)
+      if (top3 <= 0) return null
+      return `${pctOf(top3)}% agree the scope and complexity of Global Mobility will grow this year.`
+    },
+  },
+  "AI & technology": {
+    icon: Cpu,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "ai") ?? findFlagshipQuestion(questions, "artificial")
+      if (!q) return null
+      const using = sumFlagshipPct(q, /production|pilot|already using|in use/i)
+      if (using <= 0) return null
+      return `${pctOf(using)}% are already using or piloting AI in mobility operations.`
+    },
+  },
+  "Experience & Outcomes": {
+    icon: Sparkles,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "success") ?? findFlagshipQuestion(questions, "measure")
+      if (!q) return null
+      const objective = q.answers.find((a) => /business|objective/i.test(a.option))
+      const noMeasure = q.answers.find((a) => /not.*(measure|formal)|no formal|don.?t measure/i.test(a.option))
+      if (!objective) return null
+      const base = `The most common way to measure success: business-objective achievement (${pctOf(objective.overallPct)}%).`
+      return noMeasure ? `${base} ${pctOf(noMeasure.overallPct)}% do not formally measure at all.` : base
+    },
+  },
+  "Future of mobility": {
+    icon: TrendingUp,
+    compute: (questions) => {
+      const q =
+        findFlagshipQuestion(questions, "state") ??
+        findFlagshipQuestion(questions, "program") ??
+        findFlagshipQuestion(questions, "direction")
+      if (!q) return null
+      const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
+      const combined = (sorted[0]?.overallPct ?? 0) + (sorted[1]?.overallPct ?? 0)
+      const looksLikeState = sorted.slice(0, 2).some((a) => /optim|review|active|evolv/i.test(a.option))
+      if (combined <= 0 || !looksLikeState) return null
+      return `Most programs are actively optimizing or reviewing rather than standing still (${pctOf(combined)}% combined across the top two answers).`
+    },
+  },
+  "Employee experience": {
+    icon: Users,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "employee", "expect") ?? findFlagshipQuestion(questions, "expect")
+      if (!q) return null
+      const top = topFlagshipAnswer(q)
+      if (!top || top.overallPct <= 0) return null
+      return `The fastest-rising employee expectation: ${top.option} (${pctOf(top.overallPct)}%).`
+    },
+  },
+  "Leadership expectations": {
+    icon: Target,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "leadership") ?? findFlagshipQuestion(questions, "expect")
+      if (!q) return null
+      const top = topFlagshipAnswer(q)
+      if (!top || top.overallPct <= 0) return null
+      return `Leadership's top rising ask: ${top.option} (${pctOf(top.overallPct)}%).`
+    },
+  },
+  "Operational pressure": {
+    icon: Gauge,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "pressure")
+      if (!q) return null
+      const top = topFlagshipAnswer(q)
+      if (!top || top.overallPct <= 0) return null
+      return `The most-cited pressure: ${top.option} (${pctOf(top.overallPct)}%).`
+    },
+  },
+  "Business travel": {
+    icon: Plane,
+    compute: (questions) => {
+      const q =
+        findFlagshipQuestion(questions, "compliance", "account") ??
+        findFlagshipQuestion(questions, "accountab") ??
+        findFlagshipQuestion(questions, "compliance")
+      if (!q) return null
+      const top = topFlagshipAnswer(q)
+      if (!top || top.overallPct <= 0) return null
+      return `Asked who is accountable for a compliance failure, the most common answer is ${top.option} (${pctOf(top.overallPct)}%).`
+    },
+  },
+  "Investment & vendors": {
+    icon: Handshake,
+    compute: (questions) => {
+      const q = findFlagshipQuestion(questions, "outsourc")
+      if (!q) return null
+      const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
+      const first = sorted[0]
+      const second = sorted[1]
+      if (!first || first.overallPct <= 0) return null
+      if (!second || second.overallPct <= 0) {
+        return `The most outsourced service: ${first.option} (${pctOf(first.overallPct)}%).`
+      }
+      return `The most outsourced services: ${first.option} (${pctOf(first.overallPct)}%) and ${second.option} (${pctOf(second.overallPct)}%).`
+    },
+  },
+  "International remote work": {
+    icon: Globe,
+    compute: (questions) => {
+      const q =
+        findFlagshipQuestion(questions, "remote", "support") ?? findFlagshipQuestion(questions, "remote")
+      if (!q) return null
+      const supported = sumFlagshipPct(q, /^yes/i)
+      if (supported <= 0) return null
+      return `${pctOf(supported)}% of organizations support international remote work.`
+    },
+  },
+  "Who took part": {
+    icon: PieChart,
+    compute: (questions) => {
+      const q =
+        findFlagshipQuestion(questions, "headquart") ??
+        findFlagshipQuestion(questions, "hq") ??
+        findFlagshipQuestion(questions, "location")
+      if (!q) return null
+      const top = topFlagshipAnswer(q)
+      if (!top || top.overallPct <= 0) return null
+      return `${pctOf(top.overallPct)}% of contributing organizations are headquartered in ${top.option}.`
+    },
+  },
 }
 
 function countSegmentFindings(questions: GroupedQuestion[], isFiltered: boolean): number {
@@ -1986,16 +2138,22 @@ export function PremiumDashboardClient() {
                             className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
                           />
                           <div className="flex flex-wrap items-center gap-2">
+                            {(() => {
+                              const Icon = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.icon
+                              return Icon ? (
+                                <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
+                              ) : null
+                            })()}
                             <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
                             {sectionName === NEW_SECTION_NAME && <NewPill />}
                           </div>
                           <p className="text-sm text-slate-400">
-                            {questions.length} {questions.length === 1 ? "data point" : "data points"}
+                            {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
                           </p>
                           {(() => {
-                            const summary = sectionSummary(questions)
-                            return summary ? (
-                              <p className="text-xs text-slate-400 leading-relaxed text-pretty">{summary}</p>
+                            const stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
+                            return stat ? (
+                              <p className="text-xs text-slate-400 leading-relaxed text-pretty">{stat}</p>
                             ) : null
                           })()}
                           {isFiltered && findings > 0 && (
