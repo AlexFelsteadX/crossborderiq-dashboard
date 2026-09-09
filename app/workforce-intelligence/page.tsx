@@ -8,7 +8,7 @@ import { MmiCard } from "./mmi-card"
 import { PeerSegmentFilters } from "./peer-segment-filters"
 import { PremiumUpgradeButton } from "./premium-cta"
 import { LockedThemeGrid } from "./locked-theme-grid"
-import { WhatThisMeans } from "@/components/dashboard/what-this-means"
+import { LockedYoyGrid } from "./locked-yoy-grid"
 import type { PublicFlagshipStat } from "@/lib/flagship-stats"
 
 export const metadata = {
@@ -52,15 +52,6 @@ export default async function WorkforceIntelligencePage() {
       if (row?.theme_key) flagshipStats[row.theme_key] = row
     }
   }
-
-  // Market-level "start here" narrative. Never references filters or a segment;
-  // it only summarizes the all-market picture that is already public.
-  const marketRead =
-    smiScore > 0
-      ? `Start with the market picture. Across every contributing organization, the average Global Mobility maturity score is ${Math.round(
-          smiScore,
-        )}. The themes below show where the wider market is concentrating right now, from AI adoption to how programs measure success.`
-      : `Start with the market picture. The themes below show where the wider market is concentrating right now, from AI adoption to how programs measure success. Unlock Premium to read the figures behind each one and compare them to your peer segment.`
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -118,12 +109,7 @@ export default async function WorkforceIntelligencePage() {
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
         <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} />
 
-        {/* 3. START HERE — market-level narrative only (no filter/segment claims) */}
-        <div className="mt-10">
-          <WhatThisMeans eyebrow="Start here">{marketRead}</WhatThisMeans>
-        </div>
-
-        {/* 4 + 5. INSIDE THE FULL DASHBOARD — locked preview of the Premium overview.
+        {/* 3 + 4. INSIDE THE FULL DASHBOARD — locked preview of the Premium overview.
             DATA-SAFETY: the theme grid shows ONE public hero figure per theme (via
             get_public_flagship_stats). No answer distributions are fetched or shown. */}
         <section className="mb-12">
@@ -166,6 +152,18 @@ export default async function WorkforceIntelligencePage() {
               7 pillars · 60+ datasets · members-only reports · branded PDF export
             </p>
           </div>
+        </section>
+
+        {/* 5. TRACKED YEAR ON YEAR — locked teaser. Static labels only, no RPC. */}
+        <section className="mb-12">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-foreground">Tracked year on year</h2>
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
+              The benchmark runs in annual waves. Premium members see how every trendable metric moved from 2025 to
+              2026.
+            </p>
+          </div>
+          <LockedYoyGrid />
         </section>
 
         {/* 6. TWO CONVERSION PATHS (existing CTAs preserved) */}
