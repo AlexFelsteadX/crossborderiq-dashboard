@@ -7,6 +7,26 @@ import { NewPill } from "@/components/dashboard/new-pill"
 // treatment, mirroring the dashboard.
 const NEW_THEME: WorkforceTheme = "Experience & Outcomes"
 
+// Static count of benchmark questions behind each theme. Shown in the card
+// footer alongside the base; never replaces the hero stat. Kept here (not from
+// the RPC) because it is a fixed property of the survey instrument.
+const QUESTION_COUNTS: Record<WorkforceTheme, number> = {
+  "Strategy & maturity": 11,
+  "AI & technology": 14,
+  "Experience & Outcomes": 6,
+  "Future of mobility": 7,
+  "Employee experience": 5,
+  "Leadership expectations": 4,
+  "Operational pressure": 7,
+  "Business travel": 17,
+  "Investment & vendors": 7,
+  "International remote work": 17,
+  "Who took part": 6,
+}
+
+// True total across every theme (currently 101), for the section header line.
+export const TOTAL_BENCHMARK_QUESTIONS = Object.values(QUESTION_COUNTS).reduce((sum, n) => sum + n, 0)
+
 /**
  * Locked mirror of the Premium dashboard's Detailed-breakdowns overview.
  *
@@ -31,6 +51,7 @@ export function LockedThemeGrid({ stats }: { stats: Record<string, PublicFlagshi
         const parts = publicFlagshipParts(stats[theme])
         const base = stats[theme]?.base_n ?? 0
         const showBase = !!parts && base >= 10
+        const questionCount = QUESTION_COUNTS[theme]
         const isNew = theme === NEW_THEME
 
         return (
@@ -85,13 +106,15 @@ export function LockedThemeGrid({ stats }: { stats: Record<string, PublicFlagshi
               </div>
             )}
 
-            {/* Footer: base metadata */}
+            {/* Footer: question count + base metadata */}
             {showBase ? (
               <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">
-                Base: {base.toLocaleString()} organizations
+                {questionCount} benchmark questions · Base: {base.toLocaleString()} organizations
               </p>
             ) : (
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-600">Premium members only</p>
+              <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-600">
+                {questionCount} benchmark questions · Premium members only
+              </p>
             )}
           </a>
         )

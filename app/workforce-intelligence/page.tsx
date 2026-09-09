@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { MmiCard } from "./mmi-card"
 import { PeerSegmentFilters } from "./peer-segment-filters"
 import { PremiumUpgradeButton } from "./premium-cta"
-import { LockedThemeGrid } from "./locked-theme-grid"
+import { LockedThemeGrid, TOTAL_BENCHMARK_QUESTIONS } from "./locked-theme-grid"
 import { LockedYoyGrid } from "./locked-yoy-grid"
 import type { PublicFlagshipStat } from "@/lib/flagship-stats"
 
@@ -149,7 +149,7 @@ export default async function WorkforceIntelligencePage() {
                 </p>
                 <h3 className="text-2xl font-bold text-foreground text-balance">What the benchmark covers</h3>
                 <p className="text-sm text-slate-400 mt-1 text-pretty">
-                  Eleven areas, one benchmark. Every figure states its base.
+                  Eleven areas. {TOTAL_BENCHMARK_QUESTIONS} benchmark questions. Every figure states its base.
                 </p>
               </div>
               <span className="shrink-0 inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
