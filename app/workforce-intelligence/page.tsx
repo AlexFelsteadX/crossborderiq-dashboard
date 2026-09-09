@@ -1,6 +1,6 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Users, Sparkles, ArrowDown, ArrowRight } from "lucide-react"
+import { Users, Sparkles, ArrowDown, ArrowRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
@@ -114,22 +114,25 @@ export default async function WorkforceIntelligencePage() {
         <section className="mb-12">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
-            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
-              Unlock with Premium to slice the benchmark by industry, region, company size and assignee type, read the
-              figures behind every theme, and track year-on-year movement.
-            </p>
-            <div className="mt-4 flex flex-col items-start gap-5">
-              <a
-                href="https://www.cbiq.ai/survey"
-                className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-              >
-                Get 14 days of Premium free
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </a>
-              <p className="text-xs text-slate-500">
-                Complete the Global Workforce Deployment survey to unlock your 14-day trial.
-              </p>
-            </div>
+            <ul className="mt-3 space-y-2">
+              {[
+                "Slice every figure by industry, region and company size",
+                "Full distributions behind all eleven themes",
+                "Year-on-year movement across two annual waves",
+              ].map((feature) => (
+                <li key={feature} className="flex items-center gap-2.5 text-sm text-slate-400">
+                  <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="text-pretty">{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <a
+              href="https://www.cbiq.ai/survey"
+              className="group mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+            >
+              Complete the survey - unlock 14 days of Premium free
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
           </div>
 
           {/* Peer-segment filters — locked, disabled preview of the Premium controls */}
@@ -139,9 +142,20 @@ export default async function WorkforceIntelligencePage() {
 
           {/* Theme overview — locked cards, one live hero figure each */}
           <div className="mb-10">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
-              What the benchmark covers
-            </h3>
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary mb-2">
+                  The live benchmark
+                </p>
+                <h3 className="text-2xl font-bold text-foreground text-balance">What the benchmark covers</h3>
+                <p className="text-sm text-slate-400 mt-1 text-pretty">
+                  Eleven areas, one benchmark. Every figure states its base.
+                </p>
+              </div>
+              <span className="shrink-0 inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                Updated weekly
+              </span>
+            </div>
             <LockedThemeGrid stats={flagshipStats} />
           </div>
 
