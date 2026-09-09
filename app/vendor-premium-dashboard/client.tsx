@@ -1526,14 +1526,26 @@ function DemandRadarPanel({
   const [loading, setLoading] = useState(true)
   // Open industry x region drilldown key ("industry||region"), one at a time.
   const [openKey, setOpenKey] = useState<string | null>(null)
+  // "How to read this radar" explainer: open by default on first visit only.
+  const [howtoOpen, setHowtoOpen] = useState(false)
 
-  // Default the service to the vendor's pinned category (mapped), once, on mount.
+  // Default the service to the vendor's pinned category (mapped), once, on mount,
+  // and decide the explainer's first-visit default from a localStorage flag.
   useEffect(() => {
     try {
       const saved = localStorage.getItem("cbiq_vendor_service_category")
       if (saved) setService(mapPinnedToRadarService(saved))
     } catch {
       // ignore storage access errors — keep the default service
+    }
+    try {
+      const seen = localStorage.getItem("cbiq_radar_howto_seen")
+      if (!seen) {
+        setHowtoOpen(true)
+        localStorage.setItem("cbiq_radar_howto_seen", "1")
+      }
+    } catch {
+      // ignore storage access errors — leave the explainer collapsed
     }
     setHydrated(true)
   }, [])
@@ -1602,6 +1614,8 @@ function DemandRadarPanel({
 
   const hasData = cellMap.size > 0
   const shortFor = (region: string) => RADAR_REGIONS.find((c) => c.value === region)?.short ?? region
+  // Live worked example = the current ringed (top-composite) cell, if any.
+  const exampleCell = topKey ? cellMap.get(topKey) ?? null : null
 
   return (
     <div>
@@ -1616,6 +1630,79 @@ function DemandRadarPanel({
       </div>
 
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+        {/* How to read this radar — collapsible, open on first visit only */}
+        <div className="mb-5">
+          <button
+            onClick={() => setHowtoOpen((v) => !v)}
+            aria-expanded={howtoOpen}
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-primary transition-colors"
+          >
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${howtoOpen ? "rotate-0" : "-rotate-90"}`}
+              aria-hidden="true"
+            />
+            How to read this radar
+          </button>
+          {/* grid-rows 0fr -> 1fr gives a smooth height transition with no jump */}
+          <div
+            className={`grid transition-all duration-300 ease-out ${howtoOpen ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0"}`}
+          >
+            <div className="overflow-hidden">
+              <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-4">
+                <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
+                  {/* Intensity swatch */}
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 flex shrink-0 gap-0.5">
+                      {TILE_BG.map((c) => (
+                        <span key={c} className={`h-3 w-1.5 rounded-[1px] ${c}`} />
+                      ))}
+                    </span>
+                    <p className="text-[10px] leading-snug text-slate-400">
+                      <span className="font-semibold text-slate-200">Darker teal = stronger investment intent.</span>{" "}
+                      The percentage is how many organizations in that cell name this service area as a top investment
+                      focus for the next 12-18 months.
+                    </p>
+                  </div>
+                  {/* Gap chip */}
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
+                      gap +X
+                    </span>
+                    <p className="text-[10px] leading-snug text-slate-400">
+                      <span className="font-semibold text-slate-200">Intent running ahead of what programs already buy.</span>{" "}
+                      The bigger the gap, the more unmet demand.
+                    </p>
+                  </div>
+                  {/* Hatched tile */}
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 h-4 w-4 shrink-0 rounded-[2px] border border-dashed border-slate-700/70 bg-slate-800/20 [background-image:repeating-linear-gradient(45deg,transparent,transparent_3px,rgb(148_163_184_/_0.12)_3px,rgb(148_163_184_/_0.12)_6px)]" />
+                    <p className="text-[10px] leading-snug text-slate-400">
+                      <span className="font-semibold text-slate-200">Hatched = below our reporting floor.</span> Fewer
+                      than 15 organizations, so we do not show a figure. These fill in as the benchmark grows.
+                    </p>
+                  </div>
+                  {/* Ring */}
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 h-4 w-4 shrink-0 rounded-[2px] ring-2 ring-inset ring-primary" />
+                    <p className="text-[10px] leading-snug text-slate-400">
+                      <span className="font-semibold text-slate-200">The ringed tile is this service&apos;s strongest overall signal,</span>{" "}
+                      balancing intent, unmet demand, and sample depth.
+                    </p>
+                  </div>
+                </div>
+                {exampleCell && (
+                  <p className="mt-3 border-t border-slate-700/40 pt-3 text-[10px] leading-snug text-slate-500">
+                    Example: {exampleCell.industry} in {shortFor(exampleCell.region as string)} -{" "}
+                    {Math.round(exampleCell.want_pct)}% name this a top investment focus, from{" "}
+                    {exampleCell.base_n.toLocaleString()} organizations. Click the tile to see company-size detail, then
+                    aim the whole dashboard at that segment.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Service-first selector: composite scores compare only within one service. */}
         <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Service line</p>
         <div className="flex flex-wrap gap-2 mb-5">
@@ -1776,6 +1863,12 @@ function DemandRadarPanel({
                 Strongest signal
               </div>
             </div>
+
+            {/* Persistent methodology caption (independent of the explainer) */}
+            <p className="mt-3 text-[11px] leading-snug text-slate-500">
+              Intent measured from the benchmark&apos;s investment-focus question; provision from what programs already
+              outsource. Bases stated on every tile.
+            </p>
 
             {/* Drilldown: same-payload deeper rows for the open industry x region cell */}
             {openCell && (
