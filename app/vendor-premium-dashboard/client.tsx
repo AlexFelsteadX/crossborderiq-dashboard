@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -1394,11 +1394,12 @@ function WhitespacePanel({
 // =============================================================================
 
 // =============================================================================
-// DEMAND RADAR — service-first ranked cell list (get_vendor_demand_radar).
+// DEMAND RADAR — service-first heatmap (get_vendor_demand_radar).
 // Self-contained: owns its service selection and fetch, independent of the
 // global segment filters. Composite scores are only comparable WITHIN one
-// service, so this never renders a cross-service ranking. Clicking a row asks
-// the parent (onAim) to point the dashboard filters at that cell.
+// service, so this never renders a cross-service ranking. The grid is industry
+// rows x region columns; clicking a tile opens a drilldown and can aim the
+// dashboard filters at that cell (via onAim).
 // =============================================================================
 
 const RADAR_SERVICES = [
@@ -1453,6 +1454,62 @@ function buildRadarCellLabel(row: RadarRow): string {
   return parts.join(" - ")
 }
 
+// Grid axes use the canonical filter values so Aim always sets valid filters.
+// Region columns carry a short header label; the value is the full filter value.
+const RADAR_REGIONS: Array<{ value: string; short: string }> = [
+  { value: "Americas", short: "Americas" },
+  { value: "Europe (Inc. UK & Ireland)", short: "Europe" },
+  { value: "Middle East", short: "Middle East" },
+  { value: "Asia-Pacific (APAC & Australia)", short: "APAC" },
+]
+
+// Industry rows, 'Other' deliberately excluded.
+const RADAR_INDUSTRIES = [
+  "Professional Services",
+  "Technology & IT",
+  "Financial Services",
+  "Manufacturing & Industrial",
+  "Retail & Consumer",
+  "Healthcare & Life Sciences",
+  "Energy & Utilities",
+  "Media & Entertainment",
+]
+
+// 5-step teal intensity scale by want_pct. Text flips dark on the hottest steps
+// so the number keeps contrast against the bright teal fills.
+function tileStep(want: number): number {
+  if (want >= 60) return 4
+  if (want >= 45) return 3
+  if (want >= 30) return 2
+  if (want >= 15) return 1
+  return 0
+}
+const TILE_BG = ["bg-primary/10", "bg-primary/25", "bg-primary/40", "bg-primary/60", "bg-primary/80"]
+const TILE_TEXT = ["text-slate-300", "text-slate-100", "text-slate-50", "text-slate-900", "text-slate-900"]
+const RADAR_GRID = "grid grid-cols-[minmax(132px,1.3fr)_repeat(4,minmax(76px,1fr))] gap-1.5"
+
+// Compact horizontal bar for a drilldown child row (want_pct fill, gap, base).
+function RadarBar({ label, row }: { label: string; row: RadarRow }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-36 shrink-0 truncate text-xs text-slate-300" title={label}>
+        {label}
+      </span>
+      <div className="relative h-2 flex-1 rounded-full bg-slate-700/40">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-primary"
+          style={{ width: `${Math.max(2, Math.min(100, row.want_pct))}%` }}
+        />
+      </div>
+      <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-200">{Math.round(row.want_pct)}%</span>
+      <span className="w-10 shrink-0 text-right text-[10px] text-primary">
+        {row.have_pct === null ? "" : `+${Math.round(row.unmet_pct)}`}
+      </span>
+      <span className="w-14 shrink-0 text-right text-[10px] text-slate-500">n={row.base_n.toLocaleString()}</span>
+    </div>
+  )
+}
+
 function DemandRadarPanel({
   onAim,
 }: {
@@ -1467,6 +1524,8 @@ function DemandRadarPanel({
   const [hydrated, setHydrated] = useState(false)
   const [rows, setRows] = useState<RadarRow[]>([])
   const [loading, setLoading] = useState(true)
+  // Open industry x region drilldown key ("industry||region"), one at a time.
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
   // Default the service to the vendor's pinned category (mapped), once, on mount.
   useEffect(() => {
@@ -1484,6 +1543,7 @@ function DemandRadarPanel({
     let cancelled = false
     async function load() {
       setLoading(true)
+      setOpenKey(null)
       const { data } = await supabase.rpc("get_vendor_demand_radar", { p_year: 2026, p_service: service })
       if (cancelled) return
       setRows(Array.isArray(data) ? (data as RadarRow[]) : [])
@@ -1495,32 +1555,53 @@ function DemandRadarPanel({
     }
   }, [service, hydrated, supabase])
 
-  // Dedupe: a deeper row carrying the SAME base_n as a coarser row that shares
-  // its industry/region (and size, at granularity 4) adds nothing — the extra
-  // dims did not split the cell, so keep the coarsest. Also drop industry "Other".
-  // Rows arrive composite-desc; we process coarsest-first for the keep rule, then
-  // restore composite order and take the top 8.
-  const topRows = useMemo(() => {
-    const coarseFirst = [...rows].sort((a, b) => a.granularity - b.granularity)
-    const kept = new Set<RadarRow>()
-    const keptList: RadarRow[] = []
-    for (const r of coarseFirst) {
+  // Grid cells = industry x region (granularity 2: both dims set, no size/
+  // assignee). Keyed "industry||region"; 'Other' and off-axis rows are ignored.
+  // Cells missing from the payload are below the reporting floor.
+  const cellMap = useMemo(() => {
+    const m = new Map<string, RadarRow>()
+    for (const r of rows) {
+      if (!r.industry || !r.region || r.size_band || r.assignee_band) continue
       if (r.industry === "Other") continue
-      const redundant = keptList.some(
-        (k) =>
-          k.granularity < r.granularity &&
-          k.base_n === r.base_n &&
-          k.industry === r.industry &&
-          k.region === r.region &&
-          (r.granularity < 4 || k.size_band === r.size_band),
-      )
-      if (!redundant) {
-        kept.add(r)
-        keptList.push(r)
+      m.set(`${r.industry}||${r.region}`, r)
+    }
+    return m
+  }, [rows])
+
+  // Strongest signal = highest composite among grid cells (gets the ring accent).
+  const topKey = useMemo(() => {
+    let best: string | null = null
+    let bestScore = Number.NEGATIVE_INFINITY
+    for (const [k, r] of cellMap) {
+      if (r.composite_score > bestScore) {
+        bestScore = r.composite_score
+        best = k
       }
     }
-    return rows.filter((r) => kept.has(r)).slice(0, 8)
-  }, [rows])
+    return best
+  }, [cellMap])
+
+  const openCell = openKey ? cellMap.get(openKey) ?? null : null
+
+  // Drilldown reads deeper rows for the open cell from the SAME payload. Children
+  // whose base equals the parent's did not actually split the cell, so omit them.
+  const drilldown = useMemo(() => {
+    if (!openCell) return { sizes: [] as RadarRow[], sizeAssignee: [] as RadarRow[] }
+    const kids = rows.filter(
+      (r) =>
+        r.industry === openCell.industry &&
+        r.region === openCell.region &&
+        !!r.size_band &&
+        r.base_n !== openCell.base_n,
+    )
+    return {
+      sizes: kids.filter((r) => !r.assignee_band).sort((a, b) => b.want_pct - a.want_pct),
+      sizeAssignee: kids.filter((r) => !!r.assignee_band).sort((a, b) => b.want_pct - a.want_pct),
+    }
+  }, [openCell, rows])
+
+  const hasData = cellMap.size > 0
+  const shortFor = (region: string) => RADAR_REGIONS.find((c) => c.value === region)?.short ?? region
 
   return (
     <div>
@@ -1557,63 +1638,211 @@ function DemandRadarPanel({
         </div>
 
         {loading ? (
-          <div className="space-y-3">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="h-20 rounded-xl border border-slate-700/40 bg-brand-navy-2/40 animate-pulse" />
-            ))}
+          <div className="overflow-hidden">
+            <div className={RADAR_GRID}>
+              {Array.from({ length: 5 * (RADAR_INDUSTRIES.length + 1) }).map((_, i) => (
+                <div key={i} className="h-14 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+              ))}
+            </div>
           </div>
-        ) : topRows.length === 0 ? (
+        ) : !hasData ? (
           <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
             <p className="text-sm text-slate-400">
-              Not enough data yet for this service line - the radar grows with every registration.
+              Not enough data yet for this service line - the radar grows with every event.
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {topRows.map((r, i) => {
-              const label = buildRadarCellLabel(r)
-              const emerging = r.have_pct === null
-              return (
-                <li key={`${label}-${i}`}>
+          <>
+            {/* Heatmap: industry rows x region columns. Scrolls horizontally on
+                narrow screens with the industry label column pinned. */}
+            <div className="overflow-x-auto pb-1">
+              <div className="min-w-[560px]">
+                {/* Column headers */}
+                <div className={RADAR_GRID}>
+                  <div className="sticky left-0 z-10 bg-brand-navy-3" />
+                  {RADAR_REGIONS.map((col) => (
+                    <div key={col.value} className="px-1 pb-1 text-center text-[11px] font-medium text-slate-400">
+                      {col.short}
+                    </div>
+                  ))}
+                </div>
+                {RADAR_INDUSTRIES.map((ind) => (
+                  <div key={ind} className={`${RADAR_GRID} mb-1.5`}>
+                    <div className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300">
+                      {ind}
+                    </div>
+                    {RADAR_REGIONS.map((col) => {
+                      const key = `${ind}||${col.value}`
+                      const cell = cellMap.get(key)
+                      if (!cell) {
+                        // Below reporting floor
+                        return (
+                          <div
+                            key={key}
+                            className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-700/70 bg-slate-800/20 [background-image:repeating-linear-gradient(45deg,transparent,transparent_5px,rgb(148_163_184_/_0.07)_5px,rgb(148_163_184_/_0.07)_10px)]"
+                          >
+                            <Lock className="h-3 w-3 text-slate-600" aria-hidden="true" />
+                            <span className="sr-only">{`${ind} - ${col.short}: below reporting floor`}</span>
+                          </div>
+                        )
+                      }
+                      const step = tileStep(cell.want_pct)
+                      const isTop = key === topKey
+                      const isOpen = key === openKey
+                      const emerging = cell.have_pct === null
+                      return (
+                        <div key={key} className="relative group">
+                          <button
+                            onClick={() => setOpenKey(isOpen ? null : key)}
+                            aria-expanded={isOpen}
+                            aria-label={`${ind} - ${col.short}: ${Math.round(cell.want_pct)} percent investing`}
+                            className={`flex h-14 w-full flex-col items-start justify-center rounded-lg px-2 text-left transition ${TILE_BG[step]} ${TILE_TEXT[step]} hover:brightness-110 ${
+                              isTop ? "ring-2 ring-primary ring-offset-2 ring-offset-brand-navy-3 shadow-[0_0_16px_-2px_rgb(var(--brand-teal-rgb)_/_0.6)]" : ""
+                            } ${isOpen ? "outline outline-2 outline-primary/70" : ""}`}
+                          >
+                            <span className="text-lg font-bold leading-none">{Math.round(cell.want_pct)}%</span>
+                            {!emerging && (
+                              <span className="mt-1 text-[10px] font-medium opacity-80">gap +{Math.round(cell.unmet_pct)}</span>
+                            )}
+                          </button>
+                          {/* Hover / focus tooltip with the full numbers + aim */}
+                          <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 opacity-0 shadow-xl transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                            <p className="text-xs font-semibold text-slate-100 text-pretty">{`${ind} - ${col.short}`}</p>
+                            <dl className="mt-2 space-y-1 text-[11px]">
+                              <div className="flex justify-between gap-2">
+                                <dt className="text-slate-400">Investing</dt>
+                                <dd className="font-semibold text-primary">{Math.round(cell.want_pct)}%</dd>
+                              </div>
+                              <div className="flex justify-between gap-2">
+                                <dt className="text-slate-400">Providing today</dt>
+                                <dd className="font-medium text-slate-200">
+                                  {emerging ? "Emerging" : `${Math.round(cell.have_pct as number)}%`}
+                                </dd>
+                              </div>
+                              {!emerging && (
+                                <div className="flex justify-between gap-2">
+                                  <dt className="text-slate-400">Unmet gap</dt>
+                                  <dd className="font-medium text-slate-200">+{Math.round(cell.unmet_pct)}</dd>
+                                </div>
+                              )}
+                              <div className="flex justify-between gap-2">
+                                <dt className="text-slate-400">Base</dt>
+                                <dd className="font-medium text-slate-200">{cell.base_n.toLocaleString()}</dd>
+                              </div>
+                            </dl>
+                            {cell.confidence === "limited" && (
+                              <span className="mt-2 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                                Limited sample
+                              </span>
+                            )}
+                            <button
+                              onClick={() =>
+                                onAim(
+                                  { region: col.value, industry: ind, size: null, assignee: null },
+                                  `${ind} - ${col.short}`,
+                                )
+                              }
+                              className="mt-2 flex w-full items-center justify-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
+                            >
+                              Aim dashboard here
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span>Less</span>
+                <span className="flex gap-0.5">
+                  {TILE_BG.map((c) => (
+                    <span key={c} className={`h-3 w-4 rounded-sm ${c}`} />
+                  ))}
+                </span>
+                <span>more investment intent</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-4 rounded-sm border border-dashed border-slate-700/70 bg-slate-800/20" />
+                Below reporting floor
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-3 w-4 rounded-sm ring-2 ring-inset ring-primary" />
+                Strongest signal
+              </div>
+            </div>
+
+            {/* Drilldown: same-payload deeper rows for the open industry x region cell */}
+            {openCell && (
+              <div className="mt-4 rounded-xl border border-primary/25 bg-brand-navy-2/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-100 text-pretty">
+                      {`${openCell.industry} - ${shortFor(openCell.region as string)}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {Math.round(openCell.want_pct)}% investing
+                      {openCell.have_pct === null
+                        ? " - emerging"
+                        : `, gap +${Math.round(openCell.unmet_pct)}`}{" "}
+                      · Base {openCell.base_n.toLocaleString()}
+                    </p>
+                  </div>
                   <button
                     onClick={() =>
                       onAim(
-                        { region: r.region, industry: r.industry, size: r.size_band, assignee: r.assignee_band },
-                        label,
+                        { region: openCell.region, industry: openCell.industry, size: null, assignee: null },
+                        `${openCell.industry} - ${shortFor(openCell.region as string)}`,
                       )
                     }
-                    className="group w-full rounded-xl border border-slate-700/50 bg-brand-navy-2/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-12px_rgb(var(--brand-teal-rgb)_/_0.5)]"
+                    className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-200 text-pretty">{label}</p>
-                        <p className="mt-2 text-3xl font-bold text-primary leading-none">
-                          {Math.round(r.want_pct)}%
-                          <span className="ml-2 text-xs font-medium text-slate-400 align-middle">investing here</span>
-                        </p>
-                        {emerging ? (
-                          <p className="mt-2 text-xs text-slate-400">Emerging - no established provision measured</p>
-                        ) : (
-                          <span className="mt-2 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                            gap +{Math.round(r.unmet_pct)}
-                          </span>
-                        )}
-                      </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] text-slate-400">Base: {r.base_n.toLocaleString()} organizations</span>
-                      {r.confidence === "limited" && (
-                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                          Limited sample
-                        </span>
-                      )}
-                    </div>
+                    Aim dashboard here
                   </button>
-                </li>
-              )
-            })}
-          </ul>
+                </div>
+
+                {drilldown.sizes.length === 0 && drilldown.sizeAssignee.length === 0 ? (
+                  <p className="mt-3 text-xs text-slate-500">
+                    No finer breakdown above the reporting floor for this cell.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    {drilldown.sizes.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">By company size</p>
+                        <div className="space-y-2">
+                          {drilldown.sizes.map((r, i) => (
+                            <RadarBar key={`s-${i}`} label={r.size_band ?? ""} row={r} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {drilldown.sizeAssignee.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                          By size and assignee population
+                        </p>
+                        <div className="space-y-2">
+                          {drilldown.sizeAssignee.map((r, i) => (
+                            <RadarBar
+                              key={`sa-${i}`}
+                              label={`${r.size_band ?? ""} · ${r.assignee_band ?? ""}`}
+                              row={r}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
