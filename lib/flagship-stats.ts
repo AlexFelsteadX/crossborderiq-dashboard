@@ -226,3 +226,36 @@ export function formatFlagshipSentence(stat: PublicFlagshipStat | undefined | nu
   if (!template) return null
   return template(pct, stat.headline_label)
 }
+
+// -----------------------------------------------------------------------------
+// STAT-FIRST PARTS — the same public figure split into a hero percentage and a
+// number-free phrase, so the free-page cards can render the percentage huge with
+// the phrase beside it. Each phrase reads naturally after the percentage, e.g.
+// "68%" + "support international remote work". Returns null on missing/zero data
+// so the card falls back to a locked placeholder.
+// -----------------------------------------------------------------------------
+
+const PUBLIC_FLAGSHIP_PHRASES: Partial<Record<WorkforceTheme, (label: string) => string>> = {
+  "Strategy & maturity": () => "agree the scope and complexity of Global Mobility will grow this year",
+  "AI & technology": () => "are already using or piloting AI in mobility operations",
+  "Experience & Outcomes": (label) => `measure success by ${label}`,
+  "Future of mobility": (label) => `describe their program as ${label}`,
+  "Employee experience": (label) => `name ${label} as the fastest-rising employee expectation`,
+  "Leadership expectations": (label) => `name ${label} as leadership's top rising ask`,
+  "Operational pressure": (label) => `cite ${label} as their top pressure`,
+  "Business travel": (label) => `say ${label} is accountable for a compliance failure`,
+  "Investment & vendors": (label) => `outsource ${label}`,
+  "International remote work": () => "support international remote work",
+  "Who took part": (label) => `are headquartered in ${label}`,
+}
+
+export function publicFlagshipParts(
+  stat: PublicFlagshipStat | undefined | null,
+): { pct: number; phrase: string } | null {
+  if (!stat) return null
+  const pct = Math.round(stat.headline_pct)
+  if (!Number.isFinite(pct) || pct <= 0) return null
+  const phrase = PUBLIC_FLAGSHIP_PHRASES[stat.theme_key as WorkforceTheme]
+  if (!phrase) return null
+  return { pct, phrase: phrase(stat.headline_label) }
+}

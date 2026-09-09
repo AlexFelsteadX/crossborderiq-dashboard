@@ -139,9 +139,20 @@ export default async function WorkforceIntelligencePage() {
 
           {/* Theme overview — locked cards, one live hero figure each */}
           <div className="mb-10">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
-              What the benchmark covers
-            </h3>
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary mb-2">
+                  The live benchmark
+                </p>
+                <h3 className="text-2xl font-bold text-foreground text-balance">What the benchmark covers</h3>
+                <p className="text-sm text-slate-400 mt-1 text-pretty">
+                  Eleven areas, one benchmark. Every figure states its base.
+                </p>
+              </div>
+              <span className="shrink-0 inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
+                Updated weekly
+              </span>
+            </div>
             <LockedThemeGrid stats={flagshipStats} />
           </div>
 
