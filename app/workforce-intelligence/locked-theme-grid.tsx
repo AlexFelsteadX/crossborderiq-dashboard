@@ -108,11 +108,11 @@ export function LockedThemeGrid({ stats }: { stats: Record<string, PublicFlagshi
 
             {/* Footer: question count + base metadata */}
             {showBase ? (
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-500">
+              <p className="mt-4 text-[13px] text-slate-300">
                 {questionCount} benchmark questions · Base: {base.toLocaleString()} organizations
               </p>
             ) : (
-              <p className="mt-4 text-[11px] uppercase tracking-wide text-slate-600">
+              <p className="mt-4 text-[13px] text-slate-300">
                 {questionCount} benchmark questions · Premium members only
               </p>
             )}

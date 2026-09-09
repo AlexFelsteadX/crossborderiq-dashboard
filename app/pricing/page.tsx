@@ -203,7 +203,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch mb-12 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch mb-12 max-w-6xl mx-auto">
               {/* Card 1: Premium - 14 Days Free via Survey */}
               <div id="free-access" className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -373,6 +373,51 @@ export default function PricingPage() {
                   <p className="text-xs text-center text-slate-400 mt-4 italic leading-relaxed">
                     Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
                   </p>
+                </div>
+              </div>
+
+              {/* Card: CBIQ Advisory - contact-only, corporate advisory upsell above Premium */}
+              <div id="cbiq-advisory" className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
+                    Founding Cohort
+                  </span>
+                </div>
+                <div className="mb-6 pt-3">
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">CBIQ Advisory</h3>
+                  <p className="text-xs text-slate-400 mb-4 text-pretty">
+                    {"Premium gives you the benchmark. Advisory gives you a dedicated analyst who knows your program's place in it."}
+                  </p>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-3xl font-bold text-slate-100">£5,000</span>
+                    <span className="text-lg text-slate-400">/</span>
+                    <span className="text-3xl font-bold text-slate-100">$6,500</span>
+                    <span className="text-sm text-slate-400">per year</span>
+                  </div>
+                </div>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Everything in Premium, for your whole team - up to 5 seats",
+                    "A dedicated, named CBIQ analyst across the year",
+                    "Quarterly benchmark reviews - four 60-minute sessions on your position against peers: what moved, and what it means",
+                    "Two exclusive 90-minute virtual team sessions per year - private to your organization, on the topics you choose, built on the CBIQ data behind them",
+                    "Your annual benchmark briefing - a written, board-ready report of your segment's signature findings, every figure stated with its base",
+                    "Analyst access between sessions - benchmark-interpretation questions answered within two business days",
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs font-medium text-primary mb-2">Founding cohort limited to 10 organizations.</p>
+                <p className="text-xs text-slate-500 mb-6 text-pretty">
+                    {"Benchmark interpretation only - not implementation consulting or vendor selection. Billed annually."}
+                </p>
+                <div className="mt-auto">
+                  <Button className="w-full bg-primary hover:bg-primary/90" asChild>
+                    <a href="mailto:crossborderiq@gemevents.co?subject=CBIQ%20Advisory">Talk to us</a>
+                  </Button>
                 </div>
               </div>
             </div>
