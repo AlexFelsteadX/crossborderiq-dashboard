@@ -1,12 +1,15 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, Users, Sparkles, ArrowDown, ArrowRight } from "lucide-react"
+import { Users, Sparkles, ArrowDown, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { MmiCard } from "./mmi-card"
 import { PeerSegmentFilters } from "./peer-segment-filters"
 import { PremiumUpgradeButton } from "./premium-cta"
+import { LockedThemeGrid } from "./locked-theme-grid"
+import { WhatThisMeans } from "@/components/dashboard/what-this-means"
+import type { PublicFlagshipStat } from "@/lib/flagship-stats"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -22,83 +25,12 @@ interface StrategicMobilityIndex {
   tech_ai_maturity: number
 }
 
-// ---------------------------------------------------------------------------
-// PLACEHOLDER DATA (no live source yet) — see summary at bottom of request.
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// STATIC LOCKED-PREVIEW LABELS — LABEL STRINGS ONLY.
-// CRITICAL: no real metric value, percentage, score or live data appears below.
-// Every label here is a static string sourced from the Premium dashboard
-// components; nothing is fetched for the locked "Inside the full dashboard"
-// section. (See components/dashboard/indices.tsx and lib/workforce-themes.ts.)
-// ---------------------------------------------------------------------------
-
-// Pillar names mirroring the dashboard's "Pillar snapshot" tiles.
-const PILLAR_NAMES = [
-  "Mobility Maturity Index",
-  "AI Adoption Index",
-  "Future of Mobility Index",
-  "Operational Pressure Index",
-  "Leadership Expectations Index",
-  "Employee Experience Index",
-  "International Remote Work Index",
-]
-
-// Year-on-year metric labels — the full set, to convey the "volume" of the
-// reveal. Sourced verbatim from the dashboard's index ranked-bar lists
-// (components/dashboard/indices.tsx). Labels only, no figures.
-const YOY_METRIC_LABELS = [
-  "Immigration & regulatory changes",
-  "Tax compliance",
-  "Cost management",
-  "Geopolitical instability",
-  "Remote work compliance",
-  "Risk management / duty of care",
-  "Talent deployment agility",
-  "Operational efficiency",
-  "Enhanced employee experience",
-  "ROI measurement",
-  "AI adoption",
-  "Flexibility & hybrid working",
-  "Remote work options",
-  "Work-life balance",
-  "Policy transparency",
-  "Faster relocation processes",
-]
-
-// Detailed-breakdown sections — real section names from lib/workforce-themes.ts
-// (THEME_ORDER), each with representative question rows drawn from the dashboard's
-// index ranked-bar lists (components/dashboard/indices.tsx). Labels only.
-const BREAKDOWN_SECTIONS: { name: string; rows: string[] }[] = [
-  {
-    name: "Operational pressure",
-    rows: [
-      "Immigration & regulatory changes",
-      "Tax compliance",
-      "Cost management",
-      "Geopolitical instability",
-      "Remote work compliance",
-    ],
-  },
-  {
-    name: "Employee experience",
-    rows: [
-      "Flexibility & hybrid working",
-      "Remote work options",
-      "Work-life balance",
-      "Policy transparency",
-      "Wellbeing support",
-    ],
-  },
-]
-
 export default async function WorkforceIntelligencePage() {
   const supabase = await createClient()
 
   // Fetch the live Mobility Maturity Index via RPC. This single read drives the
-  // gauge (index_score) and now also the free "What makes up this score" panel —
-  // the same response already returns the four leg values, so no extra call.
+  // gauge (index_score) and the "What makes up this score" panel — the same
+  // response already returns the four leg values, so no extra call.
   const { data: smiData, error } = await supabase.rpc("get_premium_mmi")
   const smiRow = (Array.isArray(smiData) ? smiData[0] : smiData) as StrategicMobilityIndex | null
 
@@ -109,6 +41,26 @@ export default async function WorkforceIntelligencePage() {
     { label: "Future readiness", pct: smiRow?.future ?? 0 },
     { label: "Technology & AI maturity", pct: smiRow?.tech_ai_maturity ?? 0 },
   ]
+
+  // Public, market-only flagship stats — one hero figure per theme (no answer
+  // distributions). Degrades silently: if the RPC is not live yet, or returns
+  // nothing, the theme cards render as label-only locked teasers (no error UI).
+  const flagshipStats: Record<string, PublicFlagshipStat> = {}
+  const { data: flagshipData } = await supabase.rpc("get_public_flagship_stats")
+  if (Array.isArray(flagshipData)) {
+    for (const row of flagshipData as PublicFlagshipStat[]) {
+      if (row?.theme_key) flagshipStats[row.theme_key] = row
+    }
+  }
+
+  // Market-level "start here" narrative. Never references filters or a segment;
+  // it only summarizes the all-market picture that is already public.
+  const marketRead =
+    smiScore > 0
+      ? `Start with the market picture. Across every contributing organization, the average Global Mobility maturity score is ${Math.round(
+          smiScore,
+        )}. The themes below show where the wider market is concentrating right now, from AI adoption to how programs measure success.`
+      : `Start with the market picture. The themes below show where the wider market is concentrating right now, from AI adoption to how programs measure success. Unlock Premium to read the figures behind each one and compare them to your peer segment.`
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -125,7 +77,7 @@ export default async function WorkforceIntelligencePage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
-            Informed by 2,000+ Global Workforce Leaders
+            Informed by 2,300+ contributions
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
@@ -155,7 +107,7 @@ export default async function WorkforceIntelligencePage() {
           </div>
         </div>
 
-        {/* Error state */}
+        {/* Error state — MMI only. The public flagship read degrades silently. */}
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center mb-10">
             <p className="text-red-400 text-sm">Unable to load intelligence data. Please try again later.</p>
@@ -164,17 +116,22 @@ export default async function WorkforceIntelligencePage() {
 
         {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
-          <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} />
+        <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} />
 
-        {/* 4 + 5. INSIDE THE FULL DASHBOARD — single richer locked preview.
-            DATA-SAFETY: every element below is built from static label strings only.
-            No live value, percentage or score is fetched or rendered for any locked tile. */}
+        {/* 3. START HERE — market-level narrative only (no filter/segment claims) */}
+        <div className="mt-10">
+          <WhatThisMeans eyebrow="Start here">{marketRead}</WhatThisMeans>
+        </div>
+
+        {/* 4 + 5. INSIDE THE FULL DASHBOARD — locked preview of the Premium overview.
+            DATA-SAFETY: the theme grid shows ONE public hero figure per theme (via
+            get_public_flagship_stats). No answer distributions are fetched or shown. */}
         <section className="mb-12">
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
             <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
-              Unlock with Premium to slice the benchmark by industry, region, company size and assignee
-              type, see all seven pillar indices, and track year-on-year movement.
+              Unlock with Premium to slice the benchmark by industry, region, company size and assignee type, read the
+              figures behind every theme, and track year-on-year movement.
             </p>
             <div className="mt-4 flex flex-col items-start gap-5">
               <a
@@ -190,103 +147,17 @@ export default async function WorkforceIntelligencePage() {
             </div>
           </div>
 
-          {/* Peer-segment filters — controls for the locked dashboard below */}
+          {/* Peer-segment filters — locked, disabled preview of the Premium controls */}
           <div className="mb-10">
             <PeerSegmentFilters />
           </div>
 
-          {/* Pillar snapshot — locked gauge tiles, one per pillar (names only, no %) */}
+          {/* Theme overview — locked cards, one live hero figure each */}
           <div className="mb-10">
             <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
-              Pillar snapshot
+              What the benchmark covers
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {PILLAR_NAMES.map((name) => (
-                <div
-                  key={name}
-                  className="relative rounded-xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex flex-col items-center text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
-                >
-                  {/* Muted placeholder ring — purely decorative, no value */}
-                  <div className="relative w-[84px] h-[84px]" aria-hidden="true">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 84 84">
-                      <circle cx="42" cy="42" r="36" fill="none" stroke="#1a3344" strokeWidth="8" />
-                      <circle
-                        cx="42"
-                        cy="42"
-                        r="36"
-                        fill="none"
-                        stroke="rgb(var(--brand-teal-rgb) / 0.25)"
-                        strokeWidth="8"
-                        strokeDasharray="226"
-                        strokeDashoffset="158"
-                        strokeLinecap="round"
-                        className="blur-[1px]"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Lock className="h-5 w-5 text-slate-500" />
-                    </div>
-                  </div>
-                  <p className="text-xs font-medium text-slate-300 mt-3 leading-tight">{name}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Year-on-year movement — the FULL grid of metric cards (labels only, no numbers/arrows) */}
-          <div className="mb-10">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
-              Year-on-year movement
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {YOY_METRIC_LABELS.map((label) => (
-                <div
-                  key={label}
-                  className="rounded-xl border border-primary/20 border-l-4 border-l-slate-600/50 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 flex items-center justify-between gap-3 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
-                >
-                  <p className="text-sm font-medium text-slate-300 leading-tight">{label}</p>
-                  <Lock className="h-4 w-4 text-slate-500 shrink-0" />
-                </div>
-              ))}
-            </div>
-            {/* Muted placeholder bar beneath, conveying the locked trend strip */}
-            <div className="mt-4 h-2 rounded-full bg-[#1a3344] overflow-hidden" aria-hidden="true">
-              <div className="h-full w-2/3 bg-primary/15 blur-[2px]" />
-            </div>
-          </div>
-
-          {/* Detailed breakdowns — locked question-level sections (row labels only, no %) */}
-          <div className="mb-10">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em] mb-4">
-              Detailed breakdowns
-            </h3>
-            <div className="space-y-4">
-              {BREAKDOWN_SECTIONS.map((section) => (
-                <div
-                  key={section.name}
-                  className="rounded-xl border border-primary/15 bg-brand-navy-2/50 overflow-hidden"
-                >
-                  <div className="flex items-center justify-between gap-4 px-5 py-4 bg-primary/5 border-b border-primary/10">
-                    <h4 className="text-base font-semibold text-slate-200">{section.name}</h4>
-                    <Lock className="h-4 w-4 text-slate-500 shrink-0" />
-                  </div>
-                  <div className="px-5 py-4 space-y-3">
-                    {section.rows.map((row) => (
-                      <div key={row} className="flex items-center gap-3">
-                        <span className="text-xs text-slate-400 flex-1 truncate">{row}</span>
-                        <div className="w-32 h-2 bg-[#1a3344] rounded-full overflow-hidden" aria-hidden="true">
-                          <div
-                            className="h-full bg-primary/15 blur-[2px] rounded-full"
-                            style={{ width: "60%" }}
-                          />
-                        </div>
-                        <Lock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <LockedThemeGrid stats={flagshipStats} />
           </div>
 
           {/* Summary line (the conversion-path cards sit directly below this section) */}
@@ -298,10 +169,7 @@ export default async function WorkforceIntelligencePage() {
         </section>
 
         {/* 6. TWO CONVERSION PATHS (existing CTAs preserved) */}
-        <div
-          id="access-full-research"
-          className="scroll-mt-24 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
-        >
+        <div id="access-full-research" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           {/* Free card */}
           <div className="flex flex-col rounded-2xl border border-primary/20 bg-brand-navy-2 p-8 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
             <div className="flex items-center gap-2 mb-3">
@@ -345,7 +213,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-              Built on 2,000+ leader contributions · aggregated &amp; anonymized ·{" "}
+            Built on 2,300+ leader contributions · aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>

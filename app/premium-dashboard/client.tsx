@@ -13,17 +13,6 @@ import {
   Loader2,
   Download,
   ArrowLeft,
-  Compass,
-  Cpu,
-  Sparkles,
-  Users,
-  Target,
-  Gauge,
-  Plane,
-  Handshake,
-  Globe,
-  PieChart,
-  type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
@@ -33,6 +22,10 @@ import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
 import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
 import { THEME_ORDER, themeForPillar, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
+import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
+import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
+import { WhatThisMeans } from "@/components/dashboard/what-this-means"
+import { NewPill } from "@/components/dashboard/new-pill"
 
 // Temporary master switch: hide every respondent-count / base-size display across
 // the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
@@ -40,9 +33,9 @@ const SHOW_COUNTS = false
 
 // =============================================================================
 // TYPES (shapes returned by the five premium RPCs)
+// Confidence and GroupedQuestion now live in lib/premium-breakdown-types.ts and
+// are imported above so the free-page teaser can share them.
 // =============================================================================
-
-type Confidence = "full" | "limited" | "suppressed"
 
 interface MmiRow {
   index_score: number
@@ -103,17 +96,6 @@ interface Filters {
   assignee: string | null
   traveller: string | null
   year: number
-}
-
-// Grouped breakdown question (one q_code) ready to render.
-interface GroupedQuestion {
-  qCode: string
-  questionLabel: string
-  hrPillar: string
-  segBaseN: number
-  overallBaseN: number
-  confidence: Confidence
-  answers: { option: string; segPct: number; overallPct: number; segN: number }[]
 }
 
 // =============================================================================
@@ -360,16 +342,6 @@ function FallbackNote({ className = "" }: { className?: string }) {
     <p className={`text-[11px] text-slate-500 italic ${className}`}>
       Not enough organizations in this segment — showing overall
     </p>
-  )
-}
-
-// Sky "NEW" pill. The established sky/cyan semantic for newly added benchmark
-// dimensions (mirrors the vendor dashboard's "new" treatment). Uppercase micro-pill.
-function NewPill() {
-  return (
-    <span className="inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
-      New
-    </span>
   )
 }
 
@@ -977,194 +949,6 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
 // Collapsible themed section — matches the Contributor dashboard accordion.
 // Count of questions in a section that show a reportable segment-vs-market
 // difference. Mirrors the thresholds used by the section headline summary below.
-// Reusable "What this means" teal callout. Presentational only; the narrative
-// text is passed in as children. The eyebrow defaults to "What this means" and
-// is overridden (e.g. "Start here") at the top-of-page market summary.
-function WhatThisMeans({
-  children,
-  eyebrow = "What this means",
-}: {
-  children: React.ReactNode
-  eyebrow?: string
-}) {
-  return (
-    <div className="rounded-xl rounded-l-none border-l-2 border-l-primary/50 bg-primary/[0.03] px-5 py-4 mb-6">
-      <div className="flex items-center gap-2 mb-2">
-        <img src="/cbiq-mark.png" alt="" aria-hidden="true" width={20} height={20} className="h-5 w-5 shrink-0" />
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{eyebrow}</p>
-      </div>
-      <p className="text-sm sm:text-base text-slate-200 leading-relaxed text-pretty">{children}</p>
-    </div>
-  )
-}
-
-// =============================================================================
-// FLAGSHIP STATS — curated one-line stat per Detailed-breakdowns overview card.
-// Keyed by theme KEY. Each stat is computed live from ONE named question inside
-// that section, so an answer never appears without its question. The q_code for
-// each question is not known here (it lives in the RPC payload), so questions are
-// matched by text signals WITHIN their own section, which keeps matching narrow.
-// Every claim is self-validating: if the question or expected answers are absent,
-// compute returns null and the card falls back to no sentence.
-// =============================================================================
-
-const pctOf = (frac: number) => Math.round(frac * 100)
-
-// First question in the section whose q_code + label contains every needle.
-function findFlagshipQuestion(questions: GroupedQuestion[], ...needles: string[]): GroupedQuestion | undefined {
-  return questions.find((q) => {
-    const hay = `${q.qCode} ${q.questionLabel}`.toLowerCase()
-    return needles.every((n) => hay.includes(n))
-  })
-}
-
-function topFlagshipAnswer(q: GroupedQuestion) {
-  return [...q.answers].sort((a, b) => b.overallPct - a.overallPct)[0]
-}
-
-function sumFlagshipPct(q: GroupedQuestion, re: RegExp): number {
-  return q.answers.filter((a) => re.test(a.option)).reduce((s, a) => s + a.overallPct, 0)
-}
-
-type FlagshipStat = {
-  icon: LucideIcon
-  compute: (questions: GroupedQuestion[]) => string | null
-}
-
-const FLAGSHIP_STATS: Partial<Record<WorkforceTheme, FlagshipStat>> = {
-  "Strategy & maturity": {
-    icon: Compass,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "scope") ?? findFlagshipQuestion(questions, "complex")
-      if (!q) return null
-      const top3 = q.answers
-        .filter((a) => ["5", "6", "7"].includes(a.option.trim()))
-        .reduce((s, a) => s + a.overallPct, 0)
-      if (top3 <= 0) return null
-      return `${pctOf(top3)}% agree the scope and complexity of Global Mobility will grow this year.`
-    },
-  },
-  "AI & technology": {
-    icon: Cpu,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "ai") ?? findFlagshipQuestion(questions, "artificial")
-      if (!q) return null
-      const using = sumFlagshipPct(q, /production|pilot|already using|in use/i)
-      if (using <= 0) return null
-      return `${pctOf(using)}% are already using or piloting AI in mobility operations.`
-    },
-  },
-  "Experience & Outcomes": {
-    icon: Sparkles,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "success") ?? findFlagshipQuestion(questions, "measure")
-      if (!q) return null
-      const objective = q.answers.find((a) => /business|objective/i.test(a.option))
-      const noMeasure = q.answers.find((a) => /not.*(measure|formal)|no formal|don.?t measure/i.test(a.option))
-      if (!objective) return null
-      const base = `The most common way to measure success: business-objective achievement (${pctOf(objective.overallPct)}%).`
-      return noMeasure ? `${base} ${pctOf(noMeasure.overallPct)}% do not formally measure at all.` : base
-    },
-  },
-  "Future of mobility": {
-    icon: TrendingUp,
-    compute: (questions) => {
-      const q =
-        findFlagshipQuestion(questions, "state") ??
-        findFlagshipQuestion(questions, "program") ??
-        findFlagshipQuestion(questions, "direction")
-      if (!q) return null
-      const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
-      const combined = (sorted[0]?.overallPct ?? 0) + (sorted[1]?.overallPct ?? 0)
-      const looksLikeState = sorted.slice(0, 2).some((a) => /optim|review|active|evolv/i.test(a.option))
-      if (combined <= 0 || !looksLikeState) return null
-      return `Most programs are actively optimizing or reviewing rather than standing still (${pctOf(combined)}% combined across the top two answers).`
-    },
-  },
-  "Employee experience": {
-    icon: Users,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "employee", "expect") ?? findFlagshipQuestion(questions, "expect")
-      if (!q) return null
-      const top = topFlagshipAnswer(q)
-      if (!top || top.overallPct <= 0) return null
-      return `The fastest-rising employee expectation: ${top.option} (${pctOf(top.overallPct)}%).`
-    },
-  },
-  "Leadership expectations": {
-    icon: Target,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "leadership") ?? findFlagshipQuestion(questions, "expect")
-      if (!q) return null
-      const top = topFlagshipAnswer(q)
-      if (!top || top.overallPct <= 0) return null
-      return `Leadership's top rising ask: ${top.option} (${pctOf(top.overallPct)}%).`
-    },
-  },
-  "Operational pressure": {
-    icon: Gauge,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "pressure")
-      if (!q) return null
-      const top = topFlagshipAnswer(q)
-      if (!top || top.overallPct <= 0) return null
-      return `The most-cited pressure: ${top.option} (${pctOf(top.overallPct)}%).`
-    },
-  },
-  "Business travel": {
-    icon: Plane,
-    compute: (questions) => {
-      const q =
-        findFlagshipQuestion(questions, "compliance", "account") ??
-        findFlagshipQuestion(questions, "accountab") ??
-        findFlagshipQuestion(questions, "compliance")
-      if (!q) return null
-      const top = topFlagshipAnswer(q)
-      if (!top || top.overallPct <= 0) return null
-      return `Asked who is accountable for a compliance failure, the most common answer is ${top.option} (${pctOf(top.overallPct)}%).`
-    },
-  },
-  "Investment & vendors": {
-    icon: Handshake,
-    compute: (questions) => {
-      const q = findFlagshipQuestion(questions, "outsourc")
-      if (!q) return null
-      const sorted = [...q.answers].sort((a, b) => b.overallPct - a.overallPct)
-      const first = sorted[0]
-      const second = sorted[1]
-      if (!first || first.overallPct <= 0) return null
-      if (!second || second.overallPct <= 0) {
-        return `The most outsourced service: ${first.option} (${pctOf(first.overallPct)}%).`
-      }
-      return `The most outsourced services: ${first.option} (${pctOf(first.overallPct)}%) and ${second.option} (${pctOf(second.overallPct)}%).`
-    },
-  },
-  "International remote work": {
-    icon: Globe,
-    compute: (questions) => {
-      const q =
-        findFlagshipQuestion(questions, "remote", "support") ?? findFlagshipQuestion(questions, "remote")
-      if (!q) return null
-      const supported = sumFlagshipPct(q, /^yes/i)
-      if (supported <= 0) return null
-      return `${pctOf(supported)}% of organizations support international remote work.`
-    },
-  },
-  "Who took part": {
-    icon: PieChart,
-    compute: (questions) => {
-      const q =
-        findFlagshipQuestion(questions, "headquart") ??
-        findFlagshipQuestion(questions, "hq") ??
-        findFlagshipQuestion(questions, "location")
-      if (!q) return null
-      const top = topFlagshipAnswer(q)
-      if (!top || top.overallPct <= 0) return null
-      return `${pctOf(top.overallPct)}% of contributing organizations are headquartered in ${top.option}.`
-    },
-  },
-}
-
 function countSegmentFindings(questions: GroupedQuestion[], isFiltered: boolean): number {
   if (!isFiltered) return 0
   const NOTABLE = 0.1
