@@ -190,7 +190,7 @@ export default function PricingPage() {
         {/* Corporate Access Section */}
         {view === "corporate" && (
           <div id="corporate-access" className="mb-20 scroll-mt-24">
-            <div className="text-center mb-8">
+            <div className="text-center mb-3">
               <h2 className="text-2xl font-semibold text-slate-100 mb-3">Corporate Access</h2>
               <p className="text-slate-300">Choose the level of intelligence access that best suits your organization.</p>
             </div>
@@ -203,7 +203,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch mb-12 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch max-w-6xl mx-auto">
               {/* Card 1: Premium - 14 Days Free via Survey */}
               <div id="free-access" className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -423,7 +423,7 @@ export default function PricingPage() {
             </div>
 
             {/* What's The Difference? Comparison Table */}
-            <div id="whats-the-difference" className="max-w-3xl mx-auto scroll-mt-24">
+            <div id="whats-the-difference" className="max-w-3xl mx-auto mt-20 scroll-mt-24">
               <h3 className="text-xl font-semibold text-slate-100 mb-2 text-center">What&apos;s The Difference?</h3>
               <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
                 Same core intelligence: see exactly what each access provides
