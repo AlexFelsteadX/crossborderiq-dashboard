@@ -87,7 +87,6 @@ export default async function WorkforceIntelligencePage() {
               Get your free Mobility Maturity score
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <p className="text-xs text-slate-500">Free · takes about 3 minutes</p>
             <a
               href="#access-full-research"
               className="group inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
