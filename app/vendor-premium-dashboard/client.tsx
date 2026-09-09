@@ -1393,6 +1393,233 @@ function WhitespacePanel({
 // ZONE HEADER (slim full-width label row used before each zone)
 // =============================================================================
 
+// =============================================================================
+// DEMAND RADAR — service-first ranked cell list (get_vendor_demand_radar).
+// Self-contained: owns its service selection and fetch, independent of the
+// global segment filters. Composite scores are only comparable WITHIN one
+// service, so this never renders a cross-service ranking. Clicking a row asks
+// the parent (onAim) to point the dashboard filters at that cell.
+// =============================================================================
+
+const RADAR_SERVICES = [
+  "Immigration",
+  "Technology & automation",
+  "Data & analytics",
+  "Risk & compliance",
+  "Employee & family experience",
+  "Policy & program design",
+  "Cost & managed services",
+] as const
+
+// Map a pinned white-space category (free-form RPC string) to the nearest radar
+// service by keyword. Falls back to Technology & automation.
+function mapPinnedToRadarService(pinned: string): string {
+  const p = pinned.toLowerCase()
+  const rules: Array<[RegExp, string]> = [
+    [/immigrat|visa/, "Immigration"],
+    [/data|analytic|report|insight|dashboard/, "Data & analytics"],
+    [/risk|complian|tax|legal|audit/, "Risk & compliance"],
+    [/employee|family|experience|assignee|wellbeing|relocation/, "Employee & family experience"],
+    [/policy|program|process|strategy|design/, "Policy & program design"],
+    [/cost|managed|outsourc|expense|budget|spend|payroll/, "Cost & managed services"],
+    [/tech|automat|platform|software|tool|system|digital/, "Technology & automation"],
+  ]
+  for (const [re, svc] of rules) if (re.test(p)) return svc
+  return "Technology & automation"
+}
+
+interface RadarRow {
+  service_category: string
+  industry: string | null
+  region: string | null
+  size_band: string | null
+  assignee_band: string | null
+  granularity: number
+  base_n: number
+  want_pct: number
+  have_pct: number | null
+  unmet_pct: number
+  composite_score: number
+  confidence: "full" | "limited"
+}
+
+// Cell name assembled from the row's non-null dims, coarsest first.
+function buildRadarCellLabel(row: RadarRow): string {
+  const parts: string[] = []
+  if (row.industry) parts.push(row.industry)
+  if (row.region) parts.push(row.region)
+  if (row.size_band) parts.push(row.size_band)
+  if (row.assignee_band) parts.push(`${row.assignee_band} assignees`)
+  return parts.join(" - ")
+}
+
+function DemandRadarPanel({
+  onAim,
+}: {
+  onAim: (
+    cell: { region: string | null; industry: string | null; size: string | null; assignee: string | null },
+    label: string,
+  ) => void
+}) {
+  // Own, stable browser client (createClient() returns a fresh instance per call).
+  const [supabase] = useState(() => createClient())
+  const [service, setService] = useState<string>("Technology & automation")
+  const [hydrated, setHydrated] = useState(false)
+  const [rows, setRows] = useState<RadarRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Default the service to the vendor's pinned category (mapped), once, on mount.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cbiq_vendor_service_category")
+      if (saved) setService(mapPinnedToRadarService(saved))
+    } catch {
+      // ignore storage access errors — keep the default service
+    }
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      const { data } = await supabase.rpc("get_vendor_demand_radar", { p_year: 2026, p_service: service })
+      if (cancelled) return
+      setRows(Array.isArray(data) ? (data as RadarRow[]) : [])
+      setLoading(false)
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [service, hydrated, supabase])
+
+  // Dedupe: a deeper row carrying the SAME base_n as a coarser row that shares
+  // its industry/region (and size, at granularity 4) adds nothing — the extra
+  // dims did not split the cell, so keep the coarsest. Also drop industry "Other".
+  // Rows arrive composite-desc; we process coarsest-first for the keep rule, then
+  // restore composite order and take the top 8.
+  const topRows = useMemo(() => {
+    const coarseFirst = [...rows].sort((a, b) => a.granularity - b.granularity)
+    const kept = new Set<RadarRow>()
+    const keptList: RadarRow[] = []
+    for (const r of coarseFirst) {
+      if (r.industry === "Other") continue
+      const redundant = keptList.some(
+        (k) =>
+          k.granularity < r.granularity &&
+          k.base_n === r.base_n &&
+          k.industry === r.industry &&
+          k.region === r.region &&
+          (r.granularity < 4 || k.size_band === r.size_band),
+      )
+      if (!redundant) {
+        kept.add(r)
+        keptList.push(r)
+      }
+    }
+    return rows.filter((r) => kept.has(r)).slice(0, 8)
+  }, [rows])
+
+  return (
+    <div>
+      {/* Header — ZoneHeader style, unnumbered (Radar is a lens on Zone 01, not a new zone). */}
+      <div className="pt-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Demand Radar</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Where investment intent points, segment by segment - built from live benchmark data and growing with every
+          event.
+        </p>
+        <div className="mt-3 border-b border-primary/15" />
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+        {/* Service-first selector: composite scores compare only within one service. */}
+        <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Service line</p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {RADAR_SERVICES.map((svc) => {
+            const active = svc === service
+            return (
+              <button
+                key={svc}
+                onClick={() => setService(svc)}
+                className={
+                  active
+                    ? "rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                    : "rounded-full border border-slate-700 bg-brand-navy-2 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-primary/50 hover:text-primary transition-colors"
+                }
+              >
+                {svc}
+              </button>
+            )
+          })}
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-20 rounded-xl border border-slate-700/40 bg-brand-navy-2/40 animate-pulse" />
+            ))}
+          </div>
+        ) : topRows.length === 0 ? (
+          <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
+            <p className="text-sm text-slate-400">
+              Not enough data yet for this service line - the radar grows with every registration.
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {topRows.map((r, i) => {
+              const label = buildRadarCellLabel(r)
+              const emerging = r.have_pct === null
+              return (
+                <li key={`${label}-${i}`}>
+                  <button
+                    onClick={() =>
+                      onAim(
+                        { region: r.region, industry: r.industry, size: r.size_band, assignee: r.assignee_band },
+                        label,
+                      )
+                    }
+                    className="group w-full rounded-xl border border-slate-700/50 bg-brand-navy-2/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_24px_-12px_rgb(var(--brand-teal-rgb)_/_0.5)]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-200 text-pretty">{label}</p>
+                        <p className="mt-2 text-3xl font-bold text-primary leading-none">
+                          {Math.round(r.want_pct)}%
+                          <span className="ml-2 text-xs font-medium text-slate-400 align-middle">investing here</span>
+                        </p>
+                        {emerging ? (
+                          <p className="mt-2 text-xs text-slate-400">Emerging - no established provision measured</p>
+                        ) : (
+                          <span className="mt-2 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                            gap +{Math.round(r.unmet_pct)}
+                          </span>
+                        )}
+                      </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-slate-600 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] text-slate-400">Base: {r.base_n.toLocaleString()} organizations</span>
+                      {r.confidence === "limited" && (
+                        <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                          Limited sample
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ZoneHeader({
   number,
   title,
@@ -1479,6 +1706,10 @@ export function VendorPremiumDashboardClient() {
   const [whitespaceError, setWhitespaceError] = useState<string | null>(null)
   const [demandLoading, setDemandLoading] = useState(true)
 
+  // Demand Radar aim: breadcrumb near the filter bar + a scroll target on it.
+  const [radarBreadcrumb, setRadarBreadcrumb] = useState<string | null>(null)
+  const filterBarRef = useRef<HTMLDivElement>(null)
+
   const resetFilters = () => {
   setSelectedRegion(null)
   setSelectedIndustry(null)
@@ -1487,6 +1718,25 @@ export function VendorPremiumDashboardClient() {
   setSelectedTraveller(null)
   setSelectedTech(null)
   setSelectedAi(null)
+  setRadarBreadcrumb(null)
+  }
+
+  // Click-to-aim from Demand Radar: point the global filters at the chosen cell
+  // (dims it doesn't carry reset to "All"), surface the breadcrumb, and scroll to
+  // the filter bar so the rest of the dashboard reflects the segment.
+  const aimAtRadarCell = (
+    cell: { region: string | null; industry: string | null; size: string | null; assignee: string | null },
+    label: string,
+  ) => {
+    setSelectedRegion(cell.region)
+    setSelectedIndustry(cell.industry)
+    setSelectedSize(cell.size)
+    setSelectedAssignee(cell.assignee)
+    setSelectedTraveller(null)
+    setSelectedTech(null)
+    setSelectedAi(null)
+    setRadarBreadcrumb(label)
+    filterBarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   // True when at least one filter is set to something other than its default ("All").
@@ -2231,8 +2481,24 @@ export function VendorPremiumDashboardClient() {
             {/* =================================================================== */}
             {/* FILTERS FOR SERVICE DEMAND, DEMAND PIPELINE & COMMERCIAL BREAKDOWN */}
             {/* =================================================================== */}
-            
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+
+            {radarBreadcrumb && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2">
+                <p className="text-xs text-slate-200 min-w-0">
+                  <span className="font-semibold text-primary">Viewing:</span> {radarBreadcrumb}{" "}
+                  <span className="text-slate-400">- from Demand Radar</span>
+                </p>
+                <button
+                  onClick={() => setRadarBreadcrumb(null)}
+                  className="shrink-0 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                  aria-label="Dismiss Demand Radar selection"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
               <div className="flex items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
                   <Filter className="h-5 w-5 text-primary" />
@@ -2378,6 +2644,9 @@ export function VendorPremiumDashboardClient() {
               error={whitespaceError}
               isFiltered={isFiltered}
             />
+
+            {/* DEMAND RADAR: service-first ranked segments (independent of global filters). */}
+            <DemandRadarPanel onAim={aimAtRadarCell} />
 
             {/* DEMAND VS PROVISION: Emerging (E13) and Established (Q49) side by side */}
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
