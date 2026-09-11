@@ -7,6 +7,7 @@ import {
   Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -1812,55 +1813,68 @@ function RfpRadarPanel() {
                           const isOpen = openKey === key
                           const fullName = cell.category.replace(/\s*\|\s*/, " · ")
                           return (
-                            <div key={key} className="relative">
-                              <button
-                                onClick={() => setOpenKey(isOpen ? null : key)}
-                                aria-expanded={isOpen}
-                                aria-label={`${fullName}: ${cell.total_n} organizations`}
-                                className={`relative flex h-12 w-full items-center justify-center rounded-lg transition hover:brightness-110 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
-                                  isOpen ? "outline outline-2 outline-primary/70" : ""
-                                }`}
+                            // Radix Popover: content is portaled to the body (so the
+                            // overflow-x-auto scroll wrapper cannot clip it) and flips
+                            // from top to bottom automatically when the top row would
+                            // collide with the panel edge. collisionPadding keeps a
+                            // margin from the viewport/border on every side.
+                            <Popover
+                              key={key}
+                              open={isOpen}
+                              onOpenChange={(o) => setOpenKey(o ? key : null)}
+                            >
+                              <PopoverTrigger asChild>
+                                <button
+                                  aria-label={`${fullName}: ${cell.total_n} organizations`}
+                                  className={`relative flex h-12 w-full items-center justify-center rounded-lg transition hover:brightness-110 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
+                                    isOpen ? "outline outline-2 outline-primary/70" : ""
+                                  }`}
+                                >
+                                  <span className="text-sm font-semibold">{cell.total_n.toLocaleString()}</span>
+                                  {split && (
+                                    <span className="absolute inset-x-1.5 bottom-1 flex h-1 overflow-hidden rounded-full bg-brand-navy-3/70">
+                                      <span
+                                        className="h-full bg-primary"
+                                        style={{ width: `${(cell.yes_n! / cell.total_n) * 100}%` }}
+                                      />
+                                      <span
+                                        className="h-full bg-primary/40"
+                                        style={{ width: `${(cell.considering_n! / cell.total_n) * 100}%` }}
+                                      />
+                                    </span>
+                                  )}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                side="top"
+                                align="center"
+                                sideOffset={8}
+                                collisionPadding={12}
+                                className="w-52 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left text-popover-foreground shadow-xl"
                               >
-                                <span className="text-sm font-semibold">{cell.total_n.toLocaleString()}</span>
-                                {split && (
-                                  <span className="absolute inset-x-1.5 bottom-1 flex h-1 overflow-hidden rounded-full bg-brand-navy-3/70">
-                                    <span
-                                      className="h-full bg-primary"
-                                      style={{ width: `${(cell.yes_n! / cell.total_n) * 100}%` }}
-                                    />
-                                    <span
-                                      className="h-full bg-primary/40"
-                                      style={{ width: `${(cell.considering_n! / cell.total_n) * 100}%` }}
-                                    />
-                                  </span>
-                                )}
-                              </button>
-                              {isOpen && (
-                                <div className="absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left shadow-xl">
-                                  <p className="text-xs font-semibold text-slate-100 text-pretty">{fullName}</p>
-                                  <dl className="mt-2 space-y-1 text-[11px]">
-                                    <div className="flex justify-between gap-2">
-                                      <dt className="text-slate-400">Organizations</dt>
-                                      <dd className="font-semibold text-primary">{cell.total_n.toLocaleString()}</dd>
-                                    </div>
-                                    {split && (
-                                      <>
-                                        <div className="flex justify-between gap-2">
-                                          <dt className="text-slate-400">In or through</dt>
-                                          <dd className="font-medium text-slate-200">{cell.yes_n!.toLocaleString()}</dd>
-                                        </div>
-                                        <div className="flex justify-between gap-2">
-                                          <dt className="text-slate-400">Considering</dt>
-                                          <dd className="font-medium text-slate-200">
-                                            {cell.considering_n!.toLocaleString()}
-                                          </dd>
-                                        </div>
-                                      </>
-                                    )}
-                                  </dl>
-                                </div>
-                              )}
-                            </div>
+                                <p className="text-xs font-semibold text-slate-100 text-pretty">{fullName}</p>
+                                <dl className="mt-2 space-y-1 text-[11px]">
+                                  <div className="flex justify-between gap-2">
+                                    <dt className="text-slate-400">Organizations</dt>
+                                    <dd className="font-semibold text-primary">{cell.total_n.toLocaleString()}</dd>
+                                  </div>
+                                  {split && (
+                                    <>
+                                      <div className="flex justify-between gap-2">
+                                        <dt className="text-slate-400">In or through</dt>
+                                        <dd className="font-medium text-slate-200">{cell.yes_n!.toLocaleString()}</dd>
+                                      </div>
+                                      <div className="flex justify-between gap-2">
+                                        <dt className="text-slate-400">Considering</dt>
+                                        <dd className="font-medium text-slate-200">
+                                          {cell.considering_n!.toLocaleString()}
+                                        </dd>
+                                      </div>
+                                    </>
+                                  )}
+                                </dl>
+                              </PopoverContent>
+                            </Popover>
                           )
                         })}
                         {/* Row margin: industry shape total */}
@@ -2545,7 +2559,7 @@ export function VendorPremiumDashboardClient() {
     { value: "1,000 – 4,999", label: "1,000 – 4,999" },
     { value: "5,000 – 9,999", label: "5,000 – 9,999" },
     { value: "10,000 – 24,999", label: "10,000 – 24,999" },
-    { value: "25,000 – 49,999", label: "25,000 – 49,999" },
+    { value: "25,000 – 49,999", label: "25,000 ��� 49,999" },
     { value: "50,000+", label: "50,000+" },
   ]
 
