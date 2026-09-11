@@ -269,6 +269,16 @@ function displayVendorLabel(qCode: string | undefined | null, fallbackLabel: str
 // neutralizeDirection) keys off this constant.
 const NEW_VENDOR_PILLAR = "Experience & Outcomes"
 
+// The Technology Buyer Journey pillar (get_vendor_commercial_current, eight
+// questions) is also newly opened. It carries the NEW pill and its own caption,
+// but NONE of the Experience & Outcomes-specific behavior (hidden question,
+// subgrouping, direction neutralizing) — those stay keyed to NEW_VENDOR_PILLAR.
+const TECH_BUYER_PILLAR = "Technology Buyer Journey"
+const NEW_VENDOR_PILLARS = new Set<string>([NEW_VENDOR_PILLAR, TECH_BUYER_PILLAR])
+function isNewVendorPillar(name: string): boolean {
+  return NEW_VENDOR_PILLARS.has(name)
+}
+
 // Render-site-only display names for vendor pillars. Group keys are never mutated.
 // Empty today: the new pillar renders under its own name, and every pre-existing
 // pillar (including Market Demand Intelligence) renders unadorned as before.
@@ -3841,7 +3851,7 @@ export function VendorPremiumDashboardClient() {
                               />
                               <div className="flex flex-wrap items-center gap-2">
                                 <h4 className="text-base font-semibold text-slate-100 text-pretty">{displayPillarName(pillarName)}</h4>
-                                {pillarName === NEW_VENDOR_PILLAR && <NewPill />}
+                                {isNewVendorPillar(pillarName) && <NewPill />}
                               </div>
                               <p className="text-xs text-slate-400">
                                 {visibleQuestions.length} {visibleQuestions.length === 1 ? "data point" : "data points"}
@@ -3874,11 +3884,16 @@ export function VendorPremiumDashboardClient() {
                       </button>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-semibold text-slate-100 text-pretty">{displayPillarName(focusedBreakdown)}</h3>
-                        {focusedBreakdown === NEW_VENDOR_PILLAR && <NewPill />}
+                        {isNewVendorPillar(focusedBreakdown) && <NewPill />}
                       </div>
                       {focusedBreakdown === NEW_VENDOR_PILLAR && (
                         <p className="text-sm text-slate-400 mt-2">
                           Opened this month. Early readings, growing with every event registration.
+                        </p>
+                      )}
+                      {focusedBreakdown === TECH_BUYER_PILLAR && (
+                        <p className="text-sm text-slate-400 mt-2">
+                          The buyer&apos;s side of the technology story - grows with every full survey response.
                         </p>
                       )}
                       {focusedBaseRange && <p className="text-xs text-slate-500 mt-1">{focusedBaseRange}</p>}
