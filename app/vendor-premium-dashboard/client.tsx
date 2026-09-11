@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, Fragment } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -1570,67 +1570,47 @@ function rfpSubsectorPhrase(r: RfpRow): string {
   return `${r.total_n.toLocaleString()} ${phrased}`
 }
 
-// One shape group ("By region" / "By industry" / "By company size"). Bar length
-// scales to the group max; a subtle two-segment fill appears only where split.
-function RfpShapeGroup({ title, rows }: { title: string; rows: RfpRow[] }) {
-  if (rows.length === 0) return null
-  const sorted = [...rows].sort((a, b) => b.total_n - a.total_n)
-  const max = Math.max(...sorted.map((r) => r.total_n), 1)
-  return (
-    <div>
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">{title}</p>
-      <div className="space-y-2">
-        {sorted.map((r, i) => {
-          const split = rfpHasSplit(r)
-          const barPct = Math.max(4, (r.total_n / max) * 100)
-          return (
-            <div key={`${r.category}-${i}`} className="flex items-center gap-3">
-              <span className="w-32 shrink-0 truncate text-xs text-slate-300" title={r.category}>
-                {r.category}
-              </span>
-              <div className="relative h-2.5 flex-1 rounded-full bg-slate-700/40">
-                <div className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full" style={{ width: `${barPct}%` }}>
-                  {split ? (
-                    <>
-                      <div className="h-full bg-primary" style={{ width: `${(r.yes_n! / r.total_n) * 100}%` }} />
-                      <div className="h-full bg-primary/40" style={{ width: `${(r.considering_n! / r.total_n) * 100}%` }} />
-                    </>
-                  ) : (
-                    <div className="h-full w-full bg-primary/70" />
-                  )}
-                </div>
-              </div>
-              <span className="w-10 shrink-0 text-right text-xs font-semibold text-slate-200">
-                {r.total_n.toLocaleString()}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
+// Count-based tint on the Demand Radar accent scale (TILE_BG/TILE_TEXT),
+// recomputed from the live maximum cell every load so the grid never needs a
+// hardcoded threshold. Everything scales purely from the rows returned.
+function rfpTileStep(count: number, max: number): number {
+  if (max <= 0) return 0
+  const ratio = count / max
+  if (ratio >= 0.8) return 4
+  if (ratio >= 0.6) return 3
+  if (ratio >= 0.4) return 2
+  if (ratio >= 0.2) return 1
+  return 0
 }
 
-// Small fixed-width two-segment indicator for a hotspot row (split only).
-function RfpSplitPips({ row }: { row: RfpRow }) {
-  return (
-    <div className="hidden h-2 w-20 overflow-hidden rounded-full bg-slate-700/40 sm:flex" aria-hidden="true">
-      <div className="h-full bg-primary" style={{ width: `${(row.yes_n! / row.total_n) * 100}%` }} />
-      <div className="h-full bg-primary/40" style={{ width: `${(row.considering_n! / row.total_n) * 100}%` }} />
-    </div>
-  )
+// Generic, data-driven shortener: drop any parenthetical so long region labels
+// stay compact as column headers. This is a transformation, not a hardcoded
+// list of names, so new regions shorten automatically.
+function rfpShortLabel(category: string): string {
+  return category
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+// 'cell' categories are "Industry | Region"; return [industry, region].
+function rfpSplitCell(category: string): [string, string] {
+  const parts = category.split("|").map((s) => s.trim())
+  return [parts[0] ?? category, parts[1] ?? ""]
 }
 
 function RfpRadarPanel() {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAllSub, setShowAllSub] = useState(false)
+  // Click-opened tile tooltip, keyed "industry||region"; one at a time.
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
+      setOpenKey(null)
       const { data } = await supabase.rpc("get_vendor_rfp_radar")
       if (cancelled) return
       const norm: RfpRow[] = Array.isArray(data)
@@ -1660,17 +1640,41 @@ function RfpRadarPanel() {
   const shapeRegion = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "region"), [rows])
   const shapeIndustry = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "industry"), [rows])
   const shapeSize = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "size"), [rows])
-  const cells = useMemo(
-    () => rows.filter((r) => r.row_type === "cell").sort((a, b) => b.total_n - a.total_n),
-    [rows],
-  )
-  const anyShapeSplit = useMemo(
-    () => [...shapeRegion, ...shapeIndustry, ...shapeSize].some(rfpHasSplit),
-    [shapeRegion, shapeIndustry, shapeSize],
-  )
 
-  const visibleSubs = showAllSub ? subs : subs.slice(0, 8)
-  const extraSubs = subs.length - 8
+  // Build the matrix purely from the returned cell rows. Row/column sets are the
+  // industries and regions that actually appear; totals + ordering come from the
+  // shape rows. Nothing here is hardcoded, so more data simply means more tiles.
+  const grid = useMemo(() => {
+    const cellRows = rows.filter((r) => r.row_type === "cell")
+    const cellMap = new Map<string, RfpRow>()
+    const industrySet = new Set<string>()
+    const regionSet = new Set<string>()
+    for (const c of cellRows) {
+      const [ind, reg] = rfpSplitCell(c.category)
+      if (!ind || !reg) continue
+      cellMap.set(`${ind}||${reg}`, c)
+      industrySet.add(ind)
+      regionSet.add(reg)
+    }
+    const indTotal = new Map(shapeIndustry.map((r) => [r.category, r.total_n]))
+    const regTotal = new Map(shapeRegion.map((r) => [r.category, r.total_n]))
+    const industries = [...industrySet].sort((a, b) => (indTotal.get(b) ?? 0) - (indTotal.get(a) ?? 0))
+    const regions = [...regionSet].sort((a, b) => (regTotal.get(b) ?? 0) - (regTotal.get(a) ?? 0))
+    const maxCell = Math.max(...cellRows.map((c) => c.total_n), 1)
+    const anySplit = cellRows.some(rfpHasSplit)
+    return { cellMap, industries, regions, indTotal, regTotal, maxCell, anySplit }
+  }, [rows, shapeIndustry, shapeRegion])
+
+  const sizeStrip = useMemo(() => {
+    const sorted = [...shapeSize].sort((a, b) => b.total_n - a.total_n)
+    const sum = sorted.reduce((acc, r) => acc + r.total_n, 0)
+    const max = Math.max(...sorted.map((r) => r.total_n), 1)
+    return { sorted, sum, max }
+  }, [shapeSize])
+
+  const hasGrid = grid.industries.length > 0 && grid.regions.length > 0
+  const hasAnyBreakdown = hasGrid || subs.length > 0 || sizeStrip.sorted.length > 0
+  const gridCols = `minmax(112px,1.3fr) repeat(${grid.regions.length}, minmax(60px,1fr)) minmax(48px,auto)`
 
   return (
     <div>
@@ -1685,41 +1689,45 @@ function RfpRadarPanel() {
 
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         {loading ? (
+          // Skeleton shaped like the grid: headline bar, chip row, matrix block.
           <div className="space-y-5">
-            <div className="h-24 rounded-xl bg-brand-navy-2/40 animate-pulse" />
-            <div className="h-4 w-2/3 rounded bg-brand-navy-2/40 animate-pulse" />
-            <div className="grid gap-5 sm:grid-cols-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-32 rounded-xl bg-brand-navy-2/40 animate-pulse" />
+            <div className="h-12 w-3/4 rounded-xl bg-brand-navy-2/40 animate-pulse" />
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-6 w-24 rounded-full bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
-            <div className="space-y-2">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-10 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+            <div className="space-y-1.5">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 rounded-lg bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
           </div>
         ) : !headline ? (
           <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
             <p className="text-sm text-slate-400">
-              No RFP activity to report yet - the radar grows with every registration.
+              No RFP activity to report yet. The radar grows with every registration.
             </p>
           </div>
         ) : (
           <>
-            {/* 1. HEADLINE BAND */}
-            <div className="rounded-xl border border-primary/25 bg-gradient-to-br from-primary/10 to-transparent p-5 lg:p-6">
-              <p className="text-2xl lg:text-3xl font-bold leading-tight text-slate-100 text-balance">
-                <span className="text-primary">{headline.total_n.toLocaleString()}</span> organizations in the benchmark
-                are in or near a Global Mobility RFP.
-              </p>
+            {/* 1. HEADLINE ROW — hero count + inline stat chips, one line on desktop. */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <div className="flex items-baseline gap-3">
+                <span className="text-4xl lg:text-5xl font-bold leading-none text-primary">
+                  {headline.total_n.toLocaleString()}
+                </span>
+                <span className="max-w-[24ch] text-sm leading-snug text-slate-200 text-pretty lg:text-base">
+                  organizations in or near a Global Mobility RFP
+                </span>
+              </div>
               {rfpHasSplit(headline) && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                     <span className="h-2 w-2 rounded-full bg-primary" />
-                    {headline.yes_n!.toLocaleString()} in or recently through one
+                    {headline.yes_n!.toLocaleString()} in or recently through
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-700/30 px-3 py-1 text-sm font-medium text-slate-200">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-700/30 px-3 py-1 text-xs font-medium text-slate-200">
                     <span className="h-2 w-2 rounded-full bg-primary/40" />
                     {headline.considering_n!.toLocaleString()} considering
                   </span>
@@ -1727,92 +1735,194 @@ function RfpRadarPanel() {
               )}
             </div>
 
-            {/* 2. SUB-SECTOR STRIP (omitted entirely when no subsector rows) */}
+            {/* 2. SUB-SECTOR CHIPS — wrap freely, no cap. Omitted when none. */}
             {subs.length > 0 && (
-              <p className="mt-4 text-xs leading-relaxed text-slate-400">
-                <span className="text-slate-500">In the market now includes:</span>{" "}
-                {visibleSubs.map((r, i) => (
-                  <span key={`${r.category}-${i}`}>
-                    {i > 0 && " · "}
+              <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs text-slate-500">In the market now:</span>
+                {subs.map((r, i) => (
+                  <span
+                    key={`${r.category}-${i}`}
+                    className="rounded-full border border-slate-700 bg-brand-navy-2 px-2.5 py-1 text-xs text-slate-300"
+                  >
                     {rfpSubsectorPhrase(r)}
                   </span>
                 ))}
-                {!showAllSub && extraSubs > 0 && (
-                  <>
-                    {" · "}
-                    <button
-                      onClick={() => setShowAllSub(true)}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      +{extraSubs} more
-                    </button>
-                  </>
-                )}
-              </p>
+              </div>
             )}
 
-            {/* 3. SHAPE BARS */}
-            <div className="mt-6">
-              {anyShapeSplit && (
-                <div className="mb-3 flex items-center gap-4 text-[10px] text-slate-400">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-3 rounded-sm bg-primary" />
-                    In or through
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-3 rounded-sm bg-primary/40" />
-                    Considering
-                  </span>
-                </div>
-              )}
-              <div className="grid gap-6 sm:grid-cols-3">
-                <RfpShapeGroup title="By region" rows={shapeRegion} />
-                <RfpShapeGroup title="By industry" rows={shapeIndustry} />
-                <RfpShapeGroup title="By company size" rows={shapeSize} />
-              </div>
-            </div>
-
-            {/* 4. HOTSPOT LIST */}
-            {cells.length > 0 && (
+            {/* 3. THE GRID — industry rows x region columns, margins as totals. */}
+            {hasGrid && (
               <div className="mt-6">
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                  Industry and region hotspots
-                </p>
-                <ul className="space-y-2">
-                  {cells.map((c, i) => {
-                    const split = rfpHasSplit(c)
-                    const isTop = i === 0
-                    const name = c.category.replace(/\s*\|\s*/, " · ")
-                    return (
-                      <li key={`${c.category}-${i}`}>
+                {grid.anySplit && (
+                  <div className="mb-3 flex items-center gap-4 text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-3 rounded-sm bg-primary" />
+                      In or through
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-3 rounded-sm bg-primary/40" />
+                      Considering
+                    </span>
+                  </div>
+                )}
+                <div className="overflow-x-auto pb-1">
+                  <div className="grid min-w-[520px] items-stretch gap-1.5" style={{ gridTemplateColumns: gridCols }}>
+                    {/* Header row: blank corner, region names, totals corner */}
+                    <div className="sticky left-0 z-20 bg-brand-navy-3" />
+                    {grid.regions.map((reg) => (
+                      <div
+                        key={`h-${reg}`}
+                        className="px-1 pb-1 text-center text-[10px] font-medium leading-tight text-slate-400"
+                        title={reg}
+                      >
+                        {rfpShortLabel(reg)}
+                      </div>
+                    ))}
+                    <div className="pb-1 pr-1 text-right text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Total
+                    </div>
+
+                    {/* Industry rows */}
+                    {grid.industries.map((ind) => (
+                      <Fragment key={`row-${ind}`}>
                         <div
-                          className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
-                            isTop
-                              ? "border-primary/50 bg-primary/5 ring-1 ring-primary/40 shadow-[0_0_16px_-4px_rgb(var(--brand-teal-rgb)_/_0.5)]"
-                              : "border-slate-700/50 bg-brand-navy-2/40"
-                          }`}
+                          className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300"
+                          title={ind}
                         >
-                          <span className="min-w-0 truncate text-sm text-slate-200" title={name}>
-                            {name}
-                          </span>
-                          <div className="flex shrink-0 items-center gap-3">
-                            {split && <RfpSplitPips row={c} />}
-                            <span className="w-10 text-right text-sm font-semibold text-slate-100">
-                              {c.total_n.toLocaleString()}
-                            </span>
-                          </div>
+                          <span className="truncate">{ind}</span>
                         </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+                        {grid.regions.map((reg) => {
+                          const key = `${ind}||${reg}`
+                          const cell = grid.cellMap.get(key)
+                          if (!cell) {
+                            return (
+                              <div key={key} className="flex h-12 items-center justify-center">
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full bg-slate-600/50"
+                                  title="Not shown to protect contributor anonymity"
+                                />
+                                <span className="sr-only">
+                                  {ind} in {rfpShortLabel(reg)}: not shown to protect contributor anonymity
+                                </span>
+                              </div>
+                            )
+                          }
+                          const step = rfpTileStep(cell.total_n, grid.maxCell)
+                          const split = rfpHasSplit(cell)
+                          const isOpen = openKey === key
+                          const fullName = cell.category.replace(/\s*\|\s*/, " · ")
+                          return (
+                            <div key={key} className="relative">
+                              <button
+                                onClick={() => setOpenKey(isOpen ? null : key)}
+                                aria-expanded={isOpen}
+                                aria-label={`${fullName}: ${cell.total_n} organizations`}
+                                className={`relative flex h-12 w-full items-center justify-center rounded-lg transition hover:brightness-110 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
+                                  isOpen ? "outline outline-2 outline-primary/70" : ""
+                                }`}
+                              >
+                                <span className="text-sm font-semibold">{cell.total_n.toLocaleString()}</span>
+                                {split && (
+                                  <span className="absolute inset-x-1.5 bottom-1 flex h-1 overflow-hidden rounded-full bg-brand-navy-3/70">
+                                    <span
+                                      className="h-full bg-primary"
+                                      style={{ width: `${(cell.yes_n! / cell.total_n) * 100}%` }}
+                                    />
+                                    <span
+                                      className="h-full bg-primary/40"
+                                      style={{ width: `${(cell.considering_n! / cell.total_n) * 100}%` }}
+                                    />
+                                  </span>
+                                )}
+                              </button>
+                              {isOpen && (
+                                <div className="absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left shadow-xl">
+                                  <p className="text-xs font-semibold text-slate-100 text-pretty">{fullName}</p>
+                                  <dl className="mt-2 space-y-1 text-[11px]">
+                                    <div className="flex justify-between gap-2">
+                                      <dt className="text-slate-400">Organizations</dt>
+                                      <dd className="font-semibold text-primary">{cell.total_n.toLocaleString()}</dd>
+                                    </div>
+                                    {split && (
+                                      <>
+                                        <div className="flex justify-between gap-2">
+                                          <dt className="text-slate-400">In or through</dt>
+                                          <dd className="font-medium text-slate-200">{cell.yes_n!.toLocaleString()}</dd>
+                                        </div>
+                                        <div className="flex justify-between gap-2">
+                                          <dt className="text-slate-400">Considering</dt>
+                                          <dd className="font-medium text-slate-200">
+                                            {cell.considering_n!.toLocaleString()}
+                                          </dd>
+                                        </div>
+                                      </>
+                                    )}
+                                  </dl>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {/* Row margin: industry shape total */}
+                        <div className="flex items-center justify-end pr-1 text-sm font-bold text-slate-100">
+                          {grid.indTotal.has(ind) ? (grid.indTotal.get(ind) as number).toLocaleString() : ""}
+                        </div>
+                      </Fragment>
+                    ))}
+
+                    {/* Footer row: column margins = region shape totals */}
+                    <div className="sticky left-0 z-10 bg-brand-navy-3 pr-2 pt-1 text-right text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Total
+                    </div>
+                    {grid.regions.map((reg) => (
+                      <div key={`f-${reg}`} className="pt-1 text-center text-sm font-bold text-primary">
+                        {grid.regTotal.has(reg) ? (grid.regTotal.get(reg) as number).toLocaleString() : ""}
+                      </div>
+                    ))}
+                    <div />
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* 4. SIZE STRIP — proportional segments from the size shape rows. */}
+            {sizeStrip.sorted.length > 0 && (
+              <div className="mt-6">
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">By company size</p>
+                <div className="overflow-x-auto">
+                  <div className="flex min-w-[420px] overflow-hidden rounded-lg border border-slate-700/50">
+                    {sizeStrip.sorted.map((r, i) => {
+                      const widthPct = sizeStrip.sum > 0 ? (r.total_n / sizeStrip.sum) * 100 : 100 / sizeStrip.sorted.length
+                      const step = rfpTileStep(r.total_n, sizeStrip.max)
+                      return (
+                        <div
+                          key={`${r.category}-${i}`}
+                          style={{ width: `${widthPct}%` }}
+                          className={`flex min-w-[96px] items-center justify-center px-2 py-2.5 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
+                            i > 0 ? "border-l border-brand-navy-3/50" : ""
+                          }`}
+                          title={`${r.category} · ${r.total_n.toLocaleString()}`}
+                        >
+                          <span className="truncate text-[11px] font-medium">
+                            {r.category} · {r.total_n.toLocaleString()}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Only-headline state */}
+            {!hasAnyBreakdown && (
+              <p className="mt-4 text-sm text-slate-400">Breakdowns appear as the benchmark grows.</p>
             )}
 
             {/* 5. CAPTION (persistent) */}
             <p className="mt-6 text-[11px] leading-snug text-slate-500">
-              Counts of organizations, not percentages. Some breakdowns are withheld where groups are too small to keep
-              contributors anonymous. Grows with every registration.
+              Counts of organizations, not percentages. Some breakdowns are withheld to keep contributors anonymous.
+              Grows with every registration.
             </p>
           </>
         )}
