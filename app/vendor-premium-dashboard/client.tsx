@@ -1522,8 +1522,9 @@ function RadarBar({ label, row }: { label: string; row: RadarRow }) {
 
 // =============================================================================
 // RFP RADAR — read-only display of get_vendor_rfp_radar() (no args, LIVE RPC).
-// A vertical funnel: headline total, then a ranked hotspot list (cell rows),
-// then an industry band that partitions the headline, then firm-type chips.
+// A ranked hotspot list: headline total, then every cell row ("Industry |
+// Region") ranked by count with the top row ringed, then firm-type chips. The
+// list carries the geography; industry/region/size shape rows are not rendered.
 // Counts only, never percentages. The yes/considering split is rendered ONLY
 // where the RPC provides both numbers (never derived or estimated). Everything
 // renders purely from returned rows: no hardcoded categories, counts, caps, or
@@ -1571,19 +1572,6 @@ function rfpSubsectorPhrase(r: RfpRow): string {
   return `${r.total_n.toLocaleString()} ${phrased}`
 }
 
-// Count-based tint on the Demand Radar accent scale (TILE_BG/TILE_TEXT),
-// recomputed from the live maximum cell every load so the grid never needs a
-// hardcoded threshold. Everything scales purely from the rows returned.
-function rfpTileStep(count: number, max: number): number {
-  if (max <= 0) return 0
-  const ratio = count / max
-  if (ratio >= 0.8) return 4
-  if (ratio >= 0.6) return 3
-  if (ratio >= 0.4) return 2
-  if (ratio >= 0.2) return 1
-  return 0
-}
-
 function RfpRadarPanel() {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpRow[]>([])
@@ -1619,16 +1607,8 @@ function RfpRadarPanel() {
     () => rows.filter((r) => r.row_type === "subsector").sort((a, b) => b.total_n - a.total_n),
     [rows],
   )
-  // Industry shape rows, ranked; feed both the funnel band and its proportions.
-  const shapeIndustry = useMemo(
-    () =>
-      rows
-        .filter((r) => r.row_type === "shape" && r.dimension === "industry")
-        .sort((a, b) => b.total_n - a.total_n),
-    [rows],
-  )
-
   // TIER 2 — every cell row ranked by total, with the live max for bar scaling.
+  // The list carries the geography; industry/region shape rows are not rendered.
   const hotspots = useMemo(() => {
     const cells = rows.filter((r) => r.row_type === "cell").sort((a, b) => b.total_n - a.total_n)
     const max = Math.max(...cells.map((c) => c.total_n), 1)
@@ -1636,25 +1616,12 @@ function RfpRadarPanel() {
     return { cells, max, anySplit }
   }, [rows])
 
-  // TIER 3 — industry band proportions. Segments sum to the industry total.
-  const band = useMemo(() => {
-    const sum = shapeIndustry.reduce((acc, r) => acc + r.total_n, 0)
-    const max = Math.max(...shapeIndustry.map((r) => r.total_n), 1)
-    const pct = (r: RfpRow) => (sum > 0 ? (r.total_n / sum) * 100 : 100 / Math.max(1, shapeIndustry.length))
-    return { sum, max, pct }
-  }, [shapeIndustry])
-
-  // TIER 4 — computed lead-in numerator.
+  // TIER 3 — computed firm-type lead-in numerator.
   const subsSum = useMemo(() => subs.reduce((acc, r) => acc + r.total_n, 0), [subs])
 
-  // A segment gets its label inline only when wide enough; otherwise it moves to
-  // the wrapping row beneath. Threshold is a width heuristic, not a data rule.
-  const NARROW_PCT = 9
-
   const hasHotspots = hotspots.cells.length > 0
-  const hasBand = shapeIndustry.length > 0
   const hasFirmTypes = subs.length > 0
-  const hasAnyBreakdown = hasHotspots || hasBand || hasFirmTypes
+  const hasAnyBreakdown = hasHotspots || hasFirmTypes
 
   return (
     <div>
@@ -1669,15 +1636,14 @@ function RfpRadarPanel() {
 
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         {loading ? (
-          // Skeleton shaped like the cascade: headline, ranked list, band, chips.
+          // Skeleton shaped like the ranked list: headline, rows, firm-type chips.
           <div className="space-y-5">
             <div className="h-12 w-3/4 rounded-xl bg-brand-navy-2/40 animate-pulse" />
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-6 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+            <div className="space-y-1">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-8 rounded-lg bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
-            <div className="h-9 rounded-lg bg-brand-navy-2/40 animate-pulse" />
             <div className="flex flex-wrap gap-2">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="h-6 w-24 rounded-full bg-brand-navy-2/40 animate-pulse" />
@@ -1738,40 +1704,55 @@ function RfpRadarPanel() {
                         </span>
                       </div>
                     )}
-                    <ul className="space-y-1.5">
+                    <ul className="space-y-1">
                       {hotspots.cells.map((c, i) => {
                         const label = c.category.replace(/\s*\|\s*/, " · ")
                         const barPct = Math.max(4, (c.total_n / hotspots.max) * 100)
                         const split = rfpHasSplit(c)
+                        const isTop = i === 0
                         return (
-                          <li key={`${c.category}-${i}`} className="flex items-center gap-3">
-                            <span className="w-32 shrink-0 truncate text-xs text-slate-300 sm:w-48" title={label}>
-                              {label}
-                            </span>
-                            <div className="relative h-2.5 flex-1 rounded-full bg-slate-700/40">
-                              <div
-                                className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
-                                style={{ width: `${barPct}%` }}
+                          <li key={`${c.category}-${i}`}>
+                            <div
+                              className={`flex items-center gap-3 rounded-lg px-2 py-1.5 ${
+                                isTop
+                                  ? "bg-primary/5 ring-1 ring-primary/40 shadow-[0_0_16px_-4px_rgb(var(--brand-teal-rgb)_/_0.5)]"
+                                  : ""
+                              }`}
+                            >
+                              <span className="w-4 shrink-0 text-right text-[11px] font-medium tabular-nums text-slate-500">
+                                {i + 1}
+                              </span>
+                              <span
+                                className={`w-28 shrink-0 truncate text-xs sm:w-48 ${isTop ? "text-slate-100" : "text-slate-300"}`}
+                                title={label}
                               >
-                                {split ? (
-                                  <>
-                                    <div
-                                      className="h-full bg-primary"
-                                      style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
-                                    />
-                                    <div
-                                      className="h-full bg-primary/40"
-                                      style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
-                                    />
-                                  </>
-                                ) : (
-                                  <div className="h-full w-full bg-primary/70" />
-                                )}
+                                {label}
+                              </span>
+                              <div className="relative h-2.5 flex-1 rounded-full bg-slate-700/40">
+                                <div
+                                  className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
+                                  style={{ width: `${barPct}%` }}
+                                >
+                                  {split ? (
+                                    <>
+                                      <div
+                                        className="h-full bg-primary"
+                                        style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
+                                      />
+                                      <div
+                                        className="h-full bg-primary/40"
+                                        style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
+                                      />
+                                    </>
+                                  ) : (
+                                    <div className="h-full w-full bg-primary/70" />
+                                  )}
+                                </div>
                               </div>
+                              <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
+                                {c.total_n.toLocaleString()}
+                              </span>
                             </div>
-                            <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
-                              {c.total_n.toLocaleString()}
-                            </span>
                           </li>
                         )
                       })}
@@ -1779,51 +1760,7 @@ function RfpRadarPanel() {
                   </div>
                 )}
 
-                {/* TIER 3 — INDUSTRY BAND: one bar partitioning the headline total */}
-                {hasBand && (
-                  <div className="mt-6">
-                    <div className="flex w-full overflow-hidden rounded-lg border border-slate-700/50">
-                      {shapeIndustry.map((r, i) => {
-                        const widthPct = band.pct(r)
-                        const step = rfpTileStep(r.total_n, band.max)
-                        return (
-                          <div
-                            key={`${r.category}-${i}`}
-                            style={{ width: `${widthPct}%` }}
-                            className={`flex min-w-0 items-center justify-center px-1.5 py-2.5 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
-                              i > 0 ? "border-l border-brand-navy-3/50" : ""
-                            }`}
-                            title={`${r.category} ${r.total_n.toLocaleString()}`}
-                          >
-                            {widthPct >= NARROW_PCT && (
-                              <span className="truncate text-[11px] font-medium">
-                                {r.category} {r.total_n.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {/* Labels for segments too narrow to caption inline */}
-                    {shapeIndustry.some((r) => band.pct(r) < NARROW_PCT) && (
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                        {shapeIndustry
-                          .filter((r) => band.pct(r) < NARROW_PCT)
-                          .map((r, i) => (
-                            <span
-                              key={`${r.category}-narrow-${i}`}
-                              className="flex items-center gap-1.5 text-[11px] text-slate-400"
-                            >
-                              <span className={`h-2 w-2 rounded-sm ${TILE_BG[rfpTileStep(r.total_n, band.max)]}`} />
-                              {r.category} {r.total_n.toLocaleString()}
-                            </span>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TIER 4 — FIRM-TYPE CHIPS with a computed lead-in */}
+                {/* TIER 3 — FIRM-TYPE CHIPS with a computed lead-in */}
                 {hasFirmTypes && (
                   <div className="mt-6 flex flex-wrap items-center gap-1.5">
                     <span className="mr-1 text-xs text-slate-500">
