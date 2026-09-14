@@ -7,6 +7,7 @@ import {
   Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -1576,6 +1577,8 @@ function RfpRadarPanel() {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpRow[]>([])
   const [loading, setLoading] = useState(true)
+  // Click/tap-opened bar tooltip, keyed by row; one open at a time.
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -1704,54 +1707,103 @@ function RfpRadarPanel() {
                         </span>
                       </div>
                     )}
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {hotspots.cells.map((c, i) => {
                         const label = c.category.replace(/\s*\|\s*/, " · ")
                         const barPct = Math.max(4, (c.total_n / hotspots.max) * 100)
                         const split = rfpHasSplit(c)
                         const isTop = i === 0
+                        const key = `${c.category}-${i}`
+                        const sharePct = Math.round((c.total_n / headline.total_n) * 100)
                         return (
-                          <li key={`${c.category}-${i}`}>
+                          <li key={key}>
                             <div
-                              className={`flex items-center gap-3 rounded-lg px-2 py-1.5 ${
+                              className={`rounded-lg px-2 py-1.5 ${
                                 isTop
                                   ? "bg-primary/5 ring-1 ring-primary/40 shadow-[0_0_16px_-4px_rgb(var(--brand-teal-rgb)_/_0.5)]"
                                   : ""
                               }`}
                             >
-                              <span className="w-4 shrink-0 text-right text-[11px] font-medium tabular-nums text-slate-500">
-                                {i + 1}
-                              </span>
-                              <span
-                                className={`w-28 shrink-0 truncate text-xs sm:w-48 ${isTop ? "text-slate-100" : "text-slate-300"}`}
-                                title={label}
+                              {/* Line 1 — full label, never truncated, wraps freely */}
+                              <p
+                                className={`text-xs leading-snug text-pretty ${isTop ? "text-slate-100" : "text-slate-300"}`}
                               >
                                 {label}
-                              </span>
-                              <div className="relative h-2.5 flex-1 rounded-full bg-slate-700/40">
-                                <div
-                                  className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
-                                  style={{ width: `${barPct}%` }}
+                              </p>
+                              {/* Line 2 — rank, proportional bar (tooltip trigger), count */}
+                              <div className="mt-1 flex items-center gap-3">
+                                <span className="w-4 shrink-0 text-right text-[11px] font-medium tabular-nums text-slate-500">
+                                  {i + 1}
+                                </span>
+                                <Popover
+                                  open={openKey === key}
+                                  onOpenChange={(o) => setOpenKey(o ? key : null)}
                                 >
-                                  {split ? (
-                                    <>
-                                      <div
-                                        className="h-full bg-primary"
-                                        style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
-                                      />
-                                      <div
-                                        className="h-full bg-primary/40"
-                                        style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
-                                      />
-                                    </>
-                                  ) : (
-                                    <div className="h-full w-full bg-primary/70" />
-                                  )}
-                                </div>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      aria-label={`${label}: ${c.total_n} organizations`}
+                                      className="relative h-2.5 flex-1 cursor-pointer rounded-full bg-slate-700/40 transition hover:brightness-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                                    >
+                                      <span
+                                        className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
+                                        style={{ width: `${barPct}%` }}
+                                      >
+                                        {split ? (
+                                          <>
+                                            <span
+                                              className="h-full bg-primary"
+                                              style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
+                                            />
+                                            <span
+                                              className="h-full bg-primary/40"
+                                              style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
+                                            />
+                                          </>
+                                        ) : (
+                                          <span className="h-full w-full bg-primary/70" />
+                                        )}
+                                      </span>
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    side="top"
+                                    align="center"
+                                    sideOffset={8}
+                                    collisionPadding={12}
+                                    className="w-60 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left text-popover-foreground shadow-xl"
+                                  >
+                                    <p className="text-xs font-semibold text-slate-100 text-pretty">{label}</p>
+                                    <dl className="mt-2 space-y-1 text-[11px]">
+                                      <div className="flex justify-between gap-2">
+                                        <dt className="text-slate-400">Organizations</dt>
+                                        <dd className="font-semibold text-primary">{c.total_n.toLocaleString()}</dd>
+                                      </div>
+                                      {split && (
+                                        <>
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-slate-400">Recently completed or in progress</dt>
+                                            <dd className="font-medium text-slate-200">{c.yes_n!.toLocaleString()}</dd>
+                                          </div>
+                                          <div className="flex justify-between gap-2">
+                                            <dt className="text-slate-400">Actively considering</dt>
+                                            <dd className="font-medium text-slate-200">
+                                              {c.considering_n!.toLocaleString()}
+                                            </dd>
+                                          </div>
+                                        </>
+                                      )}
+                                      <div className="flex justify-between gap-2 border-t border-slate-700/60 pt-1">
+                                        <dt className="text-slate-400">Share of all RFP activity</dt>
+                                        <dd className="font-medium text-slate-200">{sharePct}%</dd>
+                                      </div>
+                                    </dl>
+                                  </PopoverContent>
+                                </Popover>
+                                <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
+                                  {c.total_n.toLocaleString()}
+                                </span>
                               </div>
-                              <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
-                                {c.total_n.toLocaleString()}
-                              </span>
                             </div>
                           </li>
                         )
@@ -2426,7 +2478,7 @@ export function VendorPremiumDashboardClient() {
     { value: "101–500", label: "101–500" },
     { value: "501–1,000", label: "501–1,000" },
     { value: "1,001–5,000", label: "1,001–5,000" },
-    { value: "5,001–10,000", label: "5,001–10,000" },
+    { value: "5,001��10,000", label: "5,001–10,000" },
     { value: "More than 10,000", label: "More than 10,000" },
   ]
 
