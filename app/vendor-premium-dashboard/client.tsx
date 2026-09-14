@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, Fragment } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
   Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -1523,11 +1522,12 @@ function RadarBar({ label, row }: { label: string; row: RadarRow }) {
 
 // =============================================================================
 // RFP RADAR — read-only display of get_vendor_rfp_radar() (no args, LIVE RPC).
-// Shows who is in or near a Global Mobility RFP right now. Counts only, never
-// percentages. The yes/considering split is rendered ONLY where the RPC
-// provides both numbers; where they are null the split is withheld for
-// anonymity and we show total_n as a plain count (never derived or estimated).
-// No click-to-aim and no drilldown beyond the sub-sector "+N more" expansion.
+// A vertical funnel: headline total, then a ranked hotspot list (cell rows),
+// then an industry band that partitions the headline, then firm-type chips.
+// Counts only, never percentages. The yes/considering split is rendered ONLY
+// where the RPC provides both numbers (never derived or estimated). Everything
+// renders purely from returned rows: no hardcoded categories, counts, caps, or
+// thresholds, and no click-to-aim.
 // =============================================================================
 
 interface RfpRow {
@@ -1584,34 +1584,15 @@ function rfpTileStep(count: number, max: number): number {
   return 0
 }
 
-// Generic, data-driven shortener: drop any parenthetical so long region labels
-// stay compact as column headers. This is a transformation, not a hardcoded
-// list of names, so new regions shorten automatically.
-function rfpShortLabel(category: string): string {
-  return category
-    .replace(/\s*\([^)]*\)\s*/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-// 'cell' categories are "Industry | Region"; return [industry, region].
-function rfpSplitCell(category: string): [string, string] {
-  const parts = category.split("|").map((s) => s.trim())
-  return [parts[0] ?? category, parts[1] ?? ""]
-}
-
 function RfpRadarPanel() {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpRow[]>([])
   const [loading, setLoading] = useState(true)
-  // Click-opened tile tooltip, keyed "industry||region"; one at a time.
-  const [openKey, setOpenKey] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
-      setOpenKey(null)
       const { data } = await supabase.rpc("get_vendor_rfp_radar")
       if (cancelled) return
       const norm: RfpRow[] = Array.isArray(data)
@@ -1638,44 +1619,42 @@ function RfpRadarPanel() {
     () => rows.filter((r) => r.row_type === "subsector").sort((a, b) => b.total_n - a.total_n),
     [rows],
   )
-  const shapeRegion = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "region"), [rows])
-  const shapeIndustry = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "industry"), [rows])
-  const shapeSize = useMemo(() => rows.filter((r) => r.row_type === "shape" && r.dimension === "size"), [rows])
+  // Industry shape rows, ranked; feed both the funnel band and its proportions.
+  const shapeIndustry = useMemo(
+    () =>
+      rows
+        .filter((r) => r.row_type === "shape" && r.dimension === "industry")
+        .sort((a, b) => b.total_n - a.total_n),
+    [rows],
+  )
 
-  // Build the matrix purely from the returned cell rows. Row/column sets are the
-  // industries and regions that actually appear; totals + ordering come from the
-  // shape rows. Nothing here is hardcoded, so more data simply means more tiles.
-  const grid = useMemo(() => {
-    const cellRows = rows.filter((r) => r.row_type === "cell")
-    const cellMap = new Map<string, RfpRow>()
-    const industrySet = new Set<string>()
-    const regionSet = new Set<string>()
-    for (const c of cellRows) {
-      const [ind, reg] = rfpSplitCell(c.category)
-      if (!ind || !reg) continue
-      cellMap.set(`${ind}||${reg}`, c)
-      industrySet.add(ind)
-      regionSet.add(reg)
-    }
-    const indTotal = new Map(shapeIndustry.map((r) => [r.category, r.total_n]))
-    const regTotal = new Map(shapeRegion.map((r) => [r.category, r.total_n]))
-    const industries = [...industrySet].sort((a, b) => (indTotal.get(b) ?? 0) - (indTotal.get(a) ?? 0))
-    const regions = [...regionSet].sort((a, b) => (regTotal.get(b) ?? 0) - (regTotal.get(a) ?? 0))
-    const maxCell = Math.max(...cellRows.map((c) => c.total_n), 1)
-    const anySplit = cellRows.some(rfpHasSplit)
-    return { cellMap, industries, regions, indTotal, regTotal, maxCell, anySplit }
-  }, [rows, shapeIndustry, shapeRegion])
+  // TIER 2 — every cell row ranked by total, with the live max for bar scaling.
+  const hotspots = useMemo(() => {
+    const cells = rows.filter((r) => r.row_type === "cell").sort((a, b) => b.total_n - a.total_n)
+    const max = Math.max(...cells.map((c) => c.total_n), 1)
+    const anySplit = cells.some(rfpHasSplit)
+    return { cells, max, anySplit }
+  }, [rows])
 
-  const sizeStrip = useMemo(() => {
-    const sorted = [...shapeSize].sort((a, b) => b.total_n - a.total_n)
-    const sum = sorted.reduce((acc, r) => acc + r.total_n, 0)
-    const max = Math.max(...sorted.map((r) => r.total_n), 1)
-    return { sorted, sum, max }
-  }, [shapeSize])
+  // TIER 3 — industry band proportions. Segments sum to the industry total.
+  const band = useMemo(() => {
+    const sum = shapeIndustry.reduce((acc, r) => acc + r.total_n, 0)
+    const max = Math.max(...shapeIndustry.map((r) => r.total_n), 1)
+    const pct = (r: RfpRow) => (sum > 0 ? (r.total_n / sum) * 100 : 100 / Math.max(1, shapeIndustry.length))
+    return { sum, max, pct }
+  }, [shapeIndustry])
 
-  const hasGrid = grid.industries.length > 0 && grid.regions.length > 0
-  const hasAnyBreakdown = hasGrid || subs.length > 0 || sizeStrip.sorted.length > 0
-  const gridCols = `minmax(112px,1.3fr) repeat(${grid.regions.length}, minmax(60px,1fr)) minmax(48px,auto)`
+  // TIER 4 — computed lead-in numerator.
+  const subsSum = useMemo(() => subs.reduce((acc, r) => acc + r.total_n, 0), [subs])
+
+  // A segment gets its label inline only when wide enough; otherwise it moves to
+  // the wrapping row beneath. Threshold is a width heuristic, not a data rule.
+  const NARROW_PCT = 9
+
+  const hasHotspots = hotspots.cells.length > 0
+  const hasBand = shapeIndustry.length > 0
+  const hasFirmTypes = subs.length > 0
+  const hasAnyBreakdown = hasHotspots || hasBand || hasFirmTypes
 
   return (
     <div>
@@ -1690,17 +1669,18 @@ function RfpRadarPanel() {
 
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         {loading ? (
-          // Skeleton shaped like the grid: headline bar, chip row, matrix block.
+          // Skeleton shaped like the cascade: headline, ranked list, band, chips.
           <div className="space-y-5">
             <div className="h-12 w-3/4 rounded-xl bg-brand-navy-2/40 animate-pulse" />
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-2">
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-6 w-24 rounded-full bg-brand-navy-2/40 animate-pulse" />
+                <div key={i} className="h-6 rounded-lg bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
-            <div className="space-y-1.5">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-12 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+            <div className="h-9 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-6 w-24 rounded-full bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
           </div>
@@ -1712,7 +1692,7 @@ function RfpRadarPanel() {
           </div>
         ) : (
           <>
-            {/* 1. HEADLINE ROW — hero count + inline stat chips, one line on desktop. */}
+            {/* TIER 1 — HEADLINE */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
               <div className="flex items-baseline gap-3">
                 <span className="text-4xl lg:text-5xl font-bold leading-none text-primary">
@@ -1726,217 +1706,148 @@ function RfpRadarPanel() {
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                     <span className="h-2 w-2 rounded-full bg-primary" />
-                    {headline.yes_n!.toLocaleString()} in or recently through
+                    {headline.yes_n!.toLocaleString()} recently completed or in progress
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-700/30 px-3 py-1 text-xs font-medium text-slate-200">
                     <span className="h-2 w-2 rounded-full bg-primary/40" />
-                    {headline.considering_n!.toLocaleString()} considering
+                    {headline.considering_n!.toLocaleString()} actively considering
                   </span>
                 </div>
               )}
             </div>
+            {/* Static string 1 — definition line */}
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              Organizations that have recently completed, are running, or are actively considering a Global Mobility
+              RFP.
+            </p>
 
-            {/* 2. SUB-SECTOR CHIPS — wrap freely, no cap. Omitted when none. */}
-            {subs.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-xs text-slate-500">In the market now:</span>
-                {subs.map((r, i) => (
-                  <span
-                    key={`${r.category}-${i}`}
-                    className="rounded-full border border-slate-700 bg-brand-navy-2 px-2.5 py-1 text-xs text-slate-300"
-                  >
-                    {rfpSubsectorPhrase(r)}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* 3. THE GRID — industry rows x region columns, margins as totals. */}
-            {hasGrid && (
-              <div className="mt-6">
-                {grid.anySplit && (
-                  <div className="mb-3 flex items-center gap-4 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-3 rounded-sm bg-primary" />
-                      In or through
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-3 rounded-sm bg-primary/40" />
-                      Considering
-                    </span>
+            {hasAnyBreakdown ? (
+              <>
+                {/* TIER 2 — HOTSPOT LIST (centerpiece) */}
+                {hasHotspots && (
+                  <div className="mt-6">
+                    {hotspots.anySplit && (
+                      <div className="mb-3 flex items-center gap-4 text-[10px] text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-3 rounded-sm bg-primary" />
+                          Completed or in progress
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-3 rounded-sm bg-primary/40" />
+                          Considering
+                        </span>
+                      </div>
+                    )}
+                    <ul className="space-y-1.5">
+                      {hotspots.cells.map((c, i) => {
+                        const label = c.category.replace(/\s*\|\s*/, " · ")
+                        const barPct = Math.max(4, (c.total_n / hotspots.max) * 100)
+                        const split = rfpHasSplit(c)
+                        return (
+                          <li key={`${c.category}-${i}`} className="flex items-center gap-3">
+                            <span className="w-32 shrink-0 truncate text-xs text-slate-300 sm:w-48" title={label}>
+                              {label}
+                            </span>
+                            <div className="relative h-2.5 flex-1 rounded-full bg-slate-700/40">
+                              <div
+                                className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
+                                style={{ width: `${barPct}%` }}
+                              >
+                                {split ? (
+                                  <>
+                                    <div
+                                      className="h-full bg-primary"
+                                      style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
+                                    />
+                                    <div
+                                      className="h-full bg-primary/40"
+                                      style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
+                                    />
+                                  </>
+                                ) : (
+                                  <div className="h-full w-full bg-primary/70" />
+                                )}
+                              </div>
+                            </div>
+                            <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
+                              {c.total_n.toLocaleString()}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
                   </div>
                 )}
-                <div className="overflow-x-auto pb-1">
-                  <div className="grid min-w-[520px] items-stretch gap-1.5" style={{ gridTemplateColumns: gridCols }}>
-                    {/* Header row: blank corner, region names, totals corner */}
-                    <div className="sticky left-0 z-20 bg-brand-navy-3" />
-                    {grid.regions.map((reg) => (
-                      <div
-                        key={`h-${reg}`}
-                        className="px-1 pb-1 text-center text-[10px] font-medium leading-tight text-slate-400"
-                        title={reg}
-                      >
-                        {rfpShortLabel(reg)}
-                      </div>
-                    ))}
-                    <div className="pb-1 pr-1 text-right text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      Total
-                    </div>
 
-                    {/* Industry rows */}
-                    {grid.industries.map((ind) => (
-                      <Fragment key={`row-${ind}`}>
-                        <div
-                          className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300"
-                          title={ind}
-                        >
-                          <span className="truncate">{ind}</span>
-                        </div>
-                        {grid.regions.map((reg) => {
-                          const key = `${ind}||${reg}`
-                          const cell = grid.cellMap.get(key)
-                          if (!cell) {
-                            return (
-                              <div key={key} className="flex h-12 items-center justify-center">
-                                <span
-                                  className="h-1.5 w-1.5 rounded-full bg-slate-600/50"
-                                  title="Not shown to protect contributor anonymity"
-                                />
-                                <span className="sr-only">
-                                  {ind} in {rfpShortLabel(reg)}: not shown to protect contributor anonymity
-                                </span>
-                              </div>
-                            )
-                          }
-                          const step = rfpTileStep(cell.total_n, grid.maxCell)
-                          const split = rfpHasSplit(cell)
-                          const isOpen = openKey === key
-                          const fullName = cell.category.replace(/\s*\|\s*/, " · ")
-                          return (
-                            // Radix Popover: content is portaled to the body (so the
-                            // overflow-x-auto scroll wrapper cannot clip it) and flips
-                            // from top to bottom automatically when the top row would
-                            // collide with the panel edge. collisionPadding keeps a
-                            // margin from the viewport/border on every side.
-                            <Popover
-                              key={key}
-                              open={isOpen}
-                              onOpenChange={(o) => setOpenKey(o ? key : null)}
+                {/* TIER 3 — INDUSTRY BAND: one bar partitioning the headline total */}
+                {hasBand && (
+                  <div className="mt-6">
+                    <div className="flex w-full overflow-hidden rounded-lg border border-slate-700/50">
+                      {shapeIndustry.map((r, i) => {
+                        const widthPct = band.pct(r)
+                        const step = rfpTileStep(r.total_n, band.max)
+                        return (
+                          <div
+                            key={`${r.category}-${i}`}
+                            style={{ width: `${widthPct}%` }}
+                            className={`flex min-w-0 items-center justify-center px-1.5 py-2.5 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
+                              i > 0 ? "border-l border-brand-navy-3/50" : ""
+                            }`}
+                            title={`${r.category} ${r.total_n.toLocaleString()}`}
+                          >
+                            {widthPct >= NARROW_PCT && (
+                              <span className="truncate text-[11px] font-medium">
+                                {r.category} {r.total_n.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {/* Labels for segments too narrow to caption inline */}
+                    {shapeIndustry.some((r) => band.pct(r) < NARROW_PCT) && (
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                        {shapeIndustry
+                          .filter((r) => band.pct(r) < NARROW_PCT)
+                          .map((r, i) => (
+                            <span
+                              key={`${r.category}-narrow-${i}`}
+                              className="flex items-center gap-1.5 text-[11px] text-slate-400"
                             >
-                              <PopoverTrigger asChild>
-                                <button
-                                  aria-label={`${fullName}: ${cell.total_n} organizations`}
-                                  className={`relative flex h-12 w-full items-center justify-center rounded-lg transition hover:brightness-110 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
-                                    isOpen ? "outline outline-2 outline-primary/70" : ""
-                                  }`}
-                                >
-                                  <span className="text-sm font-semibold">{cell.total_n.toLocaleString()}</span>
-                                  {split && (
-                                    <span className="absolute inset-x-1.5 bottom-1 flex h-1 overflow-hidden rounded-full bg-brand-navy-3/70">
-                                      <span
-                                        className="h-full bg-primary"
-                                        style={{ width: `${(cell.yes_n! / cell.total_n) * 100}%` }}
-                                      />
-                                      <span
-                                        className="h-full bg-primary/40"
-                                        style={{ width: `${(cell.considering_n! / cell.total_n) * 100}%` }}
-                                      />
-                                    </span>
-                                  )}
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                side="top"
-                                align="center"
-                                sideOffset={8}
-                                collisionPadding={12}
-                                className="w-52 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left text-popover-foreground shadow-xl"
-                              >
-                                <p className="text-xs font-semibold text-slate-100 text-pretty">{fullName}</p>
-                                <dl className="mt-2 space-y-1 text-[11px]">
-                                  <div className="flex justify-between gap-2">
-                                    <dt className="text-slate-400">Organizations</dt>
-                                    <dd className="font-semibold text-primary">{cell.total_n.toLocaleString()}</dd>
-                                  </div>
-                                  {split && (
-                                    <>
-                                      <div className="flex justify-between gap-2">
-                                        <dt className="text-slate-400">In or through</dt>
-                                        <dd className="font-medium text-slate-200">{cell.yes_n!.toLocaleString()}</dd>
-                                      </div>
-                                      <div className="flex justify-between gap-2">
-                                        <dt className="text-slate-400">Considering</dt>
-                                        <dd className="font-medium text-slate-200">
-                                          {cell.considering_n!.toLocaleString()}
-                                        </dd>
-                                      </div>
-                                    </>
-                                  )}
-                                </dl>
-                              </PopoverContent>
-                            </Popover>
-                          )
-                        })}
-                        {/* Row margin: industry shape total */}
-                        <div className="flex items-center justify-end pr-1 text-sm font-bold text-slate-100">
-                          {grid.indTotal.has(ind) ? (grid.indTotal.get(ind) as number).toLocaleString() : ""}
-                        </div>
-                      </Fragment>
-                    ))}
-
-                    {/* Footer row: column margins = region shape totals */}
-                    <div className="sticky left-0 z-10 bg-brand-navy-3 pr-2 pt-1 text-right text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      Total
-                    </div>
-                    {grid.regions.map((reg) => (
-                      <div key={`f-${reg}`} className="pt-1 text-center text-sm font-bold text-primary">
-                        {grid.regTotal.has(reg) ? (grid.regTotal.get(reg) as number).toLocaleString() : ""}
+                              <span className={`h-2 w-2 rounded-sm ${TILE_BG[rfpTileStep(r.total_n, band.max)]}`} />
+                              {r.category} {r.total_n.toLocaleString()}
+                            </span>
+                          ))}
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TIER 4 — FIRM-TYPE CHIPS with a computed lead-in */}
+                {hasFirmTypes && (
+                  <div className="mt-6 flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-xs text-slate-500">
+                      {subsSum.toLocaleString()} of {headline.total_n.toLocaleString()} described by firm type:
+                    </span>
+                    {subs.map((r, i) => (
+                      <span
+                        key={`${r.category}-${i}`}
+                        className="rounded-full border border-slate-700 bg-brand-navy-2 px-2.5 py-1 text-xs text-slate-300"
+                      >
+                        {rfpSubsectorPhrase(r)}
+                      </span>
                     ))}
-                    <div />
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* 4. SIZE STRIP — proportional segments from the size shape rows. */}
-            {sizeStrip.sorted.length > 0 && (
-              <div className="mt-6">
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">By company size</p>
-                <div className="overflow-x-auto">
-                  <div className="flex min-w-[420px] overflow-hidden rounded-lg border border-slate-700/50">
-                    {sizeStrip.sorted.map((r, i) => {
-                      const widthPct = sizeStrip.sum > 0 ? (r.total_n / sizeStrip.sum) * 100 : 100 / sizeStrip.sorted.length
-                      const step = rfpTileStep(r.total_n, sizeStrip.max)
-                      return (
-                        <div
-                          key={`${r.category}-${i}`}
-                          style={{ width: `${widthPct}%` }}
-                          className={`flex min-w-[96px] items-center justify-center px-2 py-2.5 ${TILE_BG[step]} ${TILE_TEXT[step]} ${
-                            i > 0 ? "border-l border-brand-navy-3/50" : ""
-                          }`}
-                          title={`${r.category} · ${r.total_n.toLocaleString()}`}
-                        >
-                          <span className="truncate text-[11px] font-medium">
-                            {r.category} · {r.total_n.toLocaleString()}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Only-headline state */}
-            {!hasAnyBreakdown && (
+                )}
+              </>
+            ) : (
+              // Only-headline state
               <p className="mt-4 text-sm text-slate-400">Breakdowns appear as the benchmark grows.</p>
             )}
 
-            {/* 5. CAPTION (persistent) */}
+            {/* Static string 2 — caption */}
             <p className="mt-6 text-[11px] leading-snug text-slate-500">
-              Counts of organizations, not percentages. Some breakdowns are withheld to keep contributors anonymous.
-              Grows with every registration.
+              Counts of organizations. Grows with every registration.
             </p>
           </>
         )}
