@@ -19,6 +19,26 @@ export default function ClaimActivatePage() {
 
     const supabase = createClient()
 
+    // The trial can already be claimed by the time this page runs: activate_trial
+    // also fires server-side during OTP/magic-link verification (auth/confirm and
+    // auth/callback). In that case the RPC here returns ok=false
+    // ("no_eligible_grant"), which is not a real failure. Before showing the error
+    // state, confirm whether the user already has active access.
+    const hasActiveAccess = async () => {
+      try {
+        const { data: trial } = await supabase.rpc("get_trial_status")
+        const trialResult = Array.isArray(trial) ? trial[0] : trial
+        if (trialResult?.on_trial === true) return true
+
+        const { data: tier } = await supabase.rpc("current_tier")
+        const tierResult = Array.isArray(tier) ? tier[0] : tier
+        const tierValue = typeof tierResult === "string" ? tierResult : tierResult?.tier
+        return tierValue === "premium" || tierValue === "vendor"
+      } catch {
+        return false
+      }
+    }
+
     const activate = async () => {
       try {
         const { data, error } = await supabase.rpc("activate_trial")
@@ -31,11 +51,19 @@ export default function ClaimActivatePage() {
           return
         }
       } catch {
-        // fall through to the error state below
+        // fall through to the access check below
       }
 
-      // Activation did not succeed. Do not silently drop the user into a
-      // dashboard they cannot access. Surface a retry path instead.
+      // Activation returned ok=false or threw. This is expected when the grant
+      // was already claimed during sign-in verification, so treat existing active
+      // access as success rather than showing a false failure.
+      if (await hasActiveAccess()) {
+        router.replace("/premium-dashboard?welcome=trial")
+        return
+      }
+
+      // Activation genuinely failed and the user has no active access. Surface a
+      // retry path instead of dropping them into a dashboard they cannot use.
       setStatus("error")
     }
 
