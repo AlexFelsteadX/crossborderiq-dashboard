@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { createContext, createElement, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 
@@ -10,18 +10,30 @@ interface AuthState {
   loading: boolean
 }
 
-export function useAuth() {
+interface AuthContextValue extends AuthState {
+  signOut: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+/**
+ * Holds the single source of truth for the signed-in user, their tier, and the
+ * trial-activation side effect. Mounted once in the root layout so EVERY route
+ * runs the auth listener and trial claim for signed-in users, not just pages
+ * that happen to render GlobalNav. Consumers read it through useAuth().
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     tier: null,
     loading: true,
   })
-  
+
   const supabase = createClient()
 
-  const fetchTier = useCallback(async (userId: string) => {
+  const fetchTier = useCallback(async (_userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('current_tier')
+      const { data, error } = await supabase.rpc("current_tier")
       if (error) {
         console.log("[v0] Error fetching tier:", error)
         return null
@@ -38,7 +50,7 @@ export function useAuth() {
   // at most once per browser session regardless of how many auth events fire.
   // Runs on EVERY authenticated session (not just the first sign-in), so grants
   // created after a member's first login (event batches, rep-link, pricing route)
-  // are activated the next time they load an authenticated page.
+  // are activated the next time they load any authenticated page.
   const maybeActivateTrial = useCallback(async () => {
     try {
       if (typeof window !== "undefined") {
@@ -49,7 +61,7 @@ export function useAuth() {
       // sessionStorage unavailable (private mode / SSR); still safe to attempt once
     }
     try {
-      const { data, error } = await supabase.rpc('activate_trial')
+      const { error } = await supabase.rpc("activate_trial")
       if (error) {
         console.log("[v0] activate_trial error:", error)
         return
@@ -66,7 +78,7 @@ export function useAuth() {
     // Get initial session
     const getInitialSession = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       let tier: string | null = null
       if (user) {
         // Claim an eligible trial grant (once per session) before reading the
@@ -74,7 +86,7 @@ export function useAuth() {
         await maybeActivateTrial()
         tier = await fetchTier(user.id)
       }
-      
+
       setState({
         user,
         tier,
@@ -86,17 +98,17 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         const user = session?.user ?? null
         let tier: string | null = null
-        
+
         if (user) {
           // Claim an eligible trial grant (once per session) before reading the
           // tier, so a fresh claim is reflected in the first tier value.
           await maybeActivateTrial()
           tier = await fetchTier(user.id)
         }
-        
+
         setState({
           user,
           tier,
@@ -115,10 +127,21 @@ export function useAuth() {
     window.location.href = "/"
   }
 
-  return {
+  const value: AuthContextValue = {
     user: state.user,
     tier: state.tier,
     loading: state.loading,
     signOut,
   }
+
+  return createElement(AuthContext.Provider, { value }, children)
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (ctx) return ctx
+  // Fallback for any consumer rendered outside AuthProvider. With the provider
+  // mounted in the root layout this should not occur, but returning a benign
+  // value keeps such a component from crashing.
+  return { user: null, tier: null, loading: true, signOut: async () => {} }
 }

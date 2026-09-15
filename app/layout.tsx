@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SiteDataProvider } from '@/lib/site-data-context'
+import { AuthProvider } from '@/hooks/use-auth'
 import { createClient } from '@/lib/supabase/server'
 import './globals.css'
 
@@ -102,7 +103,9 @@ export default async function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <SiteDataProvider lastUpdated={lastUpdated}>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </SiteDataProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
