@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { PopupButton } from "@typeform/embed-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ const SURVEY_FORM_ID = "GtsLFriE"
 
 export default function SurveyPage() {
   const supabase = createClient()
+  const router = useRouter()
 
   // "intro" -> Typeform popup; "claim" -> email capture; flips to sent on success
   const [step, setStep] = useState<"intro" | "claim">("intro")
@@ -21,8 +23,43 @@ export default function SurveyPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  // Second affordance on the "sent" screen: paste the 6-digit code from the email
+  const [code, setCode] = useState("")
+  const [verifying, setVerifying] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
 
   const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+
+  const handleVerifyCode = async () => {
+    const trimmedCode = code.trim()
+    if (trimmedCode.length < 6) {
+      setCodeError("Enter the 6-digit code from your email.")
+      return
+    }
+
+    setVerifying(true)
+    setCodeError(null)
+
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: trimmedCode,
+        type: "email",
+      })
+
+      if (verifyError) {
+        setCodeError("That code is not valid or has expired. Check the email and try again.")
+        setVerifying(false)
+        return
+      }
+
+      // Same destination as clicking the emailed link.
+      router.push("/claim/activate")
+    } catch {
+      setCodeError("Something went wrong verifying your code. Please try again.")
+      setVerifying(false)
+    }
+  }
 
   const handleClaim = async () => {
     const trimmedEmail = email.trim()
@@ -138,11 +175,48 @@ export default function SurveyPage() {
               </p>
             </>
           ) : sent ? (
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-green-500">
-                Your secure sign-in link is on its way — check your inbox to unlock Premium.
-              </p>
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-green-500">
+                  Your secure sign-in link is on its way. Check your inbox to unlock Premium.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-primary/10">
+                <label htmlFor="survey-code" className="block text-sm font-medium text-slate-200 mb-1.5">
+                  Or enter the 6-digit code from the email
+                </label>
+                {codeError && (
+                  <div className="mb-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-sm text-destructive">{codeError}</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    id="survey-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !verifying) handleVerifyCode()
+                    }}
+                    placeholder="123456"
+                    className="bg-brand-navy/60 border-primary/20 text-slate-100 tracking-[0.3em] placeholder:tracking-normal placeholder:text-slate-500 focus-visible:ring-primary focus-visible:border-primary"
+                    disabled={verifying}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    className="bg-primary hover:bg-primary/90 shrink-0"
+                    disabled={verifying}
+                  >
+                    {verifying ? "Verifying..." : "Verify"}
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
