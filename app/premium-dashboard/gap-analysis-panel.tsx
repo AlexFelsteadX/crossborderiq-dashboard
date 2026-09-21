@@ -196,14 +196,22 @@ export function GapAnalysisPanel() {
       <div className="text-center py-6">
         <h2 className="text-xl font-bold text-slate-100 mb-2">Your Gaps, Explained</h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-5">
-          Complete the benchmark or register for a GME event to unlock your gap analysis.
+          Complete the benchmark to unlock your gap analysis across every dimension.
         </p>
-        <Link
-          href="/mobility-maturity-scorecard"
+        <a
+          href="https://www.cbiq.ai/survey"
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90"
         >
-          Take the benchmark scorecard
-        </Link>
+          Complete the benchmark
+        </a>
+        <p className="text-slate-500 text-sm max-w-xl mx-auto mt-3">
+          Around 15 minutes. Unlocks your full gap analysis across every dimension of the benchmark.
+        </p>
+        <p className="text-slate-600 text-xs max-w-xl mx-auto mt-4">
+          Attended a GME event this year? Sign in with your registration email and your access may already be linked.
+        </p>
       </div>,
     )
   }
