@@ -26,6 +26,7 @@ import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
 import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
 import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
+import { GapAnalysisPanel } from "./gap-analysis-panel"
 
 // Temporary master switch: hide every respondent-count / base-size display across
 // the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
@@ -1483,6 +1484,9 @@ export function PremiumDashboardClient() {
             Everything unlocked — slice the benchmark by peer segment and track year-on-year change.
           </p>
         </div>
+
+        {/* ================= CBIQ INSIGHTS: YOUR GAPS, EXPLAINED ================= */}
+        <GapAnalysisPanel />
 
         {/* ============================ YEAR TABS ============================ */}
         <div className="mb-6">
