@@ -93,6 +93,7 @@ export async function GET() {
 
   // 4) Narrative layer — Premium only, and never blocks the gap cards.
   let brief: string | null = null
+  let briefFailed = false
   if (isPaid && allGaps.length) {
     const key = `${user.id}:${watermark(own, peer)}`
     if (briefCache.has(key)) {
@@ -122,8 +123,9 @@ export async function GET() {
         brief = text.trim()
         briefCache.set(key, brief)
       } catch (err) {
-        console.log("[v0] gap-brief AI generation failed:", (err as Error).message)
+        console.error("[v0] gap-brief AI generation failed:", (err as Error).message)
         brief = null
+        briefFailed = true
       }
     }
   }
@@ -140,6 +142,7 @@ export async function GET() {
     gaps: visibleGaps,
     lockedPreviews,
     brief,
+    briefFailed,
     generatedAt: pullDate,
   })
 }
