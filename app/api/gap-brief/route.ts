@@ -13,7 +13,11 @@ export const dynamic = "force-dynamic"
 
 const MODEL = "anthropic/claude-sonnet-4.6"
 
-const SYSTEM_PROMPT = `You are CBIQ's insights writer. You write short, direct briefs for Global Mobility leaders about how their program compares with peers. Use only the figures provided in the input JSON. Never invent, recalculate, or extrapolate numbers. Never mention any organization by name. US English. No em dashes. 'Global Mobility' capitalized. Structure: (1) two-sentence summary of where the program stands, (2) the three most important gaps, each with why it matters given leadership expectations in this segment, (3) one paragraph on what organizations ahead of this profile typically do next, drawn only from the provided peer statistics. Under 400 words. Confident, useful, never alarmist.`
+const SYSTEM_PROMPT = `You are CBIQ's insights writer. You write short, direct briefs for Global Mobility leaders about how their program compares with peers. Use only the figures provided in the input JSON. Never invent, recalculate, or extrapolate numbers, and never present any field value from the JSON as a finding unless it appears in the gaps array. Never mention any organization by name. Plain text only: no markdown, no asterisks, no headers with symbols. US English. No em dashes. 'Global Mobility' capitalized. Structure: (1) a two-sentence summary of where the program stands; (2) one short paragraph per gap in the gaps array, in the order given, covering every gap provided and no others, each explaining why it matters given the leadership expectations in the JSON; (3) one closing paragraph on what organizations ahead of this profile typically do next, referencing only the peer statistics and investment areas explicitly present in the JSON, with no invented example metrics. Under 400 words. Confident, useful, never alarmist.`
+
+// Bump to invalidate every previously cached brief when the prompt or payload
+// contract changes.
+const BRIEF_CACHE_VERSION = "v2"
 
 // Best-effort per-instance cache: brief is kept until the user's answers or the
 // peer pool watermark changes (spec section 3).
@@ -31,12 +35,26 @@ function watermark(own: OwnAnswerRow[], peer: PeerRow[]): string {
   return String(h)
 }
 
-function topAnswers(own: OwnAnswerRow[], needle: RegExp, limit: number): string[] {
-  return own
-    .filter((r) => needle.test(r.q_code) || needle.test(r.question_label))
-    .map((r) => r.answer_option)
-    .filter(Boolean)
-    .slice(0, limit)
+// Labeled peer investment distribution for the closing paragraph, taken from the
+// investment question with the largest anonymity-floored base. Shares only, no
+// organization identifiers.
+function peerInvestmentStats(
+  peer: PeerRow[],
+): Array<{ area: string; peer_pct: number; peer_label: string; base_n: number }> {
+  const invest = peer.filter((r) => /invest/i.test(r.q_code) || /invest/i.test(r.question_label))
+  if (!invest.length) return []
+  const byBase = new Map<string, number>()
+  for (const r of invest) byBase.set(r.q_code, Math.max(byBase.get(r.q_code) ?? 0, Number(r.base_n) || 0))
+  const topQ = [...byBase.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+  return invest
+    .filter((r) => r.q_code === topQ && (Number(r.base_n) || 0) > 0)
+    .map((r) => ({
+      area: r.answer_option,
+      peer_pct: Math.round((100 * (Number(r.respondents) || 0)) / (Number(r.base_n) || 1)),
+      peer_label: r.peer_label ?? "the wider market",
+      base_n: Number(r.base_n) || 0,
+    }))
+    .sort((a, b) => b.peer_pct - a.peer_pct)
 }
 
 export async function GET() {
@@ -93,8 +111,9 @@ export async function GET() {
 
   // 4) Narrative layer — Premium only, and never blocks the gap cards.
   let brief: string | null = null
+  let briefFailed = false
   if (isPaid && allGaps.length) {
-    const key = `${user.id}:${watermark(own, peer)}`
+    const key = `${BRIEF_CACHE_VERSION}:${user.id}:${watermark(own, peer)}`
     if (briefCache.has(key)) {
       brief = briefCache.get(key)!
     } else {
@@ -109,8 +128,7 @@ export async function GET() {
             peer_base: g.peer_base,
             peer_label: g.peer_label,
           })),
-          leadership_top3: topAnswers(own, /leadership|expect/i, 3),
-          investment_top3: topAnswers(own, /invest/i, 3),
+          peer_investment_stats: peerInvestmentStats(peer),
         }
         const { text } = await generateText({
           model: MODEL,
@@ -122,8 +140,9 @@ export async function GET() {
         brief = text.trim()
         briefCache.set(key, brief)
       } catch (err) {
-        console.log("[v0] gap-brief AI generation failed:", (err as Error).message)
+        console.error("[v0] gap-brief AI generation failed:", (err as Error).message)
         brief = null
+        briefFailed = true
       }
     }
   }
@@ -140,6 +159,7 @@ export async function GET() {
     gaps: visibleGaps,
     lockedPreviews,
     brief,
+    briefFailed,
     generatedAt: pullDate,
   })
 }

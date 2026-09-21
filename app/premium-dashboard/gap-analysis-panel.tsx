@@ -19,6 +19,7 @@ interface GapBriefResponse {
   gaps?: Gap[]
   lockedPreviews?: Array<{ dimension: string; severity: Severity }>
   brief?: string | null
+  briefFailed?: boolean
   generatedAt?: string
 }
 
@@ -259,6 +260,12 @@ export function GapAnalysisPanel() {
             bases.
           </p>
         </div>
+      )}
+
+      {data.isPaid && !data.brief && data.briefFailed && (
+        <p className="rounded-xl border border-slate-700/50 bg-brand-navy/60 px-5 py-4 mb-6 text-sm text-slate-400">
+          Your written brief is temporarily unavailable; your gap analysis is current.
+        </p>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
