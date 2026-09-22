@@ -54,19 +54,35 @@ export interface UserSegments {
 const SEVERITY_RANK: Record<Severity, number> = { critical: 0, gap: 1, attention: 2 }
 
 // -----------------------------------------------------------------------------
-// Question needles (q_code or question_label). CONFIRM against stored wording if
-// a dimension never appears: adjust the needle, not the rules.
+// Question needles. Dimensions backed by a stable survey code (E-codes) match on
+// q_code ONLY. Dimensions from the survey wave where the q_code stores the full
+// question text (success, business travel) match q_code first, label as a
+// fallback. CONFIRM against stored wording if a dimension never appears.
 // -----------------------------------------------------------------------------
 const NEEDLE = {
-  tech: /manage.*program|technolog|platform|software|\bsystems?\b|\btools?\b/i,
-  ai: /(^|[^a-z])ai([^a-z]|$)|artificial intelligence/i,
-  success: /success|\bmeasure/i,
-  leadership: /leadership|expect/i,
-  investment: /invest/i,
-  btPolicy: /(business travel|traveller|traveler|\bbt\b).*polic|travel polic/i,
-  btDays: /days?\b.*track|track.*days?|traveller? days/i,
-  btAccount: /accountab|who.*responsible|clearly responsible|ownership/i,
-  pressure: /pressure/i,
+  tech: { code: /^E16$/i, label: /technology to manage.*(global )?mobility/i },
+  ai: { code: /^E10$/i, label: /use of ai|adoption of ai/i },
+  leadership: { code: /^E6$/i, label: /leadership.*expectation|expectations.*rising/i },
+  investment: { code: /^E13$/i, label: /investment or transformation/i },
+  pressure: { code: /^E7$/i, label: /operational pressure/i },
+  success: { code: /measure the success/i, label: /measure the success/i },
+  btPolicy: { code: /business travel.*polic|travel compliance polic/i, label: /business travel.*polic/i },
+  btDays: { code: /track.*(traveller|traveler).*days|(traveller|traveler) days.*track/i, label: /track.*(traveller|traveler).*days/i },
+  btAccount: { code: /accountab/i, label: /accountab.*(compliance|failure)|who is accountable/i },
+}
+
+type NeedleKey = keyof typeof NEEDLE
+
+// E-code dimensions must match strictly on q_code; their label is never consulted,
+// so an unrelated question that happens to share wording cannot be miscaptured.
+// The text-keyed dimensions (q_code holds the full question text this wave) match
+// q_code first, then label.
+const CODE_ONLY: ReadonlySet<NeedleKey> = new Set(["tech", "ai", "leadership", "investment", "pressure"])
+
+function matchesNeedle(qCode: string, qLabel: string, key: NeedleKey): boolean {
+  const n = NEEDLE[key]
+  if (CODE_ONLY.has(key)) return n.code.test(qCode ?? "")
+  return n.code.test(qCode ?? "") || n.label.test(qLabel ?? "")
 }
 
 // Answer-class regexes.
@@ -74,15 +90,15 @@ const CLASS = {
   techManual: /spreadsheet|manual|general office|\bexcel\b|\bemail\b|word process/i,
   techDedicatedPartial: /dedicated|partial|platform|point solution|specialist|purpose-built/i,
   techEvaluating: /evaluat|procur|selecting|assessing/i,
-  noFormalMeasure: /do not (formally )?measure|not formally measure|no formal|don.t measure/i,
+  noFormalMeasure: /do not (formally )?measure|not formally measure|no formal|(do not|don['\u2019]t) measure/i,
   roi: /\broi\b|return on investment/i,
   aiNotUsing: /not currently using|not using|\bno\b.*\bai\b|\bnone\b/i,
   aiProdPilot: /production|pilot|already using|in use|piloting|deployed/i,
   aiProduction: /production|in use|deployed|already using/i,
   aiPlanning: /planning|plan to|intend|exploring/i,
   reportingRoi: /report|\broi\b|return on investment|measurement|analytics/i,
-  btNo: /^no\b|\bnone\b|do not|does not|don.t|no policy/i,
-  btNotTracked: /^no\b|not track|don.t track|do not track|not measured/i,
+  btNo: /^no\b|\bnone\b|do not|does not|(do not|don['\u2019]t)|no policy/i,
+  btNotTracked: /^no\b|not track|(do not|don['\u2019]t) track|do not track|not measured/i,
   btNobody: /nobody|no one|not clearly|unclear|no single|no owner/i,
 }
 
@@ -134,9 +150,9 @@ function groupPeer(peer: PeerRow[]): PeerQuestion[] {
 }
 
 // The matching question with the largest base, mirroring the flagship RPC.
-function findPeerQuestion(peer: PeerQuestion[], needle: RegExp): PeerQuestion | null {
+function findPeerQuestion(peer: PeerQuestion[], key: NeedleKey): PeerQuestion | null {
   const hits = peer
-    .filter((q) => needle.test(q.q_code) || needle.test(q.question_label))
+    .filter((q) => matchesNeedle(q.q_code, q.question_label, key))
     .sort((a, b) => b.base_n - a.base_n)
   return hits[0] ?? null
 }
@@ -157,9 +173,9 @@ function peerShare(q: PeerQuestion | null, cls: RegExp): number | null {
 // -----------------------------------------------------------------------------
 // User-side helpers
 // -----------------------------------------------------------------------------
-function userAnswers(own: OwnAnswerRow[], needle: RegExp): string[] {
+function userAnswers(own: OwnAnswerRow[], key: NeedleKey): string[] {
   return own
-    .filter((r) => needle.test(r.q_code) || needle.test(r.question_label))
+    .filter((r) => matchesNeedle(r.q_code, r.question_label, key))
     .map((r) => r.answer_option)
     .filter(Boolean)
 }
@@ -176,11 +192,18 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   const pq = groupPeer(peer)
 
   // ---- G1 Technology foundation -------------------------------------------
-  const techQ = findPeerQuestion(pq, NEEDLE.tech)
-  const techUser = userAnswers(own, NEEDLE.tech)
+  const techQ = findPeerQuestion(pq, "tech")
+  const techUser = userAnswers(own, "tech")
   if (techUser.length) {
     const dedicatedShare = peerShare(techQ, CLASS.techDedicatedPartial)
-    if (anyMatch(techUser, CLASS.techManual) && dedicatedShare !== null && dedicatedShare >= 50) {
+    // Precedence: dedicated/partial is tested first and wins. The canonical
+    // "Partially" option contains the word "manual", so an answer that is
+    // dedicated or partial must never be classified as manual. Only a non-
+    // dedicated/partial answer can be manual, and only then evaluating.
+    const isDedicatedPartial = anyMatch(techUser, CLASS.techDedicatedPartial)
+    const isManual = !isDedicatedPartial && anyMatch(techUser, CLASS.techManual)
+    const isEvaluating = !isDedicatedPartial && !isManual && anyMatch(techUser, CLASS.techEvaluating)
+    if (isManual && dedicatedShare !== null && dedicatedShare >= 50) {
       gaps.push({
         id: "G1",
         dimension: "Technology foundation",
@@ -190,7 +213,7 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
         peer_base: techQ!.base_n,
         peer_label: techQ!.peer_label,
       })
-    } else if (anyMatch(techUser, CLASS.techEvaluating) && dedicatedShare !== null) {
+    } else if (isEvaluating && dedicatedShare !== null) {
       gaps.push({
         id: "G1",
         dimension: "Technology foundation",
@@ -204,9 +227,9 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   }
 
   // ---- G2 Measurement and ROI ---------------------------------------------
-  const successQ = findPeerQuestion(pq, NEEDLE.success)
-  const successUser = userAnswers(own, NEEDLE.success)
-  const leadershipQ = findPeerQuestion(pq, NEEDLE.leadership)
+  const successQ = findPeerQuestion(pq, "success")
+  const successUser = userAnswers(own, "success")
+  const leadershipQ = findPeerQuestion(pq, "leadership")
   if (successUser.length) {
     if (anyMatch(successUser, CLASS.noFormalMeasure)) {
       const noMeasure = peerShare(successQ, CLASS.noFormalMeasure)
@@ -243,8 +266,8 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   }
 
   // ---- G3 AI adoption ------------------------------------------------------
-  const aiQ = findPeerQuestion(pq, NEEDLE.ai)
-  const aiUser = userAnswers(own, NEEDLE.ai)
+  const aiQ = findPeerQuestion(pq, "ai")
+  const aiUser = userAnswers(own, "ai")
   if (aiUser.length && aiQ) {
     const prodPilot = peerShare(aiQ, CLASS.aiProdPilot)
     const production = peerShare(aiQ, CLASS.aiProduction)
@@ -272,9 +295,9 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   }
 
   // ---- G4 Leadership alignment --------------------------------------------
-  const investUser = userAnswers(own, NEEDLE.investment)
-  const investQ = findPeerQuestion(pq, NEEDLE.investment)
-  const leadershipUser = userAnswers(own, NEEDLE.leadership)
+  const investUser = userAnswers(own, "investment")
+  const investQ = findPeerQuestion(pq, "investment")
+  const leadershipUser = userAnswers(own, "leadership")
   if (leadershipUser.length) {
     for (const map of LEADERSHIP_TO_INVESTMENT) {
       const expected = leadershipUser.find((a) => map.expect.test(a))
@@ -299,11 +322,11 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   }
 
   // ---- G5 Business travel governance ---------------------------------------
-  const policyUser = userAnswers(own, NEEDLE.btPolicy)
-  const daysUser = userAnswers(own, NEEDLE.btDays)
-  const accountUser = userAnswers(own, NEEDLE.btAccount)
-  const accountQ = findPeerQuestion(pq, NEEDLE.btAccount)
-  const daysQ = findPeerQuestion(pq, NEEDLE.btDays)
+  const policyUser = userAnswers(own, "btPolicy")
+  const daysUser = userAnswers(own, "btDays")
+  const accountUser = userAnswers(own, "btAccount")
+  const accountQ = findPeerQuestion(pq, "btAccount")
+  const daysQ = findPeerQuestion(pq, "btDays")
   const btFlags: string[] = []
   if (policyUser.length && anyMatch(policyUser, CLASS.btNo)) btFlags.push("no travel policy")
   if (daysUser.length && anyMatch(daysUser, CLASS.btNotTracked)) btFlags.push("traveler days not tracked")
@@ -329,7 +352,7 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
   }
 
   // ---- G6 Pressure response -------------------------------------------------
-  const pressureUser = userAnswers(own, NEEDLE.pressure)
+  const pressureUser = userAnswers(own, "pressure")
   if (pressureUser.length) {
     for (const map of PRESSURE_TO_INVESTMENT) {
       const pressed = pressureUser.find((a) => map.pressure.test(a))
