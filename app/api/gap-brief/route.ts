@@ -71,16 +71,27 @@ export async function GET() {
   ])
   const tier = (tierData as string) || "free"
   const onTrial = Boolean((trialData as { on_trial?: boolean } | null)?.on_trial)
+
+  // Strict paid signal. Kept intact but DORMANT: no standalone paid Premium tier
+  // has launched yet, so this is not what gates the experience today. When that
+  // tier ships, delete the trial allowance in `entitled` below and this line
+  // becomes the live gate again with no other changes.
   const isPaid = (tier === "premium" && !onTrial) || tier === "vendor"
+
+  // Effective entitlement used for every gate today: all Premium accounts
+  // (currently all on trial) and vendors receive the full experience — full gap
+  // map, brief, and PDF. Remove `(tier === "premium" && onTrial)` to re-engage
+  // the paywall for trials when the paid tier launches.
+  const entitled = isPaid || (tier === "premium" && onTrial)
 
   // 1) The caller's own answers. RPC missing / not-yet-applied -> empty state.
   const ownRes = await supabase.rpc("get_my_workforce_response")
   if (ownRes.error) {
-    return NextResponse.json({ hasResponse: false, isPaid, tier, onTrial, engineReady: false })
+    return NextResponse.json({ hasResponse: false, isPaid, entitled, tier, onTrial, engineReady: false })
   }
   const own = (ownRes.data ?? []) as OwnAnswerRow[]
   if (!own.length) {
-    return NextResponse.json({ hasResponse: false, isPaid, tier, onTrial, engineReady: true })
+    return NextResponse.json({ hasResponse: false, isPaid, entitled, tier, onTrial, engineReady: true })
   }
 
   const first = own[0]
@@ -103,16 +114,16 @@ export async function GET() {
   const peerLabel = headlinePeerLabel(allGaps)
   const pullDate = new Date().toISOString().slice(0, 10)
 
-  // Paywall boundary: non-paid callers never receive locked stats over the wire.
-  const visibleGaps: Gap[] = isPaid ? allGaps : allGaps.slice(0, 2)
-  const lockedPreviews = isPaid
+  // Paywall boundary: unentitled callers never receive locked stats over the wire.
+  const visibleGaps: Gap[] = entitled ? allGaps : allGaps.slice(0, 2)
+  const lockedPreviews = entitled
     ? []
     : allGaps.slice(2).map((g) => ({ dimension: g.dimension, severity: g.severity }))
 
-  // 4) Narrative layer — Premium only, and never blocks the gap cards.
+  // 4) Narrative layer — entitled accounts only, and never blocks the gap cards.
   let brief: string | null = null
   let briefFailed = false
-  if (isPaid && allGaps.length) {
+  if (entitled && allGaps.length) {
     const key = `${BRIEF_CACHE_VERSION}:${user.id}:${watermark(own, peer)}`
     if (briefCache.has(key)) {
       brief = briefCache.get(key)!
@@ -151,6 +162,7 @@ export async function GET() {
     hasResponse: true,
     engineReady: true,
     isPaid,
+    entitled,
     tier,
     onTrial,
     peerLabel,

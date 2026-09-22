@@ -11,6 +11,10 @@ interface GapBriefResponse {
   hasResponse: boolean
   engineReady?: boolean
   isPaid: boolean
+  // Effective access gate. Currently true for all Premium (trial included) and
+  // vendor accounts; the strict `isPaid` paywall is dormant until a paid tier
+  // launches. Gate all unlocked UI on this, not on `isPaid`.
+  entitled?: boolean
   tier: string
   onTrial: boolean
   peerLabel?: string
@@ -242,7 +246,7 @@ export function GapAnalysisPanel() {
             <span className="font-medium text-slate-200">{data.peerLabel}</span>
           </p>
         </div>
-        {data.isPaid && (
+        {data.entitled && (
           <button
             type="button"
             onClick={() => buildPdf(data)}
@@ -253,7 +257,7 @@ export function GapAnalysisPanel() {
         )}
       </div>
 
-      {data.isPaid && data.brief && (
+      {data.entitled && data.brief && (
         <div className="rounded-xl border border-primary/20 bg-brand-navy/60 p-5 mb-6">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-primary mb-3">Your CBIQ Brief</h3>
           <div className="space-y-3">
@@ -270,7 +274,7 @@ export function GapAnalysisPanel() {
         </div>
       )}
 
-      {data.isPaid && !data.brief && data.briefFailed && (
+      {data.entitled && !data.brief && data.briefFailed && (
         <p className="rounded-xl border border-slate-700/50 bg-brand-navy/60 px-5 py-4 mb-6 text-sm text-slate-400">
           Your written brief is temporarily unavailable; your gap analysis is current.
         </p>
@@ -285,7 +289,7 @@ export function GapAnalysisPanel() {
         ))}
       </div>
 
-      {!data.isPaid && locked.length > 0 && (
+      {!data.entitled && locked.length > 0 && (
         <div className="mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5 text-center">
           <p className="text-slate-200 font-medium mb-3">
             Unlock your full gap map and CBIQ Brief with Premium.
