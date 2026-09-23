@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
 import { isVendorEmail } from "@/lib/vendor-domains"
+import { track } from "@vercel/analytics"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
@@ -113,12 +114,30 @@ type EventBriefing = {
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
   {
-    title: "The Room and the Market: GME Live APAC, Singapore",
+    title: "GME Leaders Exchange Frankfurt: The Room and the Market",
     description:
-      "What 45 Global Mobility leaders told the CBIQ benchmark before the Singapore room convened, set against the wider market. August 2026.",
-    cover: "/reports/covers/apac-singapore-cover.png",
-    file: "/reports/GME_Live_APAC_CBIQ_Market_Insights_Report.pdf",
-    date: "August 2026",
+      "How 27 Frankfurt delegate organizations compare with Europe and the global market, from the tax anomaly to the cost double-bind, plus what the wider benchmark says about the day's agenda.",
+    cover: "/reports/covers/frankfurt-leaders-exchange-2026-cover.png",
+    file: "/reports/GME_Leaders_Exchange_-Frankfurt-September_2026-_Market_Insights_Report.pdf",
+    date: "Frankfurt (hybrid) · September 22, 2026",
+    tag: "Event briefing",
+  },
+  {
+    title: "GME Leaders Exchange Jersey City: The Room and the Market",
+    description:
+      "Eighteen North American leaders, thirty points from their own region on immigration pressure: the widest room-to-region gap measured in 2026.",
+    cover: "/reports/covers/jersey-city-leaders-exchange-2026-cover.png",
+    file: "/reports/GME_Leaders_Exchange_-Jersey_City-September_2026-_Market_Insights_Report.pdf",
+    date: "Jersey City · September 17, 2026",
+    tag: "Event briefing",
+  },
+  {
+    title: "GME Live APAC Singapore: The Room and the Market",
+    description:
+      "Sixty-five corporate Global Mobility leaders, our largest benchmarked room of 2026, set against 900+ leaders worldwide.",
+    cover: "/reports/covers/apac-singapore-2026-cover.png",
+    file: "/reports/GME_Live_APAC_-_CBIQ_Market_Insights_Report.pdf",
+    date: "Singapore · August 27, 2026",
     tag: "Event briefing",
   },
 ]
@@ -398,7 +417,12 @@ export default function ReportsPage() {
                         size="sm"
                         className="gap-2 bg-primary hover:bg-primary/90"
                       >
-                        <a href={briefing.file} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={briefing.file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => track("event_briefing_open", { report: briefing.title })}
+                        >
                           <BookOpen className="h-4 w-4" />
                           Read
                         </a>
@@ -406,6 +430,7 @@ export default function ReportsPage() {
                       <a
                         href={briefing.file}
                         download
+                        onClick={() => track("event_briefing_open", { report: briefing.title })}
                         className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline underline-offset-4"
                       >
                         <Download className="h-4 w-4" />
