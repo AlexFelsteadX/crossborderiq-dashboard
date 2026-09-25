@@ -1550,13 +1550,21 @@ function cleanArray(v: unknown): string[] {
   return v.map((x) => (x == null ? "" : String(x).trim())).filter((x) => x.length > 0)
 }
 
-// Shorten the long yes/no platform answers into a compact stack label.
+// Map the long tech_in_use form answers into compact display labels.
+// Source strings are verbatim form answers used only as exact match targets.
+const STACK_LABEL_MAP: Record<string, string> = {
+  "Yes — a dedicated Global Mobility / assignment management platform": "Dedicated platform",
+  "Partially — some tasks are supported by technology": "Partially tech-supported",
+  "No — we manage the program with spreadsheets and general office tools": "Spreadsheets and office tools",
+  "We are currently evaluating or implementing a solution": "Evaluating / implementing a solution",
+  "Yes — but primarily spreadsheets and general office tools": "Spreadsheets and office tools",
+  "No — our program is managed manually": "Manual / spreadsheets",
+}
+
 function shortenStack(value: string): string {
-  const v = value.toLowerCase()
-  if (/dedicated|purpose-built|specialist|full platform|end-to-end/.test(v)) return "Dedicated platform"
-  if (/spreadsheet|excel|office|email|manual|word|general office/.test(v)) return "Spreadsheets and office tools"
-  if (/point|partial|niche|single|standalone/.test(v)) return "Point tools"
-  return value
+  const mapped = STACK_LABEL_MAP[value.trim()]
+  // Any unmapped future string renders as its raw text rather than being dropped.
+  return mapped ?? value
 }
 
 function RfpPipelinePanel() {
@@ -1791,7 +1799,7 @@ function RfpPipelinePanel() {
           </>
         )}
 
-        {/* Footer bar — always visible */}
+        {/* Footer bar �� always visible */}
         <div className="mt-5 flex items-start gap-2 rounded-lg border border-slate-700/40 bg-brand-navy-2/40 px-4 py-3">
           <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
           <p className="text-[11px] leading-snug text-slate-500">
