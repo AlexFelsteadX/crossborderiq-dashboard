@@ -1540,6 +1540,8 @@ interface RfpPipelineRow {
   program_state: string | null
   ai_stage: string | null
   moves_band: string | null
+  contributed: string | null
+  is_new: boolean
 }
 
 const RFP_ALL = "All"
@@ -1617,6 +1619,8 @@ function RfpPipelinePanel() {
             program_state: r.program_state ?? null,
             ai_stage: r.ai_stage ?? null,
             moves_band: r.moves_band ?? null,
+            contributed: r.contributed ?? null,
+            is_new: r.is_new === true,
           }))
         : []
       setRows(norm)
@@ -1846,6 +1850,7 @@ function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
   if (stackShort.length > 0) fields.push({ label: "Technology", value: stackShort.join(", ") })
   if (row.program_state) fields.push({ label: "Program state", value: row.program_state })
   if (row.ai_stage) fields.push({ label: "AI stage", value: row.ai_stage })
+  if (row.contributed) fields.push({ label: "Contributed", value: row.contributed })
 
   const isActive = row.stage === "RFP active"
 
@@ -1865,15 +1870,22 @@ function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
             {metaParts.length > 0 && <p className="mt-0.5 text-xs text-slate-400">{metaParts.join(" · ")}</p>}
           </div>
         </div>
-        <span
-          className={
-            isActive
-              ? "inline-flex shrink-0 items-center rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
-              : "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-          }
-        >
-          {row.stage}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {row.is_new && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300">
+              New
+            </span>
+          )}
+          <span
+            className={
+              isActive
+                ? "inline-flex shrink-0 items-center rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
+                : "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+            }
+          >
+            {row.stage}
+          </span>
+        </div>
       </div>
 
       {fields.length > 0 && (
