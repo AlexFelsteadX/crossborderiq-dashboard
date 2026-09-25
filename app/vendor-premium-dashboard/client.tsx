@@ -1661,9 +1661,10 @@ function RfpPipelinePanel() {
   }, [rows])
 
   // AND-combined filters; category matches rows whose outsources contains it.
-  // Always sorted 'RFP active' first, then 'Considering'.
+  // Rows are rendered in the order the RPC returns them (pre-sorted by stage
+  // priority, most recent first within stage); filters subset without re-sorting.
   const visible = useMemo(() => {
-    const filtered = rows.filter((r) => {
+    return rows.filter((r) => {
       if (stageFilter !== RFP_ALL && r.stage !== stageFilter) return false
       if (industryFilter !== RFP_ALL && r.industry_group !== industryFilter) return false
       if (regionFilter !== RFP_ALL && r.region_group !== regionFilter) return false
@@ -1671,8 +1672,6 @@ function RfpPipelinePanel() {
         return false
       return true
     })
-    const rank = (s: RfpPipelineRow["stage"]) => (s === "RFP active" ? 0 : 1)
-    return filtered.slice().sort((a, b) => rank(a.stage) - rank(b.stage))
   }, [rows, stageFilter, categoryFilter, industryFilter, regionFilter])
 
   const selectClass =
