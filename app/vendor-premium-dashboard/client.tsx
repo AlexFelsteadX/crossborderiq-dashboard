@@ -1567,6 +1567,12 @@ function RfpPipelinePanel() {
   const [categoryFilter, setCategoryFilter] = useState<string>(RFP_ALL)
   const [industryFilter, setIndustryFilter] = useState<string>(RFP_ALL)
   const [regionFilter, setRegionFilter] = useState<string>(RFP_ALL)
+  const [expanded, setExpanded] = useState(false)
+
+  // Collapse back to the first 5 whenever any filter changes.
+  useEffect(() => {
+    setExpanded(false)
+  }, [stageFilter, categoryFilter, industryFilter, regionFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -1763,13 +1769,24 @@ function RfpPipelinePanel() {
                 <p className="text-sm text-slate-400">No organizations match these filters.</p>
               </div>
             ) : (
-              <ul className="mt-4 divide-y divide-primary/10">
-                {visible.map((r) => (
-                  <li key={r.ref} className="py-4 first:pt-0 last:pb-0">
-                    <RfpPipelineOrg row={r} />
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="mt-4 divide-y divide-primary/10">
+                  {(expanded ? visible : visible.slice(0, 5)).map((r) => (
+                    <li key={r.ref} className="py-4 first:pt-0 last:pb-0">
+                      <RfpPipelineOrg row={r} />
+                    </li>
+                  ))}
+                </ul>
+                {visible.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    className="mt-4 w-full rounded-lg border border-primary/30 bg-brand-navy-2/40 px-4 py-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  >
+                    {expanded ? "Show fewer" : `Show all ${visible.length} organizations`}
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
