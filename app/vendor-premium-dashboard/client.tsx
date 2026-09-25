@@ -1818,7 +1818,7 @@ function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
   const metaParts: string[] = []
   if (row.region_group) metaParts.push(row.region_group)
   if (row.size_band) metaParts.push(`${row.size_band} employees`)
-  if (row.moves_band) metaParts.push(`${row.moves_band} moves/yr`)
+  if (row.moves_band && row.moves_band !== "None") metaParts.push(`${row.moves_band} moves/yr`)
 
   const stackShort = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
 
