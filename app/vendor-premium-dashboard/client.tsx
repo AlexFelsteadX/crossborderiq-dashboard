@@ -1826,7 +1826,7 @@ function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
   if ((row.outsources ?? []).length > 0) fields.push({ label: "Outsources", value: row.outsources!.join(", ") })
   if ((row.pressures ?? []).length > 0) fields.push({ label: "Top pressures", value: row.pressures!.join(", ") })
   if ((row.investing_in ?? []).length > 0) fields.push({ label: "Investing in", value: row.investing_in!.join(", ") })
-  if (stackShort.length > 0) fields.push({ label: "Stack", value: stackShort.join(", ") })
+  if (stackShort.length > 0) fields.push({ label: "Technology", value: stackShort.join(", ") })
   if (row.program_state) fields.push({ label: "Program state", value: row.program_state })
   if (row.ai_stage) fields.push({ label: "AI stage", value: row.ai_stage })
 
