@@ -1567,6 +1567,21 @@ function shortenStack(value: string): string {
   return mapped ?? value
 }
 
+// Maps outsourced_services form answers to display labels. Two distinct source
+// strings intentionally collapse to the same 'Relocation Management' label.
+const SERVICE_LABEL_MAP: Record<string, string> = {
+  "RMC Support": "Relocation Management",
+  "Relocation Management Support": "Relocation Management",
+  "Managed services - leveraging vendors to coordinate the end to end assignment process":
+    "Managed services (end to end)",
+}
+
+function shortenService(value: string): string {
+  const mapped = SERVICE_LABEL_MAP[value.trim()]
+  // Any unmapped future string renders as its raw text rather than being dropped.
+  return mapped ?? value
+}
+
 function RfpPipelinePanel() {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpPipelineRow[]>([])
@@ -1616,7 +1631,7 @@ function RfpPipelinePanel() {
   // Distinct filter options, derived purely from returned rows.
   const categoryOptions = useMemo(() => {
     const set = new Set<string>()
-    rows.forEach((r) => (r.outsources ?? []).forEach((o) => set.add(o)))
+    rows.forEach((r) => (r.outsources ?? []).forEach((o) => set.add(shortenService(o))))
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [rows])
   const industryOptions = useMemo(() => {
@@ -1648,7 +1663,8 @@ function RfpPipelinePanel() {
       if (stageFilter !== RFP_ALL && r.stage !== stageFilter) return false
       if (industryFilter !== RFP_ALL && r.industry_group !== industryFilter) return false
       if (regionFilter !== RFP_ALL && r.region_group !== regionFilter) return false
-      if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).includes(categoryFilter)) return false
+      if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).some((o) => shortenService(o) === categoryFilter))
+        return false
       return true
     })
     const rank = (s: RfpPipelineRow["stage"]) => (s === "RFP active" ? 0 : 1)
@@ -1823,7 +1839,8 @@ function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
   const stackShort = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
 
   const fields: Array<{ label: string; value: string }> = []
-  if ((row.outsources ?? []).length > 0) fields.push({ label: "Outsources", value: row.outsources!.join(", ") })
+  const outsourcesShort = Array.from(new Set((row.outsources ?? []).map(shortenService)))
+  if (outsourcesShort.length > 0) fields.push({ label: "Outsources", value: outsourcesShort.join(", ") })
   if ((row.pressures ?? []).length > 0) fields.push({ label: "Top pressures", value: row.pressures!.join(", ") })
   if ((row.investing_in ?? []).length > 0) fields.push({ label: "Investing in", value: row.investing_in!.join(", ") })
   if (stackShort.length > 0) fields.push({ label: "Technology", value: stackShort.join(", ") })
