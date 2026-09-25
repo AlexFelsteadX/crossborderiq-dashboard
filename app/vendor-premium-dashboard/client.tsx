@@ -4,10 +4,9 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock, User
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -1522,78 +1521,73 @@ function RadarBar({ label, row }: { label: string; row: RadarRow }) {
 }
 
 // =============================================================================
-// RFP RADAR — read-only display of get_vendor_rfp_radar() (no args, LIVE RPC).
-// A ranked hotspot list: headline total, then every cell row ("Industry |
-// Region") ranked by count with the top row ringed, then firm-type chips. The
-// list carries the geography; industry/region/size shape rows are not rendered.
-// Counts only, never percentages. The yes/considering split is rendered ONLY
-// where the RPC provides both numbers (never derived or estimated). Everything
-// renders purely from returned rows: no hardcoded categories, counts, caps, or
-// thresholds, and no click-to-aim.
+// RFP PIPELINE — read-only display of get_rfp_pipeline() (no args, LIVE RPC).
+// One row per in-market organization. Every field can be null on sparse rows;
+// only non-null fields render (never a dash or "N/A"). The organization ref is
+// used for React keys only and is NEVER shown. Nothing is derived or estimated.
 // =============================================================================
 
-interface RfpRow {
-  row_type: "headline" | "shape" | "cell" | "subsector"
-  dimension: "total" | "industry" | "region" | "size" | "industry_region" | "group"
-  category: string
-  yes_n: number | null
-  considering_n: number | null
-  total_n: number
+interface RfpPipelineRow {
+  ref: string
+  stage: "RFP active" | "Considering"
+  region_group: string | null
+  industry_group: string | null
+  size_band: string | null
+  outsources: string[] | null
+  pressures: string[] | null
+  investing_in: string[] | null
+  tech_stack: string[] | null
+  program_state: string | null
+  ai_stage: string | null
+  moves_band: string | null
 }
 
-// A split is only present when BOTH counts are provided by the RPC.
-function rfpHasSplit(r: RfpRow): boolean {
-  return r.yes_n !== null && r.considering_n !== null
+const RFP_ALL = "All"
+
+// Normalize a possibly-null array field to a clean string[] (drops empties).
+function cleanArray(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  return v.map((x) => (x == null ? "" : String(x).trim())).filter((x) => x.length > 0)
 }
 
-// Lowercase a sub-sector label while preserving all-caps acronyms (e.g. FMCG).
-function rfpNaturalLabel(category: string): string {
-  return category
-    .trim()
-    .split(/\s+/)
-    .map((w) => {
-      const letters = w.replace(/[^A-Za-z]/g, "")
-      if (letters.length >= 2 && letters === letters.toUpperCase()) return w
-      return w.toLowerCase()
-    })
-    .join(" ")
+// Shorten the long yes/no platform answers into a compact stack label.
+function shortenStack(value: string): string {
+  const v = value.toLowerCase()
+  if (/dedicated|purpose-built|specialist|full platform|end-to-end/.test(v)) return "Dedicated platform"
+  if (/spreadsheet|excel|office|email|manual|word|general office/.test(v)) return "Spreadsheets and office tools"
+  if (/point|partial|niche|single|standalone/.test(v)) return "Point tools"
+  return value
 }
 
-// Naive singularization for count === 1 (labels arrive plural from the RPC).
-function rfpSingularize(label: string): string {
-  if (label.endsWith("companies")) return label.slice(0, -"companies".length) + "company"
-  if (label.endsWith("ies")) return label.slice(0, -3) + "y"
-  if (label.endsWith("s")) return label.slice(0, -1)
-  return label
-}
-
-function rfpSubsectorPhrase(r: RfpRow): string {
-  const label = rfpNaturalLabel(r.category)
-  const phrased = r.total_n === 1 ? rfpSingularize(label) : label
-  return `${r.total_n.toLocaleString()} ${phrased}`
-}
-
-function RfpRadarPanel() {
+function RfpPipelinePanel() {
   const [supabase] = useState(() => createClient())
-  const [rows, setRows] = useState<RfpRow[]>([])
+  const [rows, setRows] = useState<RfpPipelineRow[]>([])
   const [loading, setLoading] = useState(true)
-  // Click/tap-opened bar tooltip, keyed by row; one open at a time.
-  const [openKey, setOpenKey] = useState<string | null>(null)
+  const [stageFilter, setStageFilter] = useState<string>(RFP_ALL)
+  const [categoryFilter, setCategoryFilter] = useState<string>(RFP_ALL)
+  const [industryFilter, setIndustryFilter] = useState<string>(RFP_ALL)
+  const [regionFilter, setRegionFilter] = useState<string>(RFP_ALL)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const { data } = await supabase.rpc("get_vendor_rfp_radar")
+      const { data } = await supabase.rpc("get_rfp_pipeline")
       if (cancelled) return
-      const norm: RfpRow[] = Array.isArray(data)
+      const norm: RfpPipelineRow[] = Array.isArray(data)
         ? (data as any[]).map((r) => ({
-            row_type: r.row_type,
-            dimension: r.dimension,
-            category: r.category,
-            yes_n: r.yes_n == null ? null : Number(r.yes_n),
-            considering_n: r.considering_n == null ? null : Number(r.considering_n),
-            total_n: Number(r.total_n),
+            ref: String(r.ref ?? ""),
+            stage: r.stage === "RFP active" ? "RFP active" : "Considering",
+            region_group: r.region_group ?? null,
+            industry_group: r.industry_group ?? null,
+            size_band: r.size_band ?? null,
+            outsources: cleanArray(r.outsources),
+            pressures: cleanArray(r.pressures),
+            investing_in: cleanArray(r.investing_in),
+            tech_stack: cleanArray(r.tech_stack),
+            program_state: r.program_state ?? null,
+            ai_stage: r.ai_stage ?? null,
+            moves_band: r.moves_band ?? null,
           }))
         : []
       setRows(norm)
@@ -1605,242 +1599,251 @@ function RfpRadarPanel() {
     }
   }, [supabase])
 
-  const headline = useMemo(() => rows.find((r) => r.row_type === "headline") ?? null, [rows])
-  const subs = useMemo(
-    () => rows.filter((r) => r.row_type === "subsector").sort((a, b) => b.total_n - a.total_n),
-    [rows],
-  )
-  // TIER 2 — every cell row ranked by total, with the live max for bar scaling.
-  // The list carries the geography; industry/region shape rows are not rendered.
-  const hotspots = useMemo(() => {
-    const cells = rows.filter((r) => r.row_type === "cell").sort((a, b) => b.total_n - a.total_n)
-    const max = Math.max(...cells.map((c) => c.total_n), 1)
-    const anySplit = cells.some(rfpHasSplit)
-    return { cells, max, anySplit }
+  // Distinct filter options, derived purely from returned rows.
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r) => (r.outsources ?? []).forEach((o) => set.add(o)))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [rows])
+  const industryOptions = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r) => r.industry_group && set.add(r.industry_group))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [rows])
+  const regionOptions = useMemo(() => {
+    const set = new Set<string>()
+    rows.forEach((r) => r.region_group && set.add(r.region_group))
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [rows])
 
-  // TIER 3 — computed firm-type lead-in numerator.
-  const subsSum = useMemo(() => subs.reduce((acc, r) => acc + r.total_n, 0), [subs])
+  // Summary counts over the full result (not the filtered view).
+  const stats = useMemo(() => {
+    let active = 0
+    let considering = 0
+    rows.forEach((r) => {
+      if (r.stage === "RFP active") active += 1
+      else considering += 1
+    })
+    return { active, considering, total: rows.length }
+  }, [rows])
 
-  const hasHotspots = hotspots.cells.length > 0
-  const hasFirmTypes = subs.length > 0
-  const hasAnyBreakdown = hasHotspots || hasFirmTypes
+  // AND-combined filters; category matches rows whose outsources contains it.
+  // Always sorted 'RFP active' first, then 'Considering'.
+  const visible = useMemo(() => {
+    const filtered = rows.filter((r) => {
+      if (stageFilter !== RFP_ALL && r.stage !== stageFilter) return false
+      if (industryFilter !== RFP_ALL && r.industry_group !== industryFilter) return false
+      if (regionFilter !== RFP_ALL && r.region_group !== regionFilter) return false
+      if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).includes(categoryFilter)) return false
+      return true
+    })
+    const rank = (s: RfpPipelineRow["stage"]) => (s === "RFP active" ? 0 : 1)
+    return filtered.slice().sort((a, b) => rank(a.stage) - rank(b.stage))
+  }, [rows, stageFilter, categoryFilter, industryFilter, regionFilter])
+
+  const selectClass =
+    "rounded-md border border-primary/25 bg-brand-navy-2 px-2.5 py-1.5 text-xs text-slate-200 focus:border-primary/50 focus:outline-none"
 
   return (
     <div>
-      {/* Header — ZoneHeader style, matching Demand Radar. */}
+      {/* Header */}
       <div className="pt-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">RFP Radar</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Who is in the market right now - organizations in or near a Global Mobility RFP.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">RFP Pipeline</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Organizations in or approaching a vendor review, from live benchmark contributions.
+            </p>
+          </div>
+          <span className="inline-flex shrink-0 items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            Data: 2026 wave
+          </span>
+        </div>
         <div className="mt-3 border-b border-primary/15" />
       </div>
 
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         {loading ? (
-          // Skeleton shaped like the ranked list: headline, rows, firm-type chips.
           <div className="space-y-5">
-            <div className="h-12 w-3/4 rounded-xl bg-brand-navy-2/40 animate-pulse" />
-            <div className="space-y-1">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-8 rounded-lg bg-brand-navy-2/40 animate-pulse" />
+            <div className="grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-20 rounded-xl bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="space-y-3">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="h-6 w-24 rounded-full bg-brand-navy-2/40 animate-pulse" />
+                <div key={i} className="h-24 rounded-xl bg-brand-navy-2/40 animate-pulse" />
               ))}
             </div>
           </div>
-        ) : !headline ? (
+        ) : rows.length === 0 ? (
           <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
             <p className="text-sm text-slate-400">
-              No RFP activity to report yet. The radar grows with every registration.
+              No organizations in the pipeline yet. This view grows with every registration.
             </p>
           </div>
         ) : (
           <>
-            {/* TIER 1 — HEADLINE */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-              <div className="flex items-baseline gap-3">
-                <span className="text-4xl lg:text-5xl font-bold leading-none text-primary">
-                  {headline.total_n.toLocaleString()}
-                </span>
-                <span className="max-w-[24ch] text-sm leading-snug text-slate-200 text-pretty lg:text-base">
-                  organizations in or near a Global Mobility RFP
-                </span>
+            {/* Summary strip */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
+                <p className="text-2xl font-bold leading-none text-primary">{stats.active.toLocaleString()}</p>
+                <p className="mt-1.5 text-xs text-slate-400">RFP active</p>
               </div>
-              {rfpHasSplit(headline) && (
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    {headline.yes_n!.toLocaleString()} recently completed or in progress
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-600 bg-slate-700/30 px-3 py-1 text-xs font-medium text-slate-200">
-                    <span className="h-2 w-2 rounded-full bg-primary/40" />
-                    {headline.considering_n!.toLocaleString()} actively considering
-                  </span>
-                </div>
-              )}
+              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
+                <p className="text-2xl font-bold leading-none text-slate-100">{stats.considering.toLocaleString()}</p>
+                <p className="mt-1.5 text-xs text-slate-400">Considering</p>
+              </div>
+              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
+                <p className="text-2xl font-bold leading-none text-slate-100">{stats.total.toLocaleString()}</p>
+                <p className="mt-1.5 text-xs text-slate-400">Total in market</p>
+              </div>
             </div>
-            {/* Static string 1 — definition line */}
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              Organizations that have recently completed, are running, or are actively considering a Global Mobility
-              RFP.
-            </p>
 
-            {hasAnyBreakdown ? (
-              <>
-                {/* TIER 2 — HOTSPOT LIST (centerpiece) */}
-                {hasHotspots && (
-                  <div className="mt-6">
-                    {hotspots.anySplit && (
-                      <div className="mb-3 flex items-center gap-4 text-[10px] text-slate-400">
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-3 rounded-sm bg-primary" />
-                          Completed or in progress
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-3 rounded-sm bg-primary/40" />
-                          Considering
-                        </span>
-                      </div>
-                    )}
-                    <ul className="space-y-2">
-                      {hotspots.cells.map((c, i) => {
-                        const label = c.category.replace(/\s*\|\s*/, " · ")
-                        const barPct = Math.max(4, (c.total_n / hotspots.max) * 100)
-                        const split = rfpHasSplit(c)
-                        const isTop = i === 0
-                        const key = `${c.category}-${i}`
-                        const sharePct = Math.round((c.total_n / headline.total_n) * 100)
-                        return (
-                          <li key={key}>
-                            <div
-                              className={`rounded-lg px-2 py-1.5 ${
-                                isTop
-                                  ? "bg-primary/5 ring-1 ring-primary/40 shadow-[0_0_16px_-4px_rgb(var(--brand-teal-rgb)_/_0.5)]"
-                                  : ""
-                              }`}
-                            >
-                              {/* Line 1 — full label, never truncated, wraps freely */}
-                              <p
-                                className={`text-xs leading-snug text-pretty ${isTop ? "text-slate-100" : "text-slate-300"}`}
-                              >
-                                {label}
-                              </p>
-                              {/* Line 2 — rank, proportional bar (tooltip trigger), count */}
-                              <div className="mt-1 flex items-center gap-3">
-                                <span className="w-4 shrink-0 text-right text-[11px] font-medium tabular-nums text-slate-500">
-                                  {i + 1}
-                                </span>
-                                <Popover
-                                  open={openKey === key}
-                                  onOpenChange={(o) => setOpenKey(o ? key : null)}
-                                >
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      type="button"
-                                      aria-label={`${label}: ${c.total_n} organizations`}
-                                      className="relative h-2.5 flex-1 cursor-pointer rounded-full bg-slate-700/40 transition hover:brightness-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                                    >
-                                      <span
-                                        className="absolute inset-y-0 left-0 flex overflow-hidden rounded-full"
-                                        style={{ width: `${barPct}%` }}
-                                      >
-                                        {split ? (
-                                          <>
-                                            <span
-                                              className="h-full bg-primary"
-                                              style={{ width: `${(c.yes_n! / c.total_n) * 100}%` }}
-                                            />
-                                            <span
-                                              className="h-full bg-primary/40"
-                                              style={{ width: `${(c.considering_n! / c.total_n) * 100}%` }}
-                                            />
-                                          </>
-                                        ) : (
-                                          <span className="h-full w-full bg-primary/70" />
-                                        )}
-                                      </span>
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    side="top"
-                                    align="center"
-                                    sideOffset={8}
-                                    collisionPadding={12}
-                                    className="w-60 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 text-left text-popover-foreground shadow-xl"
-                                  >
-                                    <p className="text-xs font-semibold text-slate-100 text-pretty">{label}</p>
-                                    <dl className="mt-2 space-y-1 text-[11px]">
-                                      <div className="flex justify-between gap-2">
-                                        <dt className="text-slate-400">Organizations</dt>
-                                        <dd className="font-semibold text-primary">{c.total_n.toLocaleString()}</dd>
-                                      </div>
-                                      {split && (
-                                        <>
-                                          <div className="flex justify-between gap-2">
-                                            <dt className="text-slate-400">Recently completed or in progress</dt>
-                                            <dd className="font-medium text-slate-200">{c.yes_n!.toLocaleString()}</dd>
-                                          </div>
-                                          <div className="flex justify-between gap-2">
-                                            <dt className="text-slate-400">Actively considering</dt>
-                                            <dd className="font-medium text-slate-200">
-                                              {c.considering_n!.toLocaleString()}
-                                            </dd>
-                                          </div>
-                                        </>
-                                      )}
-                                      <div className="flex justify-between gap-2 border-t border-slate-700/60 pt-1">
-                                        <dt className="text-slate-400">Share of all RFP activity</dt>
-                                        <dd className="font-medium text-slate-200">{sharePct}%</dd>
-                                      </div>
-                                    </dl>
-                                  </PopoverContent>
-                                </Popover>
-                                <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-100">
-                                  {c.total_n.toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
+            {/* Filter bar */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-slate-500" />
+                <span className="text-xs text-slate-500">Filter</span>
+              </div>
+              <select
+                aria-label="Filter by stage"
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className={selectClass}
+              >
+                <option value={RFP_ALL}>All stages</option>
+                <option value="RFP active">RFP active</option>
+                <option value="Considering">Considering</option>
+              </select>
+              <select
+                aria-label="Filter by category"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className={selectClass}
+              >
+                <option value={RFP_ALL}>All categories</option>
+                {categoryOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Filter by industry"
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+                className={selectClass}
+              >
+                <option value={RFP_ALL}>All industries</option>
+                {industryOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Filter by region"
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value)}
+                className={selectClass}
+              >
+                <option value={RFP_ALL}>All regions</option>
+                {regionOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                {/* TIER 3 — FIRM-TYPE CHIPS with a computed lead-in */}
-                {hasFirmTypes && (
-                  <div className="mt-6 flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-xs text-slate-500">
-                      {subsSum.toLocaleString()} of {headline.total_n.toLocaleString()} described by firm type:
-                    </span>
-                    {subs.map((r, i) => (
-                      <span
-                        key={`${r.category}-${i}`}
-                        className="rounded-full border border-slate-700 bg-brand-navy-2 px-2.5 py-1 text-xs text-slate-300"
-                      >
-                        {rfpSubsectorPhrase(r)}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+            {/* Rows */}
+            {visible.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
+                <p className="text-sm text-slate-400">No organizations match these filters.</p>
+              </div>
             ) : (
-              // Only-headline state
-              <p className="mt-4 text-sm text-slate-400">Breakdowns appear as the benchmark grows.</p>
+              <ul className="mt-4 divide-y divide-primary/10">
+                {visible.map((r) => (
+                  <li key={r.ref} className="py-4 first:pt-0 last:pb-0">
+                    <RfpPipelineOrg row={r} />
+                  </li>
+                ))}
+              </ul>
             )}
-
-            {/* Static string 2 — caption */}
-            <p className="mt-6 text-[11px] leading-snug text-slate-500">
-              Counts of organizations. Grows with every registration.
-            </p>
           </>
         )}
+
+        {/* Footer bar — always visible */}
+        <div className="mt-5 flex items-start gap-2 rounded-lg border border-slate-700/40 bg-brand-navy-2/40 px-4 py-3">
+          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
+          <p className="text-[11px] leading-snug text-slate-500">
+            Organizations shown are anonymous by design. Counts and profiles come from live benchmark contributions,
+            never named sources.
+          </p>
+        </div>
       </div>
+    </div>
+  )
+}
+
+// A single anonymous organization row.
+function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
+  const title = row.industry_group ? `${row.industry_group} organization` : "Organization"
+  const metaParts: string[] = []
+  if (row.region_group) metaParts.push(row.region_group)
+  if (row.size_band) metaParts.push(`${row.size_band} employees`)
+  if (row.moves_band) metaParts.push(`${row.moves_band} moves/yr`)
+
+  const stackShort = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
+
+  const fields: Array<{ label: string; value: string }> = []
+  if ((row.outsources ?? []).length > 0) fields.push({ label: "Outsources", value: row.outsources!.join(", ") })
+  if ((row.pressures ?? []).length > 0) fields.push({ label: "Top pressures", value: row.pressures!.join(", ") })
+  if ((row.investing_in ?? []).length > 0) fields.push({ label: "Investing in", value: row.investing_in!.join(", ") })
+  if (stackShort.length > 0) fields.push({ label: "Stack", value: stackShort.join(", ") })
+  if (row.program_state) fields.push({ label: "Program state", value: row.program_state })
+  if (row.ai_stage) fields.push({ label: "AI stage", value: row.ai_stage })
+
+  const isActive = row.stage === "RFP active"
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          {/* Anonymous avatar */}
+          <span
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-600 text-slate-500"
+          >
+            <User className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-100 text-pretty">{title}</p>
+            {metaParts.length > 0 && <p className="mt-0.5 text-xs text-slate-400">{metaParts.join(" · ")}</p>}
+          </div>
+        </div>
+        <span
+          className={
+            isActive
+              ? "inline-flex shrink-0 items-center rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
+              : "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          }
+        >
+          {row.stage}
+        </span>
+      </div>
+
+      {fields.length > 0 && (
+        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 sm:pl-[3.25rem]">
+          {fields.map((f) => (
+            <div key={f.label} className="flex flex-col">
+              <dt className="text-[11px] uppercase tracking-wide text-slate-500">{f.label}</dt>
+              <dd className="mt-0.5 text-xs text-slate-300 text-pretty">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </div>
   )
 }
@@ -3305,8 +3308,8 @@ export function VendorPremiumDashboardClient() {
             {/* DEMAND RADAR: service-first ranked segments (independent of global filters). */}
             <DemandRadarPanel onAim={aimAtRadarCell} />
 
-            {/* RFP RADAR: read-only view of who is in or near a Global Mobility RFP now. */}
-            <RfpRadarPanel />
+            {/* RFP PIPELINE: read-only per-organization view of who is in or approaching a vendor review. */}
+            <RfpPipelinePanel />
 
             {/* DEMAND VS PROVISION: Emerging (E13) and Established (Q49) side by side */}
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
