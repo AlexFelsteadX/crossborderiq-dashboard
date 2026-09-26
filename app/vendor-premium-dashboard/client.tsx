@@ -1668,8 +1668,11 @@ function RfpPipelinePanel() {
       if (stageFilter !== RFP_ALL && r.stage !== stageFilter) return false
       if (industryFilter !== RFP_ALL && r.industry_group !== industryFilter) return false
       if (regionFilter !== RFP_ALL && r.region_group !== regionFilter) return false
-      if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).some((o) => shortenService(o) === categoryFilter))
+      if (categoryFilter === "Technology") {
+        if (!(r.investing_in ?? []).includes("Mobility technology")) return false
+      } else if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).some((o) => shortenService(o) === categoryFilter)) {
         return false
+      }
       return true
     })
   }, [rows, stageFilter, categoryFilter, industryFilter, regionFilter])
@@ -1756,6 +1759,7 @@ function RfpPipelinePanel() {
                 className={selectClass}
               >
                 <option value={RFP_ALL}>All categories</option>
+                <option value="Technology">Technology</option>
                 {categoryOptions.map((c) => (
                   <option key={c} value={c}>
                     {c}
