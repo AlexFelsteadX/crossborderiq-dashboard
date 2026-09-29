@@ -1541,6 +1541,7 @@ interface RfpPipelineRow {
   ref: string
   stage: "RFP active" | "Considering"
   region_group: string | null
+  hq_country: string | null
   industry_group: string | null
   size_band: string | null
   outsources: string[] | null
@@ -1637,6 +1638,7 @@ function RfpPipelinePanel() {
             ref: String(r.ref ?? ""),
             stage: r.stage === "RFP active" ? "RFP active" : "Considering",
             region_group: r.region_group ?? null,
+            hq_country: r.hq_country ?? null,
             industry_group: r.industry_group ?? null,
             size_band: r.size_band ?? null,
             outsources: cleanArray(r.outsources),
@@ -1983,7 +1985,8 @@ function RfpPipelineOrg({
 function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   const title = row.industry_group ? `${row.industry_group} organization` : "Organization"
   const metaParts: string[] = []
-  if (row.region_group) metaParts.push(row.region_group)
+  const location = row.hq_country ?? row.region_group
+  if (location) metaParts.push(location)
   if (row.size_band) metaParts.push(`${row.size_band} employees`)
   if (row.moves_band && row.moves_band !== "None") metaParts.push(`${row.moves_band} moves/yr`)
 
