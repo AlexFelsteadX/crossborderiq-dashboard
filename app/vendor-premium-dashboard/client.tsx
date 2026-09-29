@@ -4,9 +4,19 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock, User
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock, User, Check, Loader2
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
@@ -1593,6 +1603,13 @@ function RfpPipelinePanel() {
   const [industryFilter, setIndustryFilter] = useState<string>(RFP_ALL)
   const [regionFilter, setRegionFilter] = useState<string>(RFP_ALL)
   const [expanded, setExpanded] = useState(false)
+  const router = useRouter()
+  // Refs the current user has already requested a workshop for. Held in memory
+  // only; never rendered.
+  const [requestedRefs, setRequestedRefs] = useState<Set<string>>(() => new Set())
+  const [pendingRef, setPendingRef] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   // Collapse back to the first 5 whenever any filter changes.
   useEffect(() => {
@@ -1603,8 +1620,18 @@ function RfpPipelinePanel() {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const { data } = await supabase.rpc("get_rfp_pipeline")
+      const [{ data }, { data: prior }] = await Promise.all([
+        supabase.rpc("get_rfp_pipeline"),
+        supabase.from("workshop_requests").select("response_ref"),
+      ])
       if (cancelled) return
+      setRequestedRefs(
+        new Set(
+          Array.isArray(prior)
+            ? (prior as any[]).map((p) => String(p.response_ref ?? "")).filter((x) => x.length > 0)
+            : [],
+        ),
+      )
       const norm: RfpPipelineRow[] = Array.isArray(data)
         ? (data as any[]).map((r) => ({
             ref: String(r.ref ?? ""),
@@ -1630,7 +1657,48 @@ function RfpPipelinePanel() {
     return () => {
       cancelled = true
     }
-  }, [supabase])
+  }, [supabase, reloadKey])
+
+  function markRequested(ref: string) {
+    setRequestedRefs((prev) => {
+      const next = new Set(prev)
+      next.add(ref)
+      return next
+    })
+  }
+
+  async function confirmWorkshop() {
+    const ref = pendingRef
+    if (!ref || submitting) return
+    setSubmitting(true)
+    try {
+      const { data, error } = await supabase.rpc("request_workshop", { p_ref: ref })
+      if (error) throw error
+      const result = typeof data === "string" ? data : null
+      if (result === "requested") {
+        markRequested(ref)
+        setPendingRef(null)
+        toast.success("Request sent. We'll be in touch shortly.")
+      } else if (result === "already_requested") {
+        markRequested(ref)
+        setPendingRef(null)
+        toast("You've already requested this one.")
+      } else if (result === "invalid_ref") {
+        setPendingRef(null)
+        toast.error("This opportunity is no longer available.")
+        setReloadKey((k) => k + 1)
+      } else if (result === "not_authenticated") {
+        setPendingRef(null)
+        router.push("/login?next=/vendor-premium-dashboard")
+      } else {
+        throw new Error("Unexpected response")
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   // Distinct filter options, derived purely from returned rows.
   const categoryOptions = useMemo(() => {
@@ -1804,7 +1872,11 @@ function RfpPipelinePanel() {
                 <ul className="mt-4 divide-y divide-primary/10">
                   {(expanded ? visible : visible.slice(0, 5)).map((r) => (
                     <li key={r.ref} className="py-4 first:pt-0 last:pb-0">
-                      <RfpPipelineOrg row={r} />
+                      <RfpPipelineOrg
+                        row={r}
+                        requested={requestedRefs.has(r.ref)}
+                        onRequest={() => setPendingRef(r.ref)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -1831,12 +1903,85 @@ function RfpPipelinePanel() {
           </p>
         </div>
       </div>
+
+      <Dialog
+        open={pendingRef !== null}
+        onOpenChange={(open) => {
+          if (!open && !submitting) setPendingRef(null)
+        }}
+      >
+        <DialogContent className="border-primary/25 bg-brand-navy-2 text-slate-100 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request a workshop</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {"We'll contact you to arrange a workshop around this opportunity. The organization remains anonymous unless they choose to engage."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => setPendingRef(null)}
+              className="border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-slate-100"
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={confirmWorkshop} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              Confirm request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 // A single anonymous organization row.
-function RfpPipelineOrg({ row }: { row: RfpPipelineRow }) {
+function RfpPipelineOrg({
+  row,
+  requested,
+  onRequest,
+}: {
+  row: RfpPipelineRow
+  requested: boolean
+  onRequest: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+      <div className="min-w-0 flex-1">
+        <RfpPipelineOrgDetails row={row} />
+      </div>
+      <div className="sm:shrink-0">
+        {requested ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled
+            className="w-full border-slate-700/60 bg-transparent text-xs text-slate-400 sm:w-auto"
+          >
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            Workshop requested
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRequest}
+            className="w-full border-slate-600/70 bg-transparent text-xs text-slate-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary sm:w-auto"
+          >
+            Request workshop
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   const title = row.industry_group ? `${row.industry_group} organization` : "Organization"
   const metaParts: string[] = []
   if (row.region_group) metaParts.push(row.region_group)

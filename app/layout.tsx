@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SiteDataProvider } from '@/lib/site-data-context'
 import { AuthProvider } from '@/hooks/use-auth'
+import { Toaster } from '@/components/ui/sonner'
 import { createClient } from '@/lib/supabase/server'
 import './globals.css'
 
@@ -107,6 +108,7 @@ export default async function RootLayout({
             {children}
           </AuthProvider>
         </SiteDataProvider>
+        <Toaster theme="dark" position="bottom-right" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
