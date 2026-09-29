@@ -1968,10 +1968,9 @@ function RfpPipelineOrg({
         ) : (
           <Button
             type="button"
-            variant="outline"
             size="sm"
             onClick={onRequest}
-            className="w-full border-slate-600/70 bg-transparent text-xs text-slate-300 hover:border-primary/40 hover:bg-primary/10 hover:text-primary sm:w-auto"
+            className="w-full border-0 bg-[#0D9488] text-xs font-medium text-white shadow-sm hover:bg-[#0F766E] hover:text-white active:bg-[#115E59] sm:w-auto"
           >
             Request workshop
           </Button>
