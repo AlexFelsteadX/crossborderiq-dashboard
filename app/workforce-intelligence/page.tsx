@@ -149,6 +149,48 @@ export default async function WorkforceIntelligencePage() {
           <LockedYoyGrid />
         </section>
 
+        {/* 4b. YOUR GAPS, EXPLAINED. Static screenshot only (public/images/insights-brief-preview.png);
+            no live Insights data is fetched or rendered here. Swap the file to update the visual. */}
+        <section className="mb-12" aria-labelledby="insights-teaser-heading">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-teal">Your gaps, explained</p>
+          <h2 id="insights-teaser-heading" className="mt-2 text-xl font-semibold text-foreground text-balance max-w-3xl">
+            A benchmark tells you where you stand. CBIQ Insights tells you why it matters.
+          </h2>
+          <p className="mt-2 text-sm text-slate-400 max-w-3xl text-pretty">
+            Every Premium dashboard includes a plain-language readout of your program against the market: where you
+            lead, where you lag, and what the organizations ahead of you are doing differently. On technology. On
+            policy. On employee experience. On vendor strategy.
+          </p>
+
+          <figure className="mt-6 overflow-hidden rounded-2xl border border-primary/20 bg-brand-navy-2 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+            <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5" aria-hidden="true">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+              </div>
+              <div className="flex-1 truncate rounded-md bg-white/5 px-3 py-1 text-center text-xs text-slate-500">
+                cbiq.ai/premium-dashboard
+              </div>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- plain img keeps the asset swappable at any size */}
+            <img
+              src="/images/insights-brief-preview.png"
+              alt="Example CBIQ Insights brief: a written readout of a program's business travel governance gap against Technology and IT peers, with a gap card below."
+              className="block h-auto w-full"
+              loading="lazy"
+            />
+          </figure>
+
+          <a
+            href="#access-full-research"
+            className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+          >
+            Complete the survey to unlock 14 days of Premium free
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </section>
+
         {/* 5. Locked dashboard preview. DATA-SAFETY: the theme grid shows ONE public
             hero figure per theme (via get_public_flagship_stats). No answer
             distributions are fetched or shown. */}
