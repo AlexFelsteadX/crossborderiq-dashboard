@@ -111,8 +111,19 @@ type EventBriefing = {
   file: string
   date: string
   tag: string
+  omitBriefingPrefix?: boolean
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
+  {
+    title: "Doing More With Less: Restructuring Global Mobility in 2026",
+    description:
+      "How 70 leaders compare to the market of 800+ organizations on cost, technology, AI, and vendor strategy.",
+    cover: "/reports/covers/doing-more-with-less-2026-cover.png",
+    file: "/reports/GME_x_CBIQ_Doing_More_With_Less_White_Paper_2026.pdf",
+    date: "CBIQ Doing More With Less Virtual Event · September 24, 2026 · Published October 2026",
+    tag: "White Paper",
+    omitBriefingPrefix: true,
+  },
   {
     title: "GME Leaders Exchange Frankfurt: The Room and the Market",
     description:
@@ -404,7 +415,7 @@ export default function ReportsPage() {
 
                 {/* Info */}
                 <div className="p-5 flex flex-col flex-1">
-                  <p className="text-xs text-slate-400 mb-2">{`Event briefing · ${briefing.date} · PDF`}</p>
+                  <p className="text-xs text-slate-400 mb-2">{`${briefing.omitBriefingPrefix ? "" : "Event briefing · "}${briefing.date} · PDF`}</p>
                   <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight text-balance">
                     {briefing.title}
                   </h3>
