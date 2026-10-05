@@ -13,6 +13,8 @@
 // wording drift produces fewer gaps rather than wrong ones.
 // =============================================================================
 
+import { lowerLead } from "@/lib/flagship-stats"
+
 export type Severity = "attention" | "gap" | "critical"
 
 export interface OwnAnswerRow {
@@ -309,7 +311,7 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
           id: `G4:${map.label}`,
           dimension: "Leadership alignment",
           severity: "gap",
-          user_position: `Leadership expects ${expected}, but it does not appear in your investment plans.`,
+          user_position: `Leadership expects ${lowerLead(expected)}, but it does not appear in your investment plans.`,
           peer_stat:
             investShare !== null && investQ
               ? `${investShare}% of ${investQ.peer_label} are investing here.`
@@ -336,7 +338,7 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
     const notTrackedShare = peerShare(daysQ, CLASS.btNotTracked)
     const stats: string[] = []
     if (nobodyShare !== null && accountQ)
-      stats.push(`the most common accountability answer across ${accountQ.peer_label} is that nobody is clearly responsible (${nobodyShare}%)`)
+      stats.push(`The most common accountability answer across ${accountQ.peer_label} is that nobody is clearly responsible (${nobodyShare}%)`)
     if (notTrackedShare !== null && daysQ)
       stats.push(`${notTrackedShare}% do not track traveler days`)
     const base = accountQ?.base_n ?? daysQ?.base_n ?? 0
@@ -363,7 +365,7 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
           id: `G6:${map.label}`,
           dimension: "Pressure response",
           severity: "attention",
-          user_position: `You rank ${pressed} as a top pressure, with no matching investment.`,
+          user_position: `You rank ${lowerLead(pressed)} as a top pressure, with no matching investment.`,
           peer_stat:
             investShare !== null && investQ
               ? `${investShare}% of ${investQ.peer_label} are investing in this area.`
