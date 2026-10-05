@@ -10,6 +10,7 @@ import { PremiumUpgradeButton } from "./premium-cta"
 import { LockedThemeGrid, TOTAL_BENCHMARK_QUESTIONS } from "./locked-theme-grid"
 import { LockedYoyGrid } from "./locked-yoy-grid"
 import type { PublicFlagshipStat } from "@/lib/flagship-stats"
+import { CONTRIBUTION_COUNT } from "@/lib/site-stats"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -23,6 +24,8 @@ interface StrategicMobilityIndex {
   aligned: number
   future: number
   tech_ai_maturity: number
+  base_n: number | null
+  confidence: string | null
 }
 
 export default async function WorkforceIntelligencePage() {
@@ -68,7 +71,7 @@ export default async function WorkforceIntelligencePage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
-            Informed by 2,300+ contributions
+            Informed by {CONTRIBUTION_COUNT} contributions
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
@@ -106,13 +109,11 @@ export default async function WorkforceIntelligencePage() {
 
         {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
             Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
-        <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} />
+        <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} baseN={smiRow?.base_n ?? 0} />
 
-        {/* 3 + 4. INSIDE THE FULL DASHBOARD — locked preview of the Premium overview.
-            DATA-SAFETY: the theme grid shows ONE public hero figure per theme (via
-            get_public_flagship_stats). No answer distributions are fetched or shown. */}
+        {/* 3. INSIDE THE FULL DASHBOARD — heading, features and survey CTA. */}
         <section className="mb-12">
-          <div className="mb-6">
+          <div>
             <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
             <ul className="mt-3 space-y-2">
               {[
@@ -130,11 +131,28 @@ export default async function WorkforceIntelligencePage() {
               href="https://www.cbiq.ai/survey"
               className="group mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
-              Complete the survey - unlock 14 days of Premium free
+              Complete the survey to unlock 14 days of Premium free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </div>
+        </section>
 
+        {/* 4. TRACKED YEAR ON YEAR — locked teaser. Static labels only, no RPC. */}
+        <section className="mb-12">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-foreground">Tracked year on year</h2>
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
+              The benchmark runs in annual waves. Premium members see how every trendable metric moved from 2025 to
+              2026.
+            </p>
+          </div>
+          <LockedYoyGrid />
+        </section>
+
+        {/* 5. Locked dashboard preview. DATA-SAFETY: the theme grid shows ONE public
+            hero figure per theme (via get_public_flagship_stats). No answer
+            distributions are fetched or shown. */}
+        <section className="mb-12">
           {/* Peer-segment filters — locked, disabled preview of the Premium controls */}
           <div className="mb-10">
             <PeerSegmentFilters />
@@ -157,26 +175,18 @@ export default async function WorkforceIntelligencePage() {
               </span>
             </div>
             <LockedThemeGrid stats={flagshipStats} />
+            <p className="mt-4 text-xs text-slate-400 text-pretty">
+              Base sizes vary by question. Results from bases under 100 organizations should be read as directional.
+              All figures are aggregated and anonymized; no organization is ever identifiable.
+            </p>
           </div>
 
           {/* Summary line (the conversion-path cards sit directly below this section) */}
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
             <p className="text-sm text-slate-300">
-              7 pillars · 60+ datasets · members-only reports · branded PDF export
+              11 themes · 100+ benchmark questions · members-only reports · branded PDF export
             </p>
           </div>
-        </section>
-
-        {/* 5. TRACKED YEAR ON YEAR — locked teaser. Static labels only, no RPC. */}
-        <section className="mb-12">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Tracked year on year</h2>
-            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
-              The benchmark runs in annual waves. Premium members see how every trendable metric moved from 2025 to
-              2026.
-            </p>
-          </div>
-          <LockedYoyGrid />
         </section>
 
         {/* 6. TWO CONVERSION PATHS (existing CTAs preserved) */}
@@ -192,7 +202,7 @@ export default async function WorkforceIntelligencePage() {
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <a href="https://www.cbiq.ai/survey">Contribute to the Survey — Free Access</a>
+                <a href="https://www.cbiq.ai/survey">Contribute to the Survey. Free Access</a>
               </Button>
             </div>
           </div>
@@ -209,7 +219,7 @@ export default async function WorkforceIntelligencePage() {
               <h3 className="text-lg font-semibold text-foreground">Premium</h3>
             </div>
             <p className="text-sm text-slate-300 mb-6">
-              £995 / $1,295 — continuous access + annual analyst briefing.
+              £995 / $1,295. Continuous access plus annual analyst briefing.
             </p>
             <PremiumUpgradeButton />
           </div>
@@ -224,7 +234,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Built on 2,300+ leader contributions · aggregated &amp; anonymized ·{" "}
+            Built on {CONTRIBUTION_COUNT} leader contributions · aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>

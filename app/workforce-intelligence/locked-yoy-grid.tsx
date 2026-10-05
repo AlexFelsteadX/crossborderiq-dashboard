@@ -44,7 +44,7 @@ export function LockedYoyGrid() {
           <span className="relative flex h-7 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full">
             <span className="absolute inset-0 bg-primary/15 blur-[2px]" aria-hidden="true" />
             <Lock className="relative h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-            <span className="sr-only">Locked — unlock Premium to see year-on-year movement</span>
+            <span className="sr-only">Locked. Unlock Premium to see year-on-year movement</span>
           </span>
         </a>
       ))}

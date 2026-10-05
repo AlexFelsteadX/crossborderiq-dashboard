@@ -1,4 +1,7 @@
-import { BarChart3, RotateCcw, Lock, ArrowRight } from "lucide-react"
+"use client"
+
+import { useState } from "react"
+import { BarChart3, RotateCcw, Lock, ArrowRight, X } from "lucide-react"
 
 // Peer-segment filter options — sourced VERBATIM from the Premium dashboard's
 // filter bar (app/premium-dashboard/client.tsx) so the option values match exactly.
@@ -31,28 +34,42 @@ const FILTERS: { key: string; label: string; options: string[] }[] = [
 ]
 
 const ALL = "All"
+const PROMPT_ID = "peer-filter-locked-prompt"
 
 /**
  * Peer-segment filter bar — a LOCKED preview of the Premium dashboard's controls.
  *
- * On the free page the five filters are genuinely disabled: they show the SAME
- * options as the Premium dashboard so visitors can see what they would be able to
- * slice by, but nothing is interactive and nothing is ever fetched or computed.
- * A persistent caption states this is a Premium feature and an affordance points
- * to the upgrade paths below.
+ * The selects stay disabled and nothing is fetched. Each locked control (and
+ * "Reset filters") is overlaid with a focusable button that opens an inline
+ * prompt pointing to the upgrade paths, so there are no dead clicks.
  */
 export function PeerSegmentFilters() {
+  const [promptOpen, setPromptOpen] = useState(false)
+  const openPrompt = () => setPromptOpen(true)
+
   return (
-    <div className="rounded-xl border border-primary/20 bg-brand-navy/40 p-4">
+    <div
+      className="rounded-xl border border-primary/20 bg-brand-navy/40 p-4"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && promptOpen) setPromptOpen(false)
+      }}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 text-slate-400">
           <BarChart3 className="h-4 w-4" />
           <span className="text-xs font-semibold uppercase tracking-wide">Filter your peer segment</span>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 px-2.5 py-1 text-xs text-slate-500">
-          <RotateCcw className="h-3 w-3" />
+        <button
+          type="button"
+          onClick={openPrompt}
+          aria-controls={PROMPT_ID}
+          aria-expanded={promptOpen}
+          aria-label="Reset filters, locked"
+          className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 px-2.5 py-1 text-xs text-slate-500 transition-colors hover:border-primary/50 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+        >
+          <RotateCcw className="h-3 w-3" aria-hidden="true" />
           Reset filters
-        </span>
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -70,7 +87,8 @@ export function PeerSegmentFilters() {
                 defaultValue={ALL}
                 disabled
                 aria-disabled="true"
-                className="w-full cursor-not-allowed appearance-none rounded-lg border border-primary/20 bg-brand-navy/60 px-3 py-2 pr-8 text-sm text-slate-500 opacity-70"
+                tabIndex={-1}
+                className="w-full appearance-none rounded-lg border border-primary/20 bg-brand-navy/60 px-3 py-2 pr-8 text-sm text-slate-500 opacity-70"
               >
                 <option value={ALL}>All</option>
                 {filter.options.map((o) => (
@@ -80,10 +98,49 @@ export function PeerSegmentFilters() {
                 ))}
               </select>
               <Lock className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+              <button
+                type="button"
+                onClick={openPrompt}
+                onFocus={openPrompt}
+                aria-controls={PROMPT_ID}
+                aria-expanded={promptOpen}
+                aria-label={`${filter.label} filter, locked`}
+                className="absolute inset-0 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+              />
             </div>
           </div>
         ))}
       </div>
+
+      {promptOpen && (
+        <div
+          id={PROMPT_ID}
+          role="status"
+          className="mt-4 flex flex-col gap-3 rounded-lg border border-brand-teal/40 bg-brand-navy-2 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="flex items-start gap-2 text-sm text-slate-200 text-pretty">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-brand-teal" aria-hidden="true" />
+            Filters are available with full access. Contribute your data to unlock the platform.
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href="#access-full-research"
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 h-10 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Unlock with Premium
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </a>
+            <button
+              type="button"
+              onClick={() => setPromptOpen(false)}
+              aria-label="Close"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-700/40 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-3 border-t border-primary/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-center gap-2 text-sm text-slate-400">
