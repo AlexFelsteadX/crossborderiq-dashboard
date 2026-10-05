@@ -2,6 +2,7 @@ import { Lock } from "lucide-react"
 import { THEME_ORDER, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
 import { FLAGSHIP_STATS, publicFlagshipParts, type PublicFlagshipStat } from "@/lib/flagship-stats"
 import { NewPill } from "@/components/dashboard/new-pill"
+import { BaseBadge } from "./base-badge"
 
 // The theme opened this month — carries the NEW pill and the grid's focal
 // treatment, mirroring the dashboard.
@@ -77,13 +78,16 @@ export function LockedThemeGrid({ stats }: { stats: Record<string, PublicFlagshi
                 <h4 className="text-sm font-semibold text-slate-200 leading-tight text-pretty">{themeLabel(theme)}</h4>
                 {isNew && <NewPill />}
               </div>
-              <Lock className="h-4 w-4 shrink-0 text-slate-500" />
+              <div className="flex shrink-0 items-start gap-2">
+                {showBase && <BaseBadge n={base} />}
+                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+              </div>
             </div>
 
             {/* Center: the hero figure. Percentage dominates; phrase sits beneath. */}
             {parts ? (
               <div className="flex flex-col">
-                <span className="text-4xl sm:text-5xl font-bold leading-none text-primary tabular-nums">
+                <span className="text-4xl sm:text-5xl font-bold leading-none text-brand-teal tabular-nums">
                   {parts.pct}%
                 </span>
                 <p
@@ -106,11 +110,9 @@ export function LockedThemeGrid({ stats }: { stats: Record<string, PublicFlagshi
               </div>
             )}
 
-            {/* Footer: question count + base metadata */}
+            {/* Footer: question count (base now lives in the top-right badge) */}
             {showBase ? (
-              <p className="mt-4 text-[13px] text-slate-300">
-                {questionCount} benchmark questions · Base: {base.toLocaleString()} organizations
-              </p>
+              <p className="mt-4 text-[13px] text-slate-300">{questionCount} benchmark questions</p>
             ) : (
               <p className="mt-4 text-[13px] text-slate-300">
                 {questionCount} benchmark questions · Premium members only

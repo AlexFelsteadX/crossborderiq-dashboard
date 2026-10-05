@@ -83,7 +83,7 @@ export function PremiumUpgradeButton() {
         size="lg"
         className="w-full h-12 font-semibold text-primary-foreground bg-gradient-to-b from-primary to-[#0f8e80] border border-primary/60 shadow-[0_8px_28px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] transition-all hover:-translate-y-0.5 hover:from-primary hover:to-primary hover:shadow-[0_14px_36px_-8px_rgb(var(--brand-teal-rgb)_/_0.8)]"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upgrade to Premium — £995 / $1,295"}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upgrade to Premium: £995 / $1,295"}
       </Button>
       {error && <p className="mt-2 text-xs text-red-400 text-center">{error}</p>}
     </div>

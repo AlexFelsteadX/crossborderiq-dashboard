@@ -235,18 +235,45 @@ export function formatFlagshipSentence(stat: PublicFlagshipStat | undefined | nu
 // so the card falls back to a locked placeholder.
 // -----------------------------------------------------------------------------
 
+const PROPER_NOUN_LEAD =
+  /^(Americas|North America|South America|Latin America|Europe|Middle East|Asia|APAC|EMEA|Africa|Australia|Global Mobility)\b/
+
+// Lowercase the first character of an injected answer label so it reads mid-sentence,
+// unless it starts with a proper noun or an acronym (e.g. "AI", "HR").
+export function lowerLead(label: string): string {
+  const trimmed = label.trim()
+  if (!trimmed) return trimmed
+  if (PROPER_NOUN_LEAD.test(trimmed)) return trimmed
+  if (/^[A-Z]{2,}\b/.test(trimmed)) return trimmed
+  return trimmed.charAt(0).toLowerCase() + trimmed.slice(1)
+}
+
+const REGION_DISPLAY: Record<string, string> = { "North America": "Americas" }
+const REGIONS_WITH_ARTICLE = new Set(["Americas", "Middle East"])
+
 const PUBLIC_FLAGSHIP_PHRASES: Partial<Record<WorkforceTheme, (label: string) => string>> = {
   "Strategy & maturity": () => "agree the scope and complexity of Global Mobility will grow this year",
   "AI & technology": () => "are already using or piloting AI in mobility operations",
-  "Experience & Outcomes": (label) => `measure success by ${label}`,
-  "Future of mobility": (label) => `describe their program as ${label}`,
-  "Employee experience": (label) => `name ${label} as the fastest-rising employee expectation`,
-  "Leadership expectations": (label) => `name ${label} as leadership's top rising ask`,
-  "Operational pressure": (label) => `cite ${label} as their top pressure`,
-  "Business travel": (label) => `say ${label} is accountable for a compliance failure`,
-  "Investment & vendors": (label) => `outsource ${label}`,
+  "Experience & Outcomes": (label) => `measure success by ${lowerLead(label)}`,
+  "Future of mobility": (label) => {
+    const match = label.trim().match(/^we are\s+(.+)$/i)
+    if (!match) return `describe their program as ${lowerLead(label)}`
+    const rest = match[1].replace(/\bour mobility program\b/gi, "their program").replace(/\bour\b/gi, "their")
+    return `are ${rest}`
+  },
+  "Employee experience": (label) => `name ${lowerLead(label)} as the fastest-rising employee expectation`,
+  "Leadership expectations": (label) => `name ${lowerLead(label)} as leadership's top rising ask`,
+  "Operational pressure": (label) => `cite ${lowerLead(label)} as their top pressure`,
+  "Business travel": (label) =>
+    /^nobody/i.test(label.trim())
+      ? "say nobody is clearly accountable for a compliance failure"
+      : `say ${lowerLead(label)} is accountable for a compliance failure`,
+  "Investment & vendors": (label) => `outsource ${lowerLead(label)} to an external provider`,
   "International remote work": () => "support international remote work",
-  "Who took part": (label) => `are headquartered in ${label}`,
+  "Who took part": (label) => {
+    const region = REGION_DISPLAY[label.trim()] ?? label.trim()
+    return `are headquartered in ${REGIONS_WITH_ARTICLE.has(region) ? "the " : ""}${region}`
+  },
 }
 
 export function publicFlagshipParts(

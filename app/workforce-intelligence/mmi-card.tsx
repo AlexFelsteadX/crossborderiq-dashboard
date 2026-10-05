@@ -1,5 +1,6 @@
 import { BarChart3 } from "lucide-react"
 import Link from "next/link"
+import { BaseBadge } from "./base-badge"
 
 interface ScoreComponent {
   label: string
@@ -12,6 +13,8 @@ interface MmiCardProps {
   allRegionsValue: number
   /** The four legs that make up the index — shown free, no padlock. */
   scoreComponents: ScoreComponent[]
+  /** Live base_n from get_premium_mmi. */
+  baseN: number
 }
 
 /**
@@ -24,12 +27,12 @@ interface MmiCardProps {
  * This is a server-renderable component; the only live number (industry average)
  * arrives via props from the server page.
  */
-export function MmiCard({ allRegionsValue, scoreComponents }: MmiCardProps) {
+export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProps) {
   return (
     <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Left: live industry-average gauge */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-5">
           <div className="relative">
             <div className="absolute -inset-8 bg-primary/20 rounded-full blur-[60px]" />
             <div className="relative w-56 h-56">
@@ -66,13 +69,14 @@ export function MmiCard({ allRegionsValue, scoreComponents }: MmiCardProps) {
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+                <span className="text-6xl font-bold text-brand-teal tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
                   {allRegionsValue}%
                 </span>
                 <span className="text-xs text-slate-400 mt-1">Industry average</span>
               </div>
             </div>
           </div>
+          {baseN >= 10 && <BaseBadge n={baseN} />}
         </div>
 
         {/* Right: description + free scorecard CTA */}
@@ -82,7 +86,7 @@ export function MmiCard({ allRegionsValue, scoreComponents }: MmiCardProps) {
             <h2 className="text-xl font-semibold text-foreground">Mobility Maturity Index</h2>
           </div>
           <p className="text-sm text-slate-300 mb-6">
-            The industry&apos;s first composite benchmark for workforce mobility maturity — combining four intelligence
+            The industry&apos;s first composite benchmark for workforce mobility maturity, combining four intelligence
             pillars into a single score.
           </p>
 
