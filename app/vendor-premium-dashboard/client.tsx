@@ -4044,8 +4044,8 @@ export function VendorPremiumDashboardClient() {
         {!loading && !error && activeTab === "market" && (
           <div role="tabpanel" id="panel-market" aria-labelledby="tab-market" className="space-y-8">
             <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h1 className="text-2xl font-bold text-slate-100">Vendor Intelligence</h1>
-              <p className="text-xs text-slate-500">Aggregated and anonymized. No company or participant names are disclosed.</p>
+  <h1 className="text-2xl font-bold text-slate-100">Vendor Intelligence</h1>
+
             </header>
 
             <VendorStatBand
