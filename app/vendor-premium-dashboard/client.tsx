@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -1487,6 +1488,41 @@ interface RadarRow {
   confidence: "full" | "limited"
 }
 
+// Heatmap tile tooltip, portalled to <body> so the scrollable grid and panel
+// borders can't clip it. Prefers above the tile, flips below near the top edge,
+// and clamps horizontally inside the viewport.
+function RadarTileTooltip({ anchor, children }: { anchor: DOMRect; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const gap = 8
+    const edge = 8
+    const { width, height } = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let top = anchor.top - height - gap
+    if (top < edge) top = anchor.bottom + gap
+    top = Math.max(edge, Math.min(top, vh - height - edge))
+    const left = Math.max(edge, Math.min(anchor.left + anchor.width / 2 - width / 2, vw - width - edge))
+    setPos({ top, left })
+  }, [anchor])
+
+  return createPortal(
+    <div
+      ref={ref}
+      role="tooltip"
+      style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
+      className="pointer-events-none z-[100] w-52 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 shadow-xl"
+    >
+      {children}
+    </div>,
+    document.body,
+  )
+}
+
 // Cell name assembled from the row's non-null dims, coarsest first.
 function buildRadarCellLabel(row: RadarRow): string {
   const parts: string[] = []
@@ -2428,11 +2464,39 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   )
 }
 
-function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
+function DemandRadarPanel({
+  embedded = false,
+  vendorCategories = [],
+}: {
+  embedded?: boolean
+  vendorCategories?: string[]
+}) {
   // Own, stable browser client (createClient() returns a fresh instance per call).
   const [supabase] = useState(() => createClient())
   const [service, setService] = useState<string>("Technology & automation")
+  const [pinnedService, setPinnedService] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [hover, setHover] = useState<{ key: string; rect: DOMRect } | null>(null)
+
+  // Hide the fixed-position tooltip if anything scrolls or resizes underneath it.
+  useEffect(() => {
+    if (!hover) return
+    const clear = () => setHover(null)
+    window.addEventListener("scroll", clear, true)
+    window.addEventListener("resize", clear)
+    return () => {
+      window.removeEventListener("scroll", clear, true)
+      window.removeEventListener("resize", clear)
+    }
+  }, [hover])
+
+  // Saved service categories (pinned service + vendor categories) sort first.
+  const orderedServices = useMemo(() => {
+    const saved = new Set<string>()
+    if (pinnedService) saved.add(mapPinnedToRadarService(pinnedService))
+    for (const c of vendorCategories) saved.add(mapPinnedToRadarService(c))
+    return [...RADAR_SERVICES.filter((s) => saved.has(s)), ...RADAR_SERVICES.filter((s) => !saved.has(s))]
+  }, [pinnedService, vendorCategories])
   const [rows, setRows] = useState<RadarRow[]>([])
   const [loading, setLoading] = useState(true)
   // Open industry x region drilldown key ("industry||region"), one at a time.
@@ -2445,7 +2509,10 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("cbiq_vendor_service_category")
-      if (saved) setService(mapPinnedToRadarService(saved))
+      if (saved) {
+        setService(mapPinnedToRadarService(saved))
+        setPinnedService(saved)
+      }
     } catch {
       // ignore storage access errors — keep the default service
     }
@@ -2504,7 +2571,20 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
     return best
   }, [cellMap])
 
+  // Industry rows in descending order of investment intent (mean want_pct across
+  // reported regions); rows with no reported cells sink to the bottom.
+  const orderedIndustries = useMemo(() => {
+    const avg = (ind: string) => {
+      const vals = RADAR_REGIONS.map((c) => cellMap.get(`${ind}||${c.value}`)?.want_pct).filter(
+        (v): v is number => typeof v === "number",
+      )
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : Number.NEGATIVE_INFINITY
+    }
+    return [...RADAR_INDUSTRIES].sort((a, b) => avg(b) - avg(a))
+  }, [cellMap])
+
   const openCell = openKey ? cellMap.get(openKey) ?? null : null
+  const hoverCell = hover ? cellMap.get(hover.key) ?? null : null
 
   // Drilldown reads deeper rows for the open cell from the SAME payload. Children
   // whose base equals the parent's did not actually split the cell, so omit them.
@@ -2629,7 +2709,7 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
         {/* Service-first selector: composite scores compare only within one service. */}
         <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Service line</p>
         <div className="flex flex-wrap gap-2 mb-5">
-          {RADAR_SERVICES.map((svc) => {
+          {orderedServices.map((svc) => {
             const active = svc === service
             return (
               <button
@@ -2676,7 +2756,7 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                     </div>
                   ))}
                 </div>
-                {RADAR_INDUSTRIES.map((ind) => (
+                {orderedIndustries.map((ind) => (
                   <div key={ind} className={`${RADAR_GRID} mb-1.5`}>
                     <div className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300">
                       {ind}
@@ -2701,9 +2781,13 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                       const isOpen = key === openKey
                       const emerging = cell.have_pct === null
                       return (
-                        <div key={key} className="relative group">
+                        <div key={key}>
                           <button
                             onClick={() => setOpenKey(isOpen ? null : key)}
+                            onMouseEnter={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
+                            onMouseLeave={() => setHover((h) => (h?.key === key ? null : h))}
+                            onFocus={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
+                            onBlur={() => setHover((h) => (h?.key === key ? null : h))}
                             aria-expanded={isOpen}
                             aria-label={`${ind} - ${col.short}: ${Math.round(cell.want_pct)} percent investing`}
                             className={`flex h-14 w-full flex-col items-start justify-center rounded-lg px-2 text-left transition ${TILE_BG[step]} ${TILE_TEXT[step]} hover:brightness-110 ${
@@ -2715,8 +2799,8 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                               <span className="mt-1 text-[10px] font-medium opacity-80">gap +{Math.round(cell.unmet_pct)}</span>
                             )}
                           </button>
-                          {/* Hover / focus tooltip with the full numbers + aim */}
-                          <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 opacity-0 shadow-xl transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                          {hover?.key === key && hoverCell && (
+                          <RadarTileTooltip anchor={hover.rect}>
                             <p className="text-xs font-semibold text-slate-100 text-pretty">{`${ind} - ${col.short}`}</p>
                             <dl className="mt-2 space-y-1 text-[11px]">
                               <div className="flex justify-between gap-2">
@@ -2745,7 +2829,8 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                                 Limited sample
                               </span>
                             )}
-                          </div>
+                          </RadarTileTooltip>
+                          )}
                         </div>
                       )
                     })}
@@ -2902,7 +2987,7 @@ function DemandGrowingPanel({
           embedded
         />
       ) : (
-        <DemandRadarPanel embedded />
+        <DemandRadarPanel embedded vendorCategories={vendorCategories} />
       )}
     </section>
   )
