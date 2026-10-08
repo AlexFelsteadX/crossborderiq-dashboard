@@ -1552,6 +1552,7 @@ interface RfpPipelineRow {
   ai_stage: string | null
   moves_band: string | null
   contributed: string | null
+  contributed_at: string | null
   is_new: boolean
 }
 
@@ -1649,6 +1650,10 @@ function RfpPipelinePanel() {
             ai_stage: r.ai_stage ?? null,
             moves_band: r.moves_band ?? null,
             contributed: r.contributed ?? null,
+            contributed_at:
+              typeof r.contributed_at === "string" && r.contributed_at.trim().length > 0
+                ? r.contributed_at.trim()
+                : null,
             is_new: r.is_new === true,
           }))
         : []
@@ -1992,7 +1997,7 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
 
   const stackShort = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
 
-  const fields: Array<{ label: string; value: string }> = []
+  const fields: Array<{ label: string; value: string; node?: React.ReactNode }> = []
   const outsourcesShort = Array.from(new Set((row.outsources ?? []).map(shortenService)))
   if (outsourcesShort.length > 0) fields.push({ label: "Outsources", value: outsourcesShort.join(", ") })
   if ((row.pressures ?? []).length > 0) fields.push({ label: "Top pressures", value: row.pressures!.join(", ") })
@@ -2000,7 +2005,28 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   if (stackShort.length > 0) fields.push({ label: "Technology", value: stackShort.join(", ") })
   if (row.program_state) fields.push({ label: "Program state", value: row.program_state })
   if (row.ai_stage) fields.push({ label: "AI stage", value: row.ai_stage })
-  if (row.contributed) fields.push({ label: "Contributed", value: row.contributed })
+  if (row.contributed || row.contributed_at) {
+    const value = [row.contributed, row.contributed_at].filter(Boolean).join(" · ")
+    fields.push({
+      label: "Contributed",
+      value,
+      node: (
+        <span className="flex min-w-0 items-baseline">
+          {row.contributed && <span className="shrink-0 whitespace-nowrap">{row.contributed}</span>}
+          {row.contributed && row.contributed_at && (
+            <span aria-hidden="true" className="shrink-0 whitespace-pre">
+              {" · "}
+            </span>
+          )}
+          {row.contributed_at && (
+            <span className="min-w-0 truncate" title={row.contributed_at}>
+              {row.contributed_at}
+            </span>
+          )}
+        </span>
+      ),
+    })
+  }
 
   const isActive = row.stage === "RFP active"
 
@@ -2041,9 +2067,9 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
       {fields.length > 0 && (
         <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 sm:pl-[3.25rem]">
           {fields.map((f) => (
-            <div key={f.label} className="flex flex-col">
+            <div key={f.label} className="flex min-w-0 flex-col">
               <dt className="text-[11px] uppercase tracking-wide text-slate-500">{f.label}</dt>
-              <dd className="mt-0.5 text-xs text-slate-300 text-pretty">{f.value}</dd>
+              <dd className="mt-0.5 min-w-0 text-xs text-slate-300 text-pretty">{f.node ?? f.value}</dd>
             </div>
           ))}
         </dl>
