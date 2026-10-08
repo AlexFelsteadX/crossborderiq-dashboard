@@ -38,6 +38,17 @@ interface MarketOpportunity {
   reportable: boolean
 }
 
+interface CategoryOpportunity {
+  scope: string
+  buys_today_pct: number | null
+  investing_pct: number | null
+  in_market_pct: number | null
+  policy_review_pct: number | null
+  opportunity_score: number | null
+  min_component_base: number
+  reportable: boolean
+}
+
 interface YoYRow {
   concept: string
   hr_pillar: string
@@ -1945,6 +1956,117 @@ function ScopePill({ filtered }: { filtered: boolean }) {
   )
 }
 
+function ServiceOpportunityPanel({
+  market,
+  segment,
+  isFiltered,
+  loading,
+  hasCategories,
+  onEditServices,
+}: {
+  market: CategoryOpportunity | null
+  segment: CategoryOpportunity | null
+  isFiltered: boolean
+  loading: boolean
+  hasCategories: boolean
+  onEditServices: () => void
+}) {
+  const source = isFiltered ? segment : market
+  const reportable = !!source?.reportable
+  const score = Math.max(0, Math.min(100, source?.opportunity_score ?? 0))
+  const circumference = 2 * Math.PI * 40
+  const components = source
+    ? [
+        { label: "Buy your services today", value: source.buys_today_pct },
+        { label: "Investing in your category next 12-18 months", value: source.investing_pct, hideWhenNull: true },
+        { label: "In or considering a buying cycle", value: source.in_market_pct },
+        { label: "Reviewing or redesigning policy", value: source.policy_review_pct },
+      ].filter((c) => !(c.hideWhenNull && c.value === null))
+    : []
+
+  return (
+    <section
+      aria-labelledby="service-opportunity-heading"
+      className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5"
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h2 id="service-opportunity-heading" className="text-sm font-semibold text-slate-100">
+          Opportunity Score for your services
+        </h2>
+        <InfoExplainer label="How the Opportunity Score is worked out">
+          <p className="text-xs leading-relaxed text-slate-300">
+            Your score is the average of the components below, computed for your saved service categories from verified
+            leader contributions. Each component is the share of organizations in the current view. Edit your services
+            to change what it measures.
+          </p>
+        </InfoExplainer>
+        <ScopePill filtered={isFiltered} />
+      </div>
+
+      {!hasCategories ? (
+        <p className="text-sm text-slate-400">
+          Add your services to see your score.{" "}
+          <button
+            type="button"
+            onClick={onEditServices}
+            className="font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 rounded"
+          >
+            Edit services
+          </button>
+        </p>
+      ) : loading && !source ? (
+        <div className="h-24 animate-pulse rounded-xl bg-slate-700/30" aria-hidden="true" />
+      ) : !source || !reportable ? (
+        <p className="text-sm text-slate-400">Not enough organizations in this segment to score reliably</p>
+      ) : (
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 flex-col items-center">
+            <div className="relative h-24 w-24">
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#1a3344" strokeWidth="9" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="var(--brand-teal)"
+                  strokeWidth="9"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference * (1 - score / 100)}
+                  className="transition-all duration-700"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold tabular-nums text-primary">
+                {Math.round(score)}
+              </span>
+            </div>
+            {isFiltered && market?.reportable && market.opportunity_score !== null && (
+              <p className="mt-2 text-xs tabular-nums text-slate-400">Market: {Math.round(market.opportunity_score)}</p>
+            )}
+          </div>
+          <ul className="grid flex-1 grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
+            {components.map((c) => (
+              <li key={c.label}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-xs text-slate-300">{c.label}</span>
+                  <span className="text-sm font-semibold tabular-nums text-slate-100">{c.value ?? 0}%</span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#1a3344]">
+                  <div
+                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.max(0, Math.min(100, c.value ?? 0))}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function VendorStatBand({
   rows,
   loading,
@@ -3150,7 +3272,7 @@ export function VendorPremiumDashboardClient() {
   const SHOW_YOY = false
 
   // State
-  // Market Opportunity Score: market row drives the unfiltered view; segment row
+  // Market Transformation Index: market row drives the unfiltered view; segment row
   // is the demographic-filtered comparison. Both come from get_market_opportunity.
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
   const [marketOpportunitySegment, setMarketOpportunitySegment] = useState<MarketOpportunity | null>(null)
@@ -3312,7 +3434,50 @@ export function VendorPremiumDashboardClient() {
     selectedTraveller
   )
 
-  // Market Opportunity Score card: same five-demographic-filter rule as the
+  // Opportunity Score for your services: re-fetches on service edits and the
+  // five demographic filters (the only filters get_category_opportunity accepts).
+  const [categoryOpportunity, setCategoryOpportunity] = useState<{
+    market: CategoryOpportunity | null
+    segment: CategoryOpportunity | null
+  }>({ market: null, segment: null })
+  const [categoryOpportunityLoading, setCategoryOpportunityLoading] = useState(false)
+  useEffect(() => {
+    if (vendorCategories.length === 0) {
+      setCategoryOpportunity({ market: null, segment: null })
+      return
+    }
+    let cancelled = false
+    setCategoryOpportunityLoading(true)
+    supabase
+      .rpc("get_category_opportunity", {
+        p_categories: vendorCategories,
+        p_industry: selectedIndustry,
+        p_region: selectedRegion,
+        p_size: selectedSize,
+        p_assignee: selectedAssignee,
+        p_traveller: selectedTraveller,
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.log("[v0] Category opportunity RPC error:", error)
+          setCategoryOpportunity({ market: null, segment: null })
+        } else {
+          const rows = (data as CategoryOpportunity[]) ?? []
+          setCategoryOpportunity({
+            market: rows.find((r) => r.scope === "market") ?? null,
+            segment: rows.find((r) => r.scope === "segment") ?? null,
+          })
+        }
+        setCategoryOpportunityLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorCategories, selectedIndustry, selectedRegion, selectedSize, selectedAssignee, selectedTraveller])
+
+  // Market Transformation Index card: same five-demographic-filter rule as the
   // vs-market cards (tech/AI ignored). Segment view only when the segment row
   // exists and is reportable; otherwise fall back to the market view.
   const moIsFiltered = e12IsFiltered
@@ -3592,7 +3757,7 @@ export function VendorPremiumDashboardClient() {
           p_assignee: selectedAssignee,
           p_traveller: selectedTraveller,
         }),
-        // Market Opportunity Score: returns market + segment rows (identical when
+        // Market Transformation Index: returns market + segment rows (identical when
         // unfiltered). Same five demographic filters, null when "All".
         supabase.rpc("get_market_opportunity", {
           p_industry: selectedIndustry,
@@ -3891,6 +4056,15 @@ export function VendorPremiumDashboardClient() {
               onEditServices={() => setServicesOpen(true)}
             />
 
+            <ServiceOpportunityPanel
+              market={categoryOpportunity.market}
+              segment={categoryOpportunity.segment}
+              isFiltered={e12IsFiltered}
+              loading={categoryOpportunityLoading}
+              hasCategories={vendorCategories.length > 0}
+              onEditServices={() => setServicesOpen(true)}
+            />
+
             <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
               <div className="flex items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
@@ -4167,13 +4341,13 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* MARKET OPPORTUNITY SCORE (supporting metric)                       */}
+            {/* MARKET TRANSFORMATION INDEX (supporting metric)                    */}
             {/* =================================================================== */}
 
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
               <div className="flex items-center gap-2 mb-6">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
+                <h2 className="text-xl font-semibold text-slate-100">Market Transformation Index</h2>
                 {moIsFiltered ? (
                   <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
                     Filtered
@@ -4238,7 +4412,7 @@ export function VendorPremiumDashboardClient() {
                       <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
                         {moSource?.market_opportunity_score || 0}%
                       </span>
-                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
+                      <span className="text-xs text-slate-400 mt-1">Transformation Index</span>
                     </div>
                   </div>
                   {moShowSegment && (
@@ -4293,7 +4467,7 @@ export function VendorPremiumDashboardClient() {
               </div>
               
               <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
-                The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
+                The Market Transformation Index measures transformation, operational pressure, AI and technology activity across the whole market. It describes the market, not any one vendor&apos;s services.
               </p>
             </div>
 
