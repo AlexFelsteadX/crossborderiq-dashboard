@@ -204,8 +204,8 @@ export function TechnologyBuyerIntelligence({
               : "Among Global Mobility leaders who have invested in technology"}
           </p>
         </div>
-        <span className="shrink-0 rounded-full border border-slate-600/50 bg-slate-700/30 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
-          Market-wide figures
+        <span className="inline-flex shrink-0 items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          Market-wide
         </span>
       </div>
 

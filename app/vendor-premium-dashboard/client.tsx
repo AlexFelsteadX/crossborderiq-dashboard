@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
@@ -1043,11 +1043,15 @@ function WhitespacePanel({
   loading,
   error,
   isFiltered,
+  vendorCategories = [],
+  embedded = false,
 }: {
   rows: WhitespaceRow[]
   loading: boolean
   error: string | null
   isFiltered: boolean
+  vendorCategories?: string[]
+  embedded?: boolean
 }) {
   // Accordion: only one row expanded at a time.
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
@@ -1066,7 +1070,16 @@ function WhitespacePanel({
     }
   }, [])
 
+  // Default the pin to the vendor's saved service categories until they pick one here.
+  const userPinnedRef = useRef(false)
+  useEffect(() => {
+    if (userPinnedRef.current || vendorCategories.length === 0 || rows.length === 0) return
+    const match = rows.find((r) => matchesVendorCategory(r.category, vendorCategories))
+    if (match) setPinnedCategory(match.category)
+  }, [rows, vendorCategories])
+
   const handlePinChange = (value: string) => {
+    userPinnedRef.current = true
     setPinnedCategory(value)
     try {
       if (value) localStorage.setItem("cbiq_vendor_service_category", value)
@@ -1124,11 +1137,23 @@ function WhitespacePanel({
   }, [pinnedPresent, pinnedCategory])
 
   return (
-    <div className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+    <div
+      className={
+        embedded
+          ? ""
+          : "rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
+      }
+    >
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
+          {embedded ? (
+            <h3 className="text-sm font-semibold text-slate-200">White space by service</h3>
+          ) : (
+            <>
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
+            </>
+          )}
         </div>
         {!loading && !error && rows.length > 0 && (
           <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
@@ -1554,9 +1579,10 @@ interface RfpPipelineRow {
   contributed: string | null
   contributed_at: string | null
   is_new: boolean
+  // Returned by get_rfp_pipeline; used only to apply the global movement filters.
+  lt_moves_band: string | null
+  trips_band: string | null
 }
-
-const RFP_ALL = "All"
 
 // Normalize a possibly-null array field to a clean string[] (drops empties).
 function cleanArray(v: unknown): string[] {
@@ -1596,15 +1622,298 @@ function shortenService(value: string): string {
   return mapped ?? value
 }
 
-function RfpPipelinePanel() {
+// ---------------------------------------------------------------------------
+// Vendor service categories (saved in public.vendor_profiles) and the signals
+// that connect them to pipeline rows and white-space categories.
+// ---------------------------------------------------------------------------
+
+const VENDOR_SERVICE_OPTIONS = [
+  "Tax",
+  "Immigration",
+  "RMC Support",
+  "Cultural training",
+  "Language training",
+  "Managed moves",
+  "RWA",
+  "Partner support",
+  "Technology",
+] as const
+
+// Matches a service string (outsourced service or white-space category) to a vendor category.
+const SERVICE_PATTERNS: Record<string, RegExp> = {
+  Tax: /\btax/i,
+  Immigration: /immigra|visa/i,
+  "RMC Support": /relocation management|\brmc\b|relocation support/i,
+  "Cultural training": /cultur|cross-cultural/i,
+  "Language training": /language/i,
+  "Managed moves": /managed (move|service)|end to end|move management/i,
+  RWA: /remote work|\brwa\b|work from anywhere/i,
+  "Partner support": /partner|spous|family/i,
+  Technology: /technolog|automat|platform|software/i,
+}
+
+// Matches an investment-focus string to a vendor category.
+const INVEST_PATTERNS: Record<string, RegExp> = {
+  Tax: /\btax|risk|complian/i,
+  Immigration: /immigra|complian/i,
+  "RMC Support": /relocation|cost/i,
+  "Cultural training": /cultur|employee (support|experience)|wellbeing/i,
+  "Language training": /language|employee (support|experience)/i,
+  "Managed moves": /managed|cost|relocation/i,
+  RWA: /remote work|\brwa\b/i,
+  "Partner support": /partner|family|employee (support|experience)/i,
+  Technology: /technolog|automat|\bai\b|ai-enabled|analytic|data|tracking|platform/i,
+}
+
+// Pressures map to categories by theme: compliance → Tax & Immigration,
+// cost → RMC Support & Managed moves, manual-process / data → Technology.
+const PRESSURE_GROUPS: { pattern: RegExp; categories: string[] }[] = [
+  { pattern: /complian|regulat|immigra|tax|legal|duty of care/i, categories: ["Tax", "Immigration"] },
+  { pattern: /cost|budget|spend|price/i, categories: ["RMC Support", "Managed moves"] },
+  { pattern: /manual|process|data|reporting|visib|tracking|system|spreadsheet/i, categories: ["Technology"] },
+]
+
+type RowSignal = { key: string; label: string }
+
+function rowSignals(row: RfpPipelineRow, categories: string[]): RowSignal[] {
+  if (categories.length === 0) return []
+  const out: RowSignal[] = []
+  const seen = new Set<string>()
+  const push = (key: string, label: string) => {
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push({ key, label })
+  }
+  for (const o of row.outsources ?? []) {
+    if (categories.some((c) => SERVICE_PATTERNS[c]?.test(o))) push(`o:${o}`, `Outsources ${shortenService(o)} today`)
+  }
+  for (const f of row.investing_in ?? []) {
+    if (categories.some((c) => INVEST_PATTERNS[c]?.test(f))) push(`i:${f}`, `Investing in ${f}`)
+  }
+  for (const p of row.pressures ?? []) {
+    const groups = PRESSURE_GROUPS.filter((g) => g.pattern.test(p))
+    if (groups.some((g) => g.categories.some((c) => categories.includes(c)))) push(`p:${p}`, `Pressure: ${p}`)
+  }
+  return out
+}
+
+function matchesVendorCategory(category: string, categories: string[]): boolean {
+  return categories.some((c) => SERVICE_PATTERNS[c]?.test(category))
+}
+
+// Global filter values as held by the dashboard (null = "All").
+interface DashboardFilters {
+  region: string | null
+  industry: string | null
+  size: string | null
+  assignee: string | null
+  traveller: string | null
+  tech: string | null
+  ai: string | null
+}
+
+const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "")
+
+function regionBucket(s: string): string {
+  if (/americ/i.test(s)) return "americas"
+  if (/europ|\buk\b|ireland/i.test(s)) return "europe"
+  if (/middle east|mena|gulf/i.test(s)) return "middle-east"
+  if (/asia|apac|austral|pacific/i.test(s)) return "apac"
+  return squash(s)
+}
+
+const TECH_FILTER_PATTERNS: Record<string, RegExp> = {
+  "Partial technology": /partial/i,
+  "Spreadsheets / office tools": /spreadsheet|office/i,
+  "Dedicated platform": /dedicated/i,
+  "Evaluating / implementing": /evaluat|implement/i,
+}
+const AI_FILTER_PATTERNS: Record<string, RegExp> = {
+  "Planning AI": /plan/i,
+  "AI in production": /production/i,
+  "Not using AI": /not using|no ai|none/i,
+  "Piloting AI": /pilot/i,
+}
+
+// Applies all seven global filters to a pipeline row, client-side, over the
+// fields get_rfp_pipeline already returns. A filter on a field the row lacks excludes it.
+function pipelineRowMatches(r: RfpPipelineRow, f: DashboardFilters): boolean {
+  if (f.region && (!r.region_group || regionBucket(r.region_group) !== regionBucket(f.region))) return false
+  if (f.industry) {
+    if (!r.industry_group) return false
+    const a = squash(r.industry_group)
+    const b = squash(f.industry)
+    if (a !== b && !a.startsWith(b) && !b.startsWith(a)) return false
+  }
+  if (f.size && (!r.size_band || squash(r.size_band) !== squash(f.size))) return false
+  if (f.assignee && (!r.lt_moves_band || squash(r.lt_moves_band) !== squash(f.assignee))) return false
+  if (f.traveller && (!r.trips_band || squash(r.trips_band) !== squash(f.traveller))) return false
+  if (f.tech) {
+    const hay = [...(r.tech_stack ?? []), r.program_state ?? ""].join(" | ")
+    const pattern = TECH_FILTER_PATTERNS[f.tech]
+    if (!(pattern ? pattern.test(hay) : squash(hay).includes(squash(f.tech)))) return false
+  }
+  if (f.ai) {
+    const pattern = AI_FILTER_PATTERNS[f.ai]
+    if (!r.ai_stage || !(pattern ? pattern.test(r.ai_stage) : squash(r.ai_stage) === squash(f.ai))) return false
+  }
+  return true
+}
+
+// Standard scope pill used by every panel on both tabs.
+function ScopePill({ filtered }: { filtered: boolean }) {
+  return filtered ? (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+      Filtered
+    </span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+      Market-wide
+    </span>
+  )
+}
+
+function VendorStatBand({
+  rows,
+  loading,
+  categories,
+  isFiltered,
+  onEditServices,
+}: {
+  rows: RfpPipelineRow[]
+  loading: boolean
+  categories: string[]
+  isFiltered: boolean
+  onEditServices: () => void
+}) {
+  const active = rows.filter((r) => r.stage === "RFP active").length
+  const considering = rows.length - active
+  const signals = rows.filter((r) => rowSignals(r, categories).length > 0).length
+  const tiles = [
+    { label: "In market now", value: active, accent: true },
+    { label: "Considering", value: considering, accent: false },
+    { label: "Signals in your category", value: signals, accent: false },
+  ]
+  return (
+    <section aria-labelledby="stat-band-heading" className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 id="stat-band-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Pipeline at a glance
+          </h2>
+          <ScopePill filtered={isFiltered} />
+        </div>
+        <button
+          type="button"
+          onClick={onEditServices}
+          className="text-xs font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 rounded"
+        >
+          Edit services
+          {categories.length > 0 && <span className="text-slate-500 no-underline"> ({categories.join(", ")})</span>}
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-xl border border-slate-700/50 bg-brand-navy-2/60 px-4 py-3">
+            {loading ? (
+              <div className="h-6 w-12 rounded bg-brand-navy-3 animate-pulse" />
+            ) : (
+              <p className={`text-xl font-bold leading-none ${t.accent ? "text-primary" : "text-slate-100"}`}>
+                {t.value.toLocaleString()}
+              </p>
+            )}
+            <p className="mt-1.5 text-xs text-slate-400">{t.label}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] leading-snug text-slate-500">
+        CBIQ does not collect what an RFP covers. Relevance is inferred from what the organization outsources today,
+        where it is investing next, and the pressures it reports.
+      </p>
+    </section>
+  )
+}
+
+function VendorServicesDialog({
+  open,
+  initial,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  open: boolean
+  initial: string[]
+  saving: boolean
+  onCancel: () => void
+  onSave: (categories: string[]) => void
+}) {
+  const [picked, setPicked] = useState<string[]>(initial)
+  useEffect(() => {
+    if (open) setPicked(initial)
+  }, [open, initial])
+  const toggle = (c: string) =>
+    setPicked((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && !saving && onCancel()}>
+      <DialogContent className="border-primary/30 bg-brand-navy-2 text-slate-100 sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>What services do you provide?</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Pick every category you serve. We use this to highlight relevant organizations and demand signals.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-wrap gap-2 py-2" role="group" aria-label="Service categories">
+          {VENDOR_SERVICE_OPTIONS.map((c) => {
+            const on = picked.includes(c)
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggle(c)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
+                  on
+                    ? "border-primary bg-primary/20 text-primary"
+                    : "border-slate-600 bg-brand-navy-3/60 text-slate-300 hover:border-slate-500"
+                }`}
+              >
+                {c}
+              </button>
+            )
+          })}
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={() => onSave(picked)}
+            disabled={saving || picked.length === 0}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {saving ? "Saving…" : "Save services"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function RfpPipelinePanel({
+  filters,
+  categories,
+  isFiltered,
+  onRowsLoaded,
+}: {
+  filters: DashboardFilters
+  categories: string[]
+  isFiltered: boolean
+  onRowsLoaded: (rows: RfpPipelineRow[], loading: boolean) => void
+}) {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpPipelineRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [stageFilter, setStageFilter] = useState<string>(RFP_ALL)
-  const [categoryFilter, setCategoryFilter] = useState<string>(RFP_ALL)
-  const [industryFilter, setIndustryFilter] = useState<string>(RFP_ALL)
-  const [regionFilter, setRegionFilter] = useState<string>(RFP_ALL)
   const [expanded, setExpanded] = useState(false)
+  // Default view: only rows carrying a signal for the vendor's saved categories.
+  const [showAllRows, setShowAllRows] = useState(false)
   const router = useRouter()
   // Refs the current user has already requested a workshop for. Held in memory
   // only; never rendered.
@@ -1616,7 +1925,7 @@ function RfpPipelinePanel() {
   // Collapse back to the first 5 whenever any filter changes.
   useEffect(() => {
     setExpanded(false)
-  }, [stageFilter, categoryFilter, industryFilter, regionFilter])
+  }, [filters, categories, showAllRows])
 
   useEffect(() => {
     let cancelled = false
@@ -1655,6 +1964,8 @@ function RfpPipelinePanel() {
                 ? r.contributed_at.trim()
                 : null,
             is_new: r.is_new === true,
+            lt_moves_band: r.lt_moves_band ?? null,
+            trips_band: r.trips_band ?? null,
           }))
         : []
       setRows(norm)
@@ -1707,53 +2018,27 @@ function RfpPipelinePanel() {
     }
   }
 
-  // Distinct filter options, derived purely from returned rows.
-  const categoryOptions = useMemo(() => {
-    const set = new Set<string>()
-    rows.forEach((r) => (r.outsources ?? []).forEach((o) => set.add(shortenService(o))))
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows])
-  const industryOptions = useMemo(() => {
-    const set = new Set<string>()
-    rows.forEach((r) => r.industry_group && set.add(r.industry_group))
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows])
-  const regionOptions = useMemo(() => {
-    const set = new Set<string>()
-    rows.forEach((r) => r.region_group && set.add(r.region_group))
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [rows])
+  // The global filter bar governs the pipeline. Rows keep RPC order (stage
+  // priority, most recent first); filters subset without re-sorting.
+  const filtered = useMemo(() => rows.filter((r) => pipelineRowMatches(r, filters)), [rows, filters])
 
-  // Summary counts over the full result (not the filtered view).
-  const stats = useMemo(() => {
-    let active = 0
-    let considering = 0
-    rows.forEach((r) => {
-      if (r.stage === "RFP active") active += 1
-      else considering += 1
-    })
-    return { active, considering, total: rows.length }
-  }, [rows])
+  useEffect(() => {
+    onRowsLoaded(filtered, loading)
+  }, [filtered, loading, onRowsLoaded])
 
-  // AND-combined filters; category matches rows whose outsources contains it.
-  // Rows are rendered in the order the RPC returns them (pre-sorted by stage
-  // priority, most recent first within stage); filters subset without re-sorting.
-  const visible = useMemo(() => {
-    return rows.filter((r) => {
-      if (stageFilter !== RFP_ALL && r.stage !== stageFilter) return false
-      if (industryFilter !== RFP_ALL && r.industry_group !== industryFilter) return false
-      if (regionFilter !== RFP_ALL && r.region_group !== regionFilter) return false
-      if (categoryFilter === "Technology") {
-        if (!(r.investing_in ?? []).includes("Mobility technology")) return false
-      } else if (categoryFilter !== RFP_ALL && !(r.outsources ?? []).some((o) => shortenService(o) === categoryFilter)) {
-        return false
-      }
-      return true
-    })
-  }, [rows, stageFilter, categoryFilter, industryFilter, regionFilter])
+  const signalsByRef = useMemo(() => {
+    const m = new Map<string, RowSignal[]>()
+    filtered.forEach((r) => m.set(r.ref, rowSignals(r, categories)))
+    return m
+  }, [filtered, categories])
 
-  const selectClass =
-    "rounded-md border border-primary/25 bg-brand-navy-2 px-2.5 py-1.5 text-xs text-slate-200 focus:border-primary/50 focus:outline-none"
+  const signalCount = useMemo(
+    () => filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0).length,
+    [filtered, signalsByRef],
+  )
+  const canNarrow = categories.length > 0
+  const narrowed = canNarrow && !showAllRows
+  const visible = narrowed ? filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0) : filtered
 
   return (
     <div>
@@ -1761,7 +2046,10 @@ function RfpPipelinePanel() {
       <div className="pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">RFP Pipeline</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">RFP Pipeline</h2>
+              <ScopePill filtered={isFiltered} />
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               Organizations in or approaching a vendor review, from live benchmark contributions.
             </p>
@@ -1776,11 +2064,6 @@ function RfpPipelinePanel() {
       <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         {loading ? (
           <div className="space-y-5">
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-20 rounded-xl bg-brand-navy-2/40 animate-pulse" />
-              ))}
-            </div>
             <div className="space-y-3">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="h-24 rounded-xl bg-brand-navy-2/40 animate-pulse" />
@@ -1795,84 +2078,41 @@ function RfpPipelinePanel() {
           </div>
         ) : (
           <>
-            {/* Summary strip */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
-                <p className="text-2xl font-bold leading-none text-primary">{stats.active.toLocaleString()}</p>
-                <p className="mt-1.5 text-xs text-slate-400">RFP active</p>
-              </div>
-              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
-                <p className="text-2xl font-bold leading-none text-slate-100">{stats.considering.toLocaleString()}</p>
-                <p className="mt-1.5 text-xs text-slate-400">Considering</p>
-              </div>
-              <div className="rounded-xl border border-primary/20 bg-brand-navy-2/60 p-4">
-                <p className="text-2xl font-bold leading-none text-slate-100">{stats.total.toLocaleString()}</p>
-                <p className="mt-1.5 text-xs text-slate-400">Total in market</p>
-              </div>
-            </div>
-
-            {/* Filter bar */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <Filter className="h-3.5 w-3.5 text-slate-500" />
-                <span className="text-xs text-slate-500">Filter</span>
-              </div>
-              <select
-                aria-label="Filter by stage"
-                value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value={RFP_ALL}>All stages</option>
-                <option value="RFP active">RFP active</option>
-                <option value="Considering">Considering</option>
-              </select>
-              <select
-                aria-label="Filter by category"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value={RFP_ALL}>All categories</option>
-                <option value="Technology">Technology</option>
-                {categoryOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Filter by industry"
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value={RFP_ALL}>All industries</option>
-                {industryOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Filter by region"
-                value={regionFilter}
-                onChange={(e) => setRegionFilter(e.target.value)}
-                className={selectClass}
-              >
-                <option value={RFP_ALL}>All regions</option>
-                {regionOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+            {/* Relevance toggle: defaults to rows with a signal in the vendor's categories. */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-400">
+                {narrowed ? (
+                  <>
+                    Showing <span className="font-semibold text-slate-200">{visible.length}</span> of{" "}
+                    {filtered.length} organizations with a signal in your categories
+                  </>
+                ) : (
+                  <>
+                    Showing all <span className="font-semibold text-slate-200">{filtered.length}</span> organizations
+                    {canNarrow && <> · {signalCount} with a signal in your categories</>}
+                  </>
+                )}
+              </p>
+              {canNarrow && (
+                <button
+                  type="button"
+                  aria-pressed={showAllRows}
+                  onClick={() => setShowAllRows((v) => !v)}
+                  className="rounded-full border border-slate-600 px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/50 hover:text-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                >
+                  {showAllRows ? "Only my categories" : "Show all organizations"}
+                </button>
+              )}
             </div>
 
             {/* Rows */}
             {visible.length === 0 ? (
               <div className="mt-4 rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
-                <p className="text-sm text-slate-400">No organizations match these filters.</p>
+                <p className="text-sm text-slate-400">
+                  {narrowed && filtered.length > 0
+                    ? "No organizations in this view carry a signal for your categories yet."
+                    : "No organizations match the current filters."}
+                </p>
               </div>
             ) : (
               <>
@@ -1889,6 +2129,18 @@ function RfpPipelinePanel() {
                         requested={requestedRefs.has(r.ref)}
                         onRequest={() => setPendingRef(r.ref)}
                       />
+                      {(signalsByRef.get(r.ref)?.length ?? 0) > 0 && (
+                        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Signals in your categories">
+                          {signalsByRef.get(r.ref)!.map((s) => (
+                            <li
+                              key={s.key}
+                              className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                            >
+                              {s.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -2083,14 +2335,7 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   )
 }
 
-function DemandRadarPanel({
-  onAim,
-}: {
-  onAim: (
-    cell: { region: string | null; industry: string | null; size: string | null; assignee: string | null },
-    label: string,
-  ) => void
-}) {
+function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
   // Own, stable browser client (createClient() returns a fresh instance per call).
   const [supabase] = useState(() => createClient())
   const [service, setService] = useState<string>("Technology & automation")
@@ -2193,16 +2438,29 @@ function DemandRadarPanel({
   return (
     <div>
       {/* Header — ZoneHeader style, unnumbered (Radar is a lens on Zone 01, not a new zone). */}
-      <div className="pt-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Demand Radar</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Where investment intent points, segment by segment - built from live benchmark data and growing with every
-          event.
+      {embedded ? (
+        <p className="text-xs text-slate-500">
+          Where investment intent points, segment by segment. This view is market-wide and does not change your
+          filters.
         </p>
-        <div className="mt-3 border-b border-primary/15" />
-      </div>
+      ) : (
+        <div className="pt-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Demand Radar</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Where investment intent points, segment by segment - built from live benchmark data and growing with every
+            event.
+          </p>
+          <div className="mt-3 border-b border-primary/15" />
+        </div>
+      )}
 
-      <div className="mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+      <div
+        className={
+          embedded
+            ? "mt-4"
+            : "mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+        }
+      >
         {/* How to read this radar — collapsible, open on first visit only */}
         <div className="mb-5">
           <button
@@ -2267,8 +2525,7 @@ function DemandRadarPanel({
                   <p className="mt-3 border-t border-slate-700/40 pt-3 text-[10px] leading-snug text-slate-500">
                     Example: {exampleCell.industry} in {shortFor(exampleCell.region as string)} -{" "}
                     {Math.round(exampleCell.want_pct)}% name this a top investment focus, from{" "}
-                    {exampleCell.base_n.toLocaleString()} organizations. Click the tile to see company-size detail, then
-                    aim the whole dashboard at that segment.
+                    {exampleCell.base_n.toLocaleString()} organizations. Click the tile to see company-size detail.
                   </p>
                 )}
               </div>
@@ -2395,18 +2652,6 @@ function DemandRadarPanel({
                                 Limited sample
                               </span>
                             )}
-                            <button
-                              onClick={() =>
-                                onAim(
-                                  { region: col.value, industry: ind, size: null, assignee: null },
-                                  `${ind} - ${col.short}`,
-                                )
-                              }
-                              className="mt-2 flex w-full items-center justify-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90"
-                            >
-                              Aim dashboard here
-                              <ArrowRight className="h-3 w-3" />
-                            </button>
                           </div>
                         </div>
                       )
@@ -2459,17 +2704,6 @@ function DemandRadarPanel({
                       · Base {openCell.base_n.toLocaleString()}
                     </p>
                   </div>
-                  <button
-                    onClick={() =>
-                      onAim(
-                        { region: openCell.region, industry: openCell.industry, size: null, assignee: null },
-                        `${openCell.industry} - ${shortFor(openCell.region as string)}`,
-                      )
-                    }
-                    className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    Aim dashboard here
-                  </button>
                 </div>
 
                 {drilldown.sizes.length === 0 && drilldown.sizeAssignee.length === 0 ? (
@@ -2515,6 +2749,72 @@ function DemandRadarPanel({
   )
 }
 
+// "Where demand is growing": white space as the body, investment intent
+// (former Demand Radar) as an in-panel view toggle.
+function DemandGrowingPanel({
+  rows,
+  loading,
+  error,
+  isFiltered,
+  vendorCategories,
+}: {
+  rows: WhitespaceRow[]
+  loading: boolean
+  error: string | null
+  isFiltered: boolean
+  vendorCategories: string[]
+}) {
+  const [view, setView] = useState<"whitespace" | "intent">("whitespace")
+  const views = [
+    { id: "whitespace" as const, label: "White space" },
+    { id: "intent" as const, label: "Investment intent" },
+  ]
+  return (
+    <section
+      aria-labelledby="demand-growing-heading"
+      className="rounded-2xl border border-primary/30 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.35)]"
+    >
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 id="demand-growing-heading" className="text-xl font-semibold text-slate-100">
+            Where demand is growing
+          </h2>
+          <ScopePill filtered={view === "whitespace" ? isFiltered : false} />
+        </div>
+        <div role="tablist" aria-label="Demand view" className="flex rounded-full border border-slate-700 p-0.5">
+          {views.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              role="tab"
+              aria-selected={view === v.id}
+              onClick={() => setView(v.id)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
+                view === v.id ? "bg-primary text-primary-foreground" : "text-slate-300 hover:text-primary"
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "whitespace" ? (
+        <WhitespacePanel
+          rows={rows}
+          loading={loading}
+          error={error}
+          isFiltered={isFiltered}
+          vendorCategories={vendorCategories}
+          embedded
+        />
+      ) : (
+        <DemandRadarPanel embedded />
+      )}
+    </section>
+  )
+}
+
 function ZoneHeader({
   number,
   title,
@@ -2538,6 +2838,12 @@ function ZoneHeader({
 // =============================================================================
 // MAIN CLIENT COMPONENT
 // =============================================================================
+
+type DashboardTab = "market" | "research"
+const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
+  { id: "market", label: "Your Market" },
+  { id: "research", label: "Market Research" },
+]
 
 export function VendorPremiumDashboardClient() {
   const supabase = createClient()
@@ -2601,8 +2907,6 @@ export function VendorPremiumDashboardClient() {
   const [whitespaceError, setWhitespaceError] = useState<string | null>(null)
   const [demandLoading, setDemandLoading] = useState(true)
 
-  // Demand Radar aim: breadcrumb near the filter bar + a scroll target on it.
-  const [radarBreadcrumb, setRadarBreadcrumb] = useState<string | null>(null)
   const filterBarRef = useRef<HTMLDivElement>(null)
 
   const resetFilters = () => {
@@ -2613,26 +2917,81 @@ export function VendorPremiumDashboardClient() {
   setSelectedTraveller(null)
   setSelectedTech(null)
   setSelectedAi(null)
-  setRadarBreadcrumb(null)
   }
 
-  // Click-to-aim from Demand Radar: point the global filters at the chosen cell
-  // (dims it doesn't carry reset to "All"), surface the breadcrumb, and scroll to
-  // the filter bar so the rest of the dashboard reflects the segment.
-  const aimAtRadarCell = (
-    cell: { region: string | null; industry: string | null; size: string | null; assignee: string | null },
-    label: string,
-  ) => {
-    setSelectedRegion(cell.region)
-    setSelectedIndustry(cell.industry)
-    setSelectedSize(cell.size)
-    setSelectedAssignee(cell.assignee)
-    setSelectedTraveller(null)
-    setSelectedTech(null)
-    setSelectedAi(null)
-    setRadarBreadcrumb(label)
-    filterBarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  // Tabs: client state mirrored to ?tab= so links and refreshes keep the view.
+  const [activeTab, setActiveTab] = useState<DashboardTab>("market")
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab")
+    if (t === "research") setActiveTab("research")
+  }, [])
+  const selectTab = (t: DashboardTab) => {
+    setActiveTab(t)
+    const url = new URL(window.location.href)
+    if (t === "market") url.searchParams.delete("tab")
+    else url.searchParams.set("tab", t)
+    window.history.replaceState(null, "", url.toString())
   }
+
+  // Vendor service categories (public.vendor_profiles, RLS-scoped to the signed-in email).
+  const [profileClient] = useState(() => createClient())
+  const [vendorEmail, setVendorEmail] = useState<string | null>(null)
+  const [vendorCategories, setVendorCategories] = useState<string[]>([])
+  const [servicesOpen, setServicesOpen] = useState(false)
+  const [savingServices, setSavingServices] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { data: auth } = await profileClient.auth.getUser()
+      const email = auth.user?.email ?? null
+      if (cancelled || !email) return
+      setVendorEmail(email)
+      const { data, error } = await profileClient
+        .from("vendor_profiles")
+        .select("service_categories")
+        .eq("email", email)
+        .maybeSingle()
+      if (cancelled || error) return
+      if (data?.service_categories?.length) setVendorCategories(data.service_categories as string[])
+      else setServicesOpen(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [profileClient])
+  const saveVendorServices = async (categories: string[]) => {
+    if (!vendorEmail) return
+    setSavingServices(true)
+    const { error } = await profileClient
+      .from("vendor_profiles")
+      .upsert({ email: vendorEmail, service_categories: categories, updated_at: new Date().toISOString() })
+    setSavingServices(false)
+    if (!error) {
+      setVendorCategories(categories)
+      setServicesOpen(false)
+    }
+  }
+
+  const dashboardFilters = useMemo<DashboardFilters>(
+    () => ({
+      region: selectedRegion,
+      industry: selectedIndustry,
+      size: selectedSize,
+      assignee: selectedAssignee,
+      traveller: selectedTraveller,
+      tech: selectedTech,
+      ai: selectedAi,
+    }),
+    [selectedRegion, selectedIndustry, selectedSize, selectedAssignee, selectedTraveller, selectedTech, selectedAi],
+  )
+
+  // Pipeline rows (after global filters) feed the stat band.
+  const [pipelineRows, setPipelineRows] = useState<RfpPipelineRow[]>([])
+  const [pipelineLoading, setPipelineLoading] = useState(true)
+  const handlePipelineRows = useCallback((rows: RfpPipelineRow[], isLoading: boolean) => {
+    setPipelineRows(rows)
+    setPipelineLoading(isLoading)
+  }, [])
 
   // True when at least one filter is set to something other than its default ("All").
   // The "(market …)" comparison is only meaningful when the segment differs from the whole market.
@@ -3183,46 +3542,25 @@ export function VendorPremiumDashboardClient() {
       <GlobalNav />
       
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
-            <Sparkles className="h-3.5 w-3.5" />
-            Vendor Member Access
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-slate-100">
-            Vendor Intelligence™ Premium Dashboard
-          </h1>
-          <p className="text-slate-300 max-w-3xl mx-auto">
-            Market demand, investment priorities and transformation intelligence for providers serving global workforce, mobility, immigration and compliance teams.
-          </p>
-          <p className="text-xs text-slate-500 max-w-2xl mx-auto">
-            Aggregated market intelligence only. No company names, participant names or organization-level responses are disclosed.
-          </p>
-        </div>
-
-        {/* Premium Access Banner */}
-        <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-200">
-                  Your Vendor membership also includes full access to the Global Workforce Intelligence™ Premium dashboard
-                </p>
-                <p className="text-xs text-slate-400">
-                  Explore workforce benchmarks, pillar breakdowns, and regional comparisons
-                </p>
-              </div>
-            </div>
-            <Button asChild className="bg-primary hover:bg-primary/90 gap-2 shrink-0">
-              <Link href="/premium-dashboard" target="_blank" rel="noopener noreferrer">
-                Open Premium Dashboard
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+        <div role="tablist" aria-label="Dashboard sections" className="flex gap-1 border-b border-slate-700/60">
+          {DASHBOARD_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={activeTab === t.id}
+              aria-controls={`panel-${t.id}`}
+              onClick={() => selectTab(t.id)}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
+                activeTab === t.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {/* Loading State */}
@@ -3240,8 +3578,296 @@ export function VendorPremiumDashboardClient() {
           </div>
         )}
 
-        {!loading && !error && (
-          <>
+        {!loading && !error && activeTab === "market" && (
+          <div role="tabpanel" id="panel-market" aria-labelledby="tab-market" className="space-y-8">
+            <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h1 className="text-2xl font-bold text-slate-100">Vendor Intelligence</h1>
+              <p className="text-xs text-slate-500">Aggregated and anonymized. No company or participant names are disclosed.</p>
+            </header>
+
+            <VendorStatBand
+              rows={pipelineRows}
+              loading={pipelineLoading}
+              categories={vendorCategories}
+              isFiltered={isFiltered}
+              onEditServices={() => setServicesOpen(true)}
+            />
+
+            <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
+                </div>
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset filters
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Region</label>
+                  <select
+                    value={selectedRegion || ""}
+                    onChange={(e) => setSelectedRegion(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {regionOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Industry</label>
+                  <select
+                    value={selectedIndustry || ""}
+                    onChange={(e) => setSelectedIndustry(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {industryOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Company size</label>
+                  <select
+                    value={selectedSize || ""}
+                    onChange={(e) => setSelectedSize(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {sizeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Long-term &amp; permanent</label>
+                  <select
+                    value={selectedAssignee || ""}
+                    onChange={(e) => setSelectedAssignee(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {assigneeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Short-term &amp; business travel</label>
+                  <select
+                    value={selectedTraveller || ""}
+                    onChange={(e) => setSelectedTraveller(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {travellerOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Technology status</label>
+                  <select
+                    value={selectedTech || ""}
+                    onChange={(e) => setSelectedTech(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {techOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">AI maturity</label>
+                  <select
+                    value={selectedAi || ""}
+                    onChange={(e) => setSelectedAi(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {aiOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
+                <p className="text-sm font-medium text-slate-300">
+                  {demandLoading ? (
+                    <span className="text-slate-500">Counting responses…</span>
+                  ) : (
+                    <>
+                      Based on{" "}
+                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organizations
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <RfpPipelinePanel
+              filters={dashboardFilters}
+              categories={vendorCategories}
+              isFiltered={isFiltered}
+              onRowsLoaded={handlePipelineRows}
+            />
+
+            <DemandGrowingPanel
+              rows={whitespace}
+              loading={demandLoading}
+              error={whitespaceError}
+              isFiltered={isFiltered}
+              vendorCategories={vendorCategories}
+            />
+          </div>
+        )}
+
+        {!loading && !error && activeTab === "research" && (
+          <div role="tabpanel" id="panel-research" aria-labelledby="tab-research" className="space-y-10">
+            <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
+                </div>
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset filters
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Region</label>
+                  <select
+                    value={selectedRegion || ""}
+                    onChange={(e) => setSelectedRegion(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {regionOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Industry</label>
+                  <select
+                    value={selectedIndustry || ""}
+                    onChange={(e) => setSelectedIndustry(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {industryOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Company size</label>
+                  <select
+                    value={selectedSize || ""}
+                    onChange={(e) => setSelectedSize(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {sizeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Long-term &amp; permanent</label>
+                  <select
+                    value={selectedAssignee || ""}
+                    onChange={(e) => setSelectedAssignee(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {assigneeOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Short-term &amp; business travel</label>
+                  <select
+                    value={selectedTraveller || ""}
+                    onChange={(e) => setSelectedTraveller(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {travellerOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Technology status</label>
+                  <select
+                    value={selectedTech || ""}
+                    onChange={(e) => setSelectedTech(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {techOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">AI maturity</label>
+                  <select
+                    value={selectedAi || ""}
+                    onChange={(e) => setSelectedAi(e.target.value || null)}
+                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
+                  >
+                    {aiOptions.map((opt) => (
+                      <option key={opt.label} value={opt.value || ""}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
+                <p className="text-sm font-medium text-slate-300">
+                  {demandLoading ? (
+                    <span className="text-slate-500">Counting responses…</span>
+                  ) : (
+                    <>
+                      Based on{" "}
+                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organizations
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
             {/* =================================================================== */}
             {/* MARKET OPPORTUNITY SCORE (supporting metric)                       */}
             {/* =================================================================== */}
@@ -3374,320 +4000,6 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* FILTERS FOR SERVICE DEMAND, DEMAND PIPELINE & COMMERCIAL BREAKDOWN */}
-            {/* =================================================================== */}
-
-            {radarBreadcrumb && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2">
-                <p className="text-xs text-slate-200 min-w-0">
-                  <span className="font-semibold text-primary">Viewing:</span> {radarBreadcrumb}{" "}
-                  <span className="text-slate-400">- from Demand Radar</span>
-                </p>
-                <button
-                  onClick={() => setRadarBreadcrumb(null)}
-                  className="shrink-0 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
-                  aria-label="Dismiss Demand Radar selection"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
-            <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
-                </div>
-                <button
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset filters
-                </button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Region</label>
-                  <select
-                    value={selectedRegion || ""}
-                    onChange={(e) => setSelectedRegion(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {regionOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Industry</label>
-                  <select
-                    value={selectedIndustry || ""}
-                    onChange={(e) => setSelectedIndustry(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {industryOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Company size</label>
-                  <select
-                    value={selectedSize || ""}
-                    onChange={(e) => setSelectedSize(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {sizeOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Long-term &amp; permanent</label>
-                  <select
-                    value={selectedAssignee || ""}
-                    onChange={(e) => setSelectedAssignee(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {assigneeOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Short-term &amp; business travel</label>
-                  <select
-                    value={selectedTraveller || ""}
-                    onChange={(e) => setSelectedTraveller(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {travellerOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">Technology status</label>
-                  <select
-                    value={selectedTech || ""}
-                    onChange={(e) => setSelectedTech(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {techOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 uppercase tracking-wide block mb-1">AI maturity</label>
-                  <select
-                    value={selectedAi || ""}
-                    onChange={(e) => setSelectedAi(e.target.value || null)}
-                    className="w-full bg-[#1a3344] border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 focus:border-primary/50 focus:outline-none"
-                  >
-                    {aiOptions.map((opt) => (
-                      <option key={opt.label} value={opt.value || ""}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
-                <p className="text-sm font-medium text-slate-300">
-                  {demandLoading ? (
-                    <span className="text-slate-500">Counting responses…</span>
-                  ) : (
-                    <>
-                      Based on{" "}
-                      <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organizations
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* ================= ZONE 01 - WHERE THE DEMAND IS ================= */}
-
-            <ZoneHeader
-              number="01"
-              title="Where the demand is"
-              description="Unmet need by service: what buyers want versus what they already have."
-            />
-
-            {/* =================================================================== */}
-            {/* FLAGSHIP: WHERE THE WHITE SPACE IS (headline opportunity answer)    */}
-            {/* =================================================================== */}
-
-            <WhitespacePanel
-              rows={whitespace}
-              loading={demandLoading}
-              error={whitespaceError}
-              isFiltered={isFiltered}
-            />
-
-            {/* DEMAND RADAR: service-first ranked segments (independent of global filters). */}
-            <DemandRadarPanel onAim={aimAtRadarCell} />
-
-            {/* RFP PIPELINE: read-only per-organization view of who is in or approaching a vendor review. */}
-            <RfpPipelinePanel />
-
-            {/* DEMAND VS PROVISION: Emerging (E13) and Established (Q49) side by side */}
-            <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.2)]">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Demand vs provision</h2>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                What this segment is investing in next, alongside what it already outsources today.
-              </p>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Emerging demand (E13, segment-aware) */}
-                <DemandColumn
-                  title="Emerging demand"
-                  subtitle="Investment focus, next 12–18 months"
-                  items={emergingDemand.items}
-                  confidence={emergingDemand.confidence}
-                  segBaseN={emergingDemand.segBaseN}
-                  barColor="#2dd4bf"
-                  loading={demandLoading}
-                  isFiltered={isFiltered}
-                  badge={isFiltered ? "Filtered" : "Market-wide"}
-                />
-
-                {/* Established demand (Q49, segment-aware) */}
-                <DemandColumn
-                  title="Established demand"
-                  subtitle="What they outsource today"
-                  items={establishedDemand.items}
-                  confidence={establishedDemand.confidence}
-                  segBaseN={establishedDemand.segBaseN}
-                  barColor="var(--brand-teal)"
-                  loading={demandLoading}
-                  isFiltered={isFiltered}
-                  badge={isFiltered ? "Filtered" : "Market-wide"}
-                />
-              </div>
-            </div>
-
-            {/* STATED SERVICE INTEREST (SI1) */}
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-semibold text-slate-100">Stated service interest</h3>
-                    <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                      {serviceInterestIsFiltered ? "Filtered" : "Market-wide"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400">Services GME event audiences are actively seeking</p>
-                  {serviceInterest.length > 0 && (serviceInterest[0]?.base_n ?? 0) > 0 && (
-                    <p className="mt-1 text-xs text-slate-500">Base {serviceInterest[0].base_n} organizations</p>
-                  )}
-                </div>
-
-                {serviceInterest.length === 0 ? (
-                  <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-                    <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">No stated interest data available.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {serviceInterest.map((row, idx) => (
-                      <div key={idx}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm text-slate-200 truncate pr-2">{row.service}</span>
-                          {row.is_reportable ? (
-                            <span className="text-sm font-semibold text-[#2dd4bf] shrink-0">{row.pct}%</span>
-                          ) : (
-                            <span className="text-xs text-slate-500 italic shrink-0">—</span>
-                          )}
-                        </div>
-                        {row.is_reportable && (
-                          <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[#2dd4bf]/60 rounded-full transition-all duration-300"
-                              style={{ width: `${row.pct}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <p className="text-xs text-slate-500 mt-6 italic">
-                Reflects the selected region where one is chosen; industry and size filters do not apply to this signal.
-              </p>
-            </div>
-
-            {/* ================= ZONE 02 - WHO IS BUYING NOW ================= */}
-
-            <ZoneHeader
-              number="02"
-              title="Who is buying now"
-              description="Active buying signals in your selected segment."
-            />
-
-            {/* =================================================================== */}
-            {/* PANEL 2: DEMAND PIPELINE (POOLED ALL WAVES) */}
-            {/* =================================================================== */}
-            
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Demand Pipeline</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  {pipelineIsFiltered ? "Filtered" : "Market-wide"}
-                </span>
-              </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Near-term buying activity and vendor review intentions for the selected region, industry, and size segment.
-              </p>
-              
-              {demandPipeline.length === 0 ? (
-                <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No demand pipeline data available.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {demandPipeline.map((row, idx) => (
-                    <div key={idx} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-5">
-                      <p className="text-sm font-medium text-slate-200 mb-3">{row.signal}</p>
-                      {row.is_reportable ? (
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-4xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{row.pct}%</span>
-                          {(row.base_n ?? 0) > 0 && (
-                            <span className="text-xs text-slate-500 tabular-nums">n={row.base_n}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-400">Not enough data for this segment</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* =================================================================== */}
             {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
             {/* =================================================================== */}
 
@@ -3695,9 +4007,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Layers className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  {e12IsFiltered ? "Filtered" : "Market-wide"}
-                </span>
+                <ScopePill filtered={e12IsFiltered} />
               </div>
 
               {(() => {
@@ -3883,88 +4193,7 @@ export function VendorPremiumDashboardClient() {
               )
             })()}
 
-            {/* ================= ZONE 03 - HOW THEY BUY ================= */}
-
-            <ZoneHeader
-              number="03"
-              title="How they buy"
-              description="Who approves, whose budget, and what tips the decision."
-            />
-
-            {/* =================================================================== */}
-            {/* SECTION 3b: TECHNOLOGY BUYER INTELLIGENCE */}
-            {/* =================================================================== */}
-
             <TechnologyBuyerIntelligence supabase={supabase} />
-
-            {/* Featured strip: Experience & Outcomes — total annual GM program spend.
-                Presentational only; reads the live get_vendor_commercial_current
-                payload already grouped in state. Renders nothing if the pillar
-                group, the spend question, or its answers are absent. */}
-            {(() => {
-              const group = groupedByPillar.find(([pillarName]) => pillarName === NEW_VENDOR_PILLAR)
-              if (!group) return null
-              const questions = group[1]
-              if (!questions.length) return null
-              // The spend distribution question within the pillar (matched on text,
-              // never hardcoded values). No match -> render nothing.
-              const spend = questions.find((q) =>
-                `${q.qCode} ${q.questionLabel}`.toLowerCase().includes("spend"),
-              )
-              if (!spend || !spend.answers.length) return null
-              const maxBase = Math.max(...questions.map((q) => q.baseN))
-              return (
-                <div className="mb-10 rounded-2xl border border-sky-400/30 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 md:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <NewPill />
-                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">
-                      Total annual Global Mobility program spend
-                    </h3>
-                    <span className="ml-auto shrink-0 text-xs text-slate-500 tabular-nums">
-                      {`Base: ${maxBase} organizations`}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {spend.answers.map((answer, idx) => {
-                      const pctDisplay = Math.round(answer.pct)
-                      return (
-                        <div key={idx}>
-                          <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                            <span className="text-slate-400 break-words flex-1 min-w-0">{answer.answer_option}</span>
-                            <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                          </div>
-                          <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                              style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <p className="mt-5 text-xs text-slate-500">
-                    {"Part of the "}
-                    <button
-                      type="button"
-                      onClick={() => setFocusedBreakdown(NEW_VENDOR_PILLAR)}
-                      className="font-medium text-sky-300 underline underline-offset-2 transition-colors hover:text-sky-200 cursor-pointer"
-                    >
-                      Experience &amp; Outcomes
-                    </button>
-                    {" panel, opened this month."}
-                  </p>
-                </div>
-              )
-            })()}
-
-            {/* ================= ZONE 04 - WHAT IS COMING ================= */}
-
-            <ZoneHeader
-              number="04"
-              title="What is coming"
-              description="Directional signals for the next 12-36 months."
-            />
 
             {/* =================================================================== */}
             {/* AI ADOPTION (event-sourced GM leaders — filterable, precedes breakdowns) */}
@@ -3974,9 +4203,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
-                <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                  {e12IsFiltered ? "Filtered" : "Market-wide"}
-                </span>
+                <ScopePill filtered={isFiltered} />
               </div>
 
               {(() => {
@@ -4159,11 +4386,7 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">
                   {displayVendorLabel("E12", reshapeSignals.questionLabel)}
                 </h2>
-                {e12IsFiltered && (
-                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                    Filtered
-                  </span>
-                )}
+                <ScopePill filtered={e12IsFiltered} />
               </div>
               <p className="text-sm text-slate-400 mb-1">
                 Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
@@ -4292,71 +4515,15 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* SECTION 2: YEAR-ON-YEAR TRENDS - PRESERVES GREEN/RED */}
-            {/* =================================================================== */}
-            
-            {SHOW_YOY && (
-            <div className="mb-12 pb-10 border-b border-slate-700/50">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Year-on-Year Trends</h2>
-              </div>
-              
-              <p className="text-sm text-slate-400 mb-6">
-                Directional — based on the 2025 and 2026 Global Workforce Deployment waves.
-              </p>
-              
-              {yoyData.length === 0 ? (
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-                  <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-slate-400">No year-on-year data available.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Biggest Movers Strip - PRESERVES GREEN/RED */}
-                  {(() => {
-                    const sortedByAbsDelta = [...yoyData]
-                      .filter(r => r.delta_pts !== 0)
-                      .sort((a, b) => Math.abs(b.delta_pts) - Math.abs(a.delta_pts))
-                      .slice(0, 3)
-                    
-                    return sortedByAbsDelta.length > 0 ? (
-                      <div className="mb-6">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Biggest Movers</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {sortedByAbsDelta.map((row, idx) => (
-                            <BiggestMoverChip key={idx} row={row} />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null
-                  })()}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {yoyData.map((row, idx) => (
-                      <YoYTrendCard key={idx} row={row} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            )}
-
-            {/* ================= ZONE 05 - THE FULL BREAKDOWNS ================= */}
-
-            <ZoneHeader
-              number="05"
-              title="The full breakdowns"
-              description="Every benchmark question, grouped by pillar, for deeper reference."
-            />
-
-            {/* =================================================================== */}
             {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
             {/* =================================================================== */}
             
             <div ref={breakdownTopRef} id="commercial-breakdowns" className="space-y-4 scroll-mt-24">
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-slate-100 mb-2">Commercial Intelligence Breakdowns</h2>
+                <div className="mb-2 flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-slate-100">Commercial Intelligence Breakdowns</h2>
+                  <ScopePill filtered={false} />
+                </div>
                 <p className="text-sm text-slate-400">
                   Data points grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
                 </p>
@@ -4556,7 +4723,10 @@ export function VendorPremiumDashboardClient() {
             {groupedByStudy.length > 0 && (
               <div className="space-y-4">
                 <div className="mb-1">
-                  <h2 className="text-lg font-semibold text-slate-300 mb-1">Earlier research</h2>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-slate-300">Earlier research</h2>
+                    <ScopePill filtered={false} />
+                  </div>
                   <p className="text-sm text-slate-500">
                     From earlier one-off GME studies (2022–2023). Shown for context — not part of the current wave.
                   </p>
@@ -4615,14 +4785,6 @@ export function VendorPremiumDashboardClient() {
               </div>
             )}
 
-            {/* ================= ZONE 06 - RESOURCES ================= */}
-
-            <ZoneHeader
-              number="06"
-              title="Resources"
-              description="Briefings, reports, and partnership options."
-            />
-
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
             {/* =================================================================== */}
@@ -4670,81 +4832,26 @@ export function VendorPremiumDashboardClient() {
               </div>
             </div>
 
-            {/* =================================================================== */}
-            {/* SECTION 5: PARTNERSHIP UPSELL */}
-            {/* =================================================================== */}
-            
-            <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)]">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide">Strategic Intelligence Partner</span>
-              </div>
-              <h2 className="text-2xl font-bold text-slate-100 mb-2">
-                Upgrade to Strategic Partner Access
-              </h2>
-              <p className="text-slate-300 mb-6 max-w-2xl">
-                Get exclusive executive access, custom briefings, bespoke events and direct engagement with senior HR, Mobility and Workforce leaders shaping the industry.
-              </p>
-              <ul className="space-y-2 text-sm text-slate-300 mb-6">
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Market Opportunity Score&trade; — composite demand signal across operational pressure, transformation, AI and technology intent
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Established vs Emerging Service Demand — what organizations outsource today and what they&apos;re actively exploring
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Demand Pipeline — near-term service-review, policy-refresh and technology-evaluation activity
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Commercial Intelligence across all vendor pillars — Investment Priorities, Market Demand, Technology Demand, Global Expansion Demand, Transformation Activity and Sustainable Service Demand
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Segment all intelligence by Region, Industry and Company size
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Full Global Workforce Intelligence dashboard included
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Bi-Annual Executive Summary
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Includes 10 sponsored Client Intelligence Passes
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Full report library — including members-only reports
-                </li>
-              </ul>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-3">
-                Plus, exclusively for partners:
-              </p>
-              <ul className="space-y-2 text-sm text-slate-300 mb-6">
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  2 Bespoke Virtual Executive Events
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                  Strategic Partner Recognition
-                </li>
-              </ul>
-              <Button asChild className="bg-primary hover:bg-primary/90 text-white font-medium gap-2">
-                <Link href="/pricing#strategic-intelligence-partner">
-                  Learn About Strategic Partnership
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </>
+          </div>
         )}
+
+        <p className="pt-2 text-center text-sm">
+          <Link
+            href="/pricing#strategic-intelligence-partner"
+            className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"
+          >
+            Explore Strategic Partner Access
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </p>
+
+        <VendorServicesDialog
+          open={servicesOpen}
+          initial={vendorCategories}
+          saving={savingServices}
+          onCancel={() => setServicesOpen(false)}
+          onSave={saveVendorServices}
+        />
       </main>
       
       <GlobalFooter />
