@@ -1876,9 +1876,14 @@ function RfpPipelinePanel() {
               </div>
             ) : (
               <>
-                <ul className="mt-4 divide-y divide-primary/10">
+                <ul className="mt-4 flex flex-col gap-3.5">
                   {(expanded ? visible : visible.slice(0, 5)).map((r) => (
-                    <li key={r.ref} className="py-4 first:pt-0 last:pb-0">
+                    <li
+                      key={r.ref}
+                      className={`rounded-xl border border-slate-700/50 border-l-[3px] bg-brand-navy-2/60 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-y-slate-600 hover:border-r-slate-600 hover:shadow-[0_6px_20px_-10px_rgb(0_0_0_/_0.6)] ${
+                        r.stage === "RFP active" ? "border-l-brand-teal" : "border-l-slate-500"
+                      }`}
+                    >
                       <RfpPipelineOrg
                         row={r}
                         requested={requestedRefs.has(r.ref)}
