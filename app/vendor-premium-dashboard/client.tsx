@@ -1826,11 +1826,7 @@ function VendorStatBand({
           </div>
         ))}
       </div>
-      <p className="text-[11px] leading-snug text-slate-500">
-        CBIQ does not collect what an RFP covers. Relevance is inferred from what the organization outsources today,
-        where it is investing next, and the pressures it reports.
-      </p>
-    </section>
+  </section>
   )
 }
 
