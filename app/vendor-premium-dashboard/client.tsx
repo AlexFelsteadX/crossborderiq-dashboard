@@ -448,7 +448,7 @@ function computeMoveTypeNets(
 // WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary — promoted view)
 // =============================================================================
 
-function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
+function MoveTypeDemandCard({ rows, filtered }: { rows: CommercialCurrentRow[]; filtered: boolean }) {
   const q39 = rows.filter((r) => r.q_code === "Q39")
   if (q39.length === 0) return null
 
@@ -479,9 +479,7 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold text-slate-100">Where Global Mobility demand is heading</h2>
-        <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-          Market-wide
-        </span>
+        <ScopePill filtered={filtered} />
       </div>
       <p className="text-sm text-slate-400 mb-6">
         Net expected change in move-type volumes over the next 12 months
@@ -1166,7 +1164,7 @@ function WhitespacePanel({
               <option value="">All categories</option>
               {categoryOptions.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat}
+                  {serviceCategoryLabel(cat)}
                 </option>
               ))}
             </select>
@@ -1275,7 +1273,7 @@ function WhitespacePanel({
           {pinnedAbsent && (
             <div className="rounded-lg border border-slate-600/40 bg-brand-navy-2/60 px-4 py-2 mb-3">
               <p className="text-[11px] text-slate-400">
-                {pinnedCategory} is not reportable in this segment — showing all categories.
+                {serviceCategoryLabel(pinnedCategory)} is not reportable in this segment — showing all categories.
               </p>
             </div>
           )}
@@ -1579,9 +1577,10 @@ interface RfpPipelineRow {
   contributed: string | null
   contributed_at: string | null
   is_new: boolean
-  // Returned by get_rfp_pipeline; used only to apply the global movement filters.
   lt_moves_band: string | null
   trips_band: string | null
+  spend_band: string | null
+  reporting_line: string | null
 }
 
 // Normalize a possibly-null array field to a clean string[] (drops empties).
@@ -1627,54 +1626,83 @@ function shortenService(value: string): string {
 // that connect them to pipeline rows and white-space categories.
 // ---------------------------------------------------------------------------
 
-const VENDOR_SERVICE_OPTIONS = [
-  "Tax",
-  "Immigration",
-  "RMC Support",
-  "Cultural training",
-  "Language training",
-  "Managed moves",
-  "RWA",
-  "Partner support",
-  "Technology",
-] as const
+// Display order and labels for the services modal. `value` is the canonical
+// string stored in vendor_profiles.service_categories.
+const VENDOR_SERVICE_OPTIONS: { label: string; value: string }[] = [
+  { label: "Immigration", value: "Immigration" },
+  { label: "Tax", value: "Tax" },
+  { label: "Relocation Management", value: "RMC Support" },
+  { label: "Technology", value: "Technology" },
+  { label: "Managed services", value: "Managed services" },
+  { label: "Partner support", value: "Partner support" },
+  { label: "Cultural training", value: "Cultural training" },
+  { label: "Language training", value: "Language training" },
+  { label: "Remote work assessments", value: "Remote work assessments" },
+]
 
-// Matches a service string (outsourced service or white-space category) to a vendor category.
+const LEGACY_SERVICE_VALUES: Record<string, string> = {
+  "Managed moves": "Managed services",
+  RWA: "Remote work assessments",
+}
+
+function normalizeServiceCategories(values: string[]): string[] {
+  return Array.from(new Set(values.map((v) => LEGACY_SERVICE_VALUES[v] ?? v)))
+}
+
+function serviceCategoryLabel(value: string): string {
+  return VENDOR_SERVICE_OPTIONS.find((o) => o.value === value)?.label ?? value
+}
+
+// Matches a white-space category name to a vendor category.
 const SERVICE_PATTERNS: Record<string, RegExp> = {
   Tax: /\btax/i,
   Immigration: /immigra|visa/i,
   "RMC Support": /relocation management|\brmc\b|relocation support/i,
   "Cultural training": /cultur|cross-cultural/i,
   "Language training": /language/i,
-  "Managed moves": /managed (move|service)|end to end|move management/i,
-  RWA: /remote work|\brwa\b|work from anywhere/i,
+  "Managed services": /managed (move|service)|end to end|move management/i,
+  "Remote work assessments": /remote work|\brwa\b|work from anywhere/i,
   "Partner support": /partner|spous|family/i,
   Technology: /technolog|automat|platform|software/i,
 }
 
-// Matches an investment-focus string to a vendor category.
-const INVEST_PATTERNS: Record<string, RegExp> = {
-  Tax: /\btax|risk|complian/i,
-  Immigration: /immigra|complian/i,
-  "RMC Support": /relocation|cost/i,
-  "Cultural training": /cultur|employee (support|experience)|wellbeing/i,
-  "Language training": /language|employee (support|experience)/i,
-  "Managed moves": /managed|cost|relocation/i,
-  RWA: /remote work|\brwa\b/i,
-  "Partner support": /partner|family|employee (support|experience)/i,
-  Technology: /technolog|automat|\bai\b|ai-enabled|analytic|data|tracking|platform/i,
+// Exact outsourced_services answers that signal each vendor category.
+const OUTSOURCE_SIGNALS: Record<string, string[]> = {
+  Immigration: ["Immigration"],
+  Tax: ["Tax"],
+  "RMC Support": ["RMC Support"],
+  "Managed services": ["Managed services - leveraging vendors to coordinate the end to end assignment process"],
+  "Partner support": ["Partner support"],
+  "Cultural training": ["Cultural training"],
+  "Language training": ["Language training"],
+  "Remote work assessments": ["Remote work assessments"],
 }
 
-// Pressures map to categories by theme: compliance → Tax & Immigration,
-// cost → RMC Support & Managed moves, manual-process / data → Technology.
+// Exact investment_focus answers that signal each vendor category.
+const INVEST_SIGNALS: Record<string, string[]> = {
+  Immigration: ["Immigration support"],
+  "RMC Support": ["Cost optimization"],
+  Technology: [
+    "Mobility technology",
+    "AI-enabled workflows",
+    "Process automation",
+    "Data visibility & analytics",
+    "Traveler tracking",
+  ],
+  "Partner support": ["Employee support services"],
+}
+
+// Pressures map to categories by theme (weakest signal): compliance → Tax & Immigration,
+// cost → Relocation Management & Managed services, manual-process / data → Technology.
 const PRESSURE_GROUPS: { pattern: RegExp; categories: string[] }[] = [
   { pattern: /complian|regulat|immigra|tax|legal|duty of care/i, categories: ["Tax", "Immigration"] },
-  { pattern: /cost|budget|spend|price/i, categories: ["RMC Support", "Managed moves"] },
+  { pattern: /cost|budget|spend|price/i, categories: ["RMC Support", "Managed services"] },
   { pattern: /manual|process|data|reporting|visib|tracking|system|spreadsheet/i, categories: ["Technology"] },
 ]
 
 type RowSignal = { key: string; label: string }
 
+// Ordered by strength: investment focus, then outsourced today, then pressure.
 function rowSignals(row: RfpPipelineRow, categories: string[]): RowSignal[] {
   if (categories.length === 0) return []
   const out: RowSignal[] = []
@@ -1684,11 +1712,14 @@ function rowSignals(row: RfpPipelineRow, categories: string[]): RowSignal[] {
     seen.add(key)
     out.push({ key, label })
   }
-  for (const o of row.outsources ?? []) {
-    if (categories.some((c) => SERVICE_PATTERNS[c]?.test(o))) push(`o:${o}`, `Outsources ${shortenService(o)} today`)
+  for (const raw of row.investing_in ?? []) {
+    const f = raw.trim()
+    if (categories.some((c) => INVEST_SIGNALS[c]?.includes(f))) push(`i:${f}`, `Investing in ${f}`)
   }
-  for (const f of row.investing_in ?? []) {
-    if (categories.some((c) => INVEST_PATTERNS[c]?.test(f))) push(`i:${f}`, `Investing in ${f}`)
+  for (const raw of row.outsources ?? []) {
+    const o = raw.trim()
+    const category = categories.find((c) => OUTSOURCE_SIGNALS[c]?.includes(o))
+    if (category) push(`o:${o}`, `Outsources ${serviceCategoryLabel(category)} today`)
   }
   for (const p of row.pressures ?? []) {
     const groups = PRESSURE_GROUPS.filter((g) => g.pattern.test(p))
@@ -1809,7 +1840,7 @@ function VendorStatBand({
           className="text-xs font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 rounded"
         >
           Edit services
-          {categories.length > 0 && <span className="text-slate-500 no-underline"> ({categories.join(", ")})</span>}
+          {categories.length > 0 && <span className="text-slate-500 no-underline"> ({categories.map(serviceCategoryLabel).join(", ")})</span>}
         </button>
       </div>
       <div className="grid grid-cols-3 gap-3">
@@ -1858,26 +1889,30 @@ function VendorServicesDialog({
             Pick every category you serve. We use this to highlight relevant organizations and demand signals.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-wrap gap-2 py-2" role="group" aria-label="Service categories">
-          {VENDOR_SERVICE_OPTIONS.map((c) => {
-            const on = picked.includes(c)
+        <fieldset className="flex flex-col gap-1.5 py-2">
+          <legend className="sr-only">Service categories</legend>
+          {VENDOR_SERVICE_OPTIONS.map((o) => {
+            const on = picked.includes(o.value)
             return (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={on}
-                onClick={() => toggle(c)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
+              <label
+                key={o.value}
+                className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-within:ring-1 focus-within:ring-primary/60 ${
                   on
-                    ? "border-primary bg-primary/20 text-primary"
-                    : "border-slate-600 bg-brand-navy-3/60 text-slate-300 hover:border-slate-500"
+                    ? "border-primary/60 bg-primary/10 text-slate-100"
+                    : "border-slate-700 bg-brand-navy-3/40 text-slate-300 hover:border-slate-500"
                 }`}
               >
-                {c}
-              </button>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={() => toggle(o.value)}
+                  className="h-4 w-4 shrink-0 accent-[#0D9488]"
+                />
+                {o.label}
+              </label>
             )
           })}
-        </div>
+        </fieldset>
         <DialogFooter>
           <Button
             type="button"
@@ -1908,6 +1943,8 @@ function RfpPipelinePanel({
   const [rows, setRows] = useState<RfpPipelineRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
+  // Accordion: at most one pipeline card open at a time.
+  const [openRef, setOpenRef] = useState<string | null>(null)
   // Default view: only rows carrying a signal for the vendor's saved categories.
   const [showAllRows, setShowAllRows] = useState(false)
   const router = useRouter()
@@ -1962,6 +1999,8 @@ function RfpPipelinePanel({
             is_new: r.is_new === true,
             lt_moves_band: r.lt_moves_band ?? null,
             trips_band: r.trips_band ?? null,
+            spend_band: r.spend_band ?? null,
+            reporting_line: r.reporting_line ?? null,
           }))
         : []
       setRows(norm)
@@ -2113,32 +2152,26 @@ function RfpPipelinePanel({
             ) : (
               <>
                 <ul className="mt-4 flex flex-col gap-3.5">
-                  {(expanded ? visible : visible.slice(0, 5)).map((r) => (
-                    <li
-                      key={r.ref}
-                      className={`rounded-xl border border-slate-700/50 border-l-[3px] bg-brand-navy-2/60 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-y-slate-600 hover:border-r-slate-600 hover:shadow-[0_6px_20px_-10px_rgb(0_0_0_/_0.6)] ${
-                        r.stage === "RFP active" ? "border-l-brand-teal" : "border-l-slate-500"
-                      }`}
-                    >
-                      <RfpPipelineOrg
-                        row={r}
-                        requested={requestedRefs.has(r.ref)}
-                        onRequest={() => setPendingRef(r.ref)}
-                      />
-                      {(signalsByRef.get(r.ref)?.length ?? 0) > 0 && (
-                        <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Signals in your categories">
-                          {signalsByRef.get(r.ref)!.map((s) => (
-                            <li
-                              key={s.key}
-                              className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                            >
-                              {s.label}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
+                  {(expanded ? visible : visible.slice(0, 5)).map((r) => {
+                    const isOpen = openRef === r.ref
+                    return (
+                      <li
+                        key={r.ref}
+                        onClick={() => setOpenRef((cur) => (cur === r.ref ? null : r.ref))}
+                        className={`cursor-pointer rounded-xl border border-slate-700/50 border-l-[3px] bg-brand-navy-2/60 p-4 transition-all duration-200 hover:border-y-slate-600 hover:border-r-slate-600 hover:shadow-[0_6px_20px_-10px_rgb(0_0_0_/_0.6)] ${
+                          r.stage === "RFP active" ? "border-l-brand-teal" : "border-l-slate-500"
+                        } ${isOpen ? "border-y-slate-600 border-r-slate-600" : "hover:-translate-y-0.5"}`}
+                      >
+                        <RfpPipelineOrg
+                          row={r}
+                          open={isOpen}
+                          signals={signalsByRef.get(r.ref) ?? []}
+                          requested={requestedRefs.has(r.ref)}
+                          onRequest={() => setPendingRef(r.ref)}
+                        />
+                      </li>
+                    )
+                  })}
                 </ul>
                 {visible.length > 5 && (
                   <button
@@ -2198,135 +2231,199 @@ function RfpPipelinePanel({
   )
 }
 
-// A single anonymous organization row.
+// A single anonymous organization card. Collapsed shows identity, meta and match
+// chips; expanded adds the profile fields and the workshop action.
 function RfpPipelineOrg({
   row,
+  open,
+  signals,
   requested,
   onRequest,
 }: {
   row: RfpPipelineRow
+  open: boolean
+  signals: RowSignal[]
   requested: boolean
   onRequest: () => void
 }) {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-      <div className="min-w-0 flex-1">
-        <RfpPipelineOrgDetails row={row} />
-      </div>
-      <div className="sm:shrink-0">
-        {requested ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled
-            className="w-full border-slate-700/60 bg-transparent text-xs text-slate-400 sm:w-auto"
-          >
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />
-            Workshop requested
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="sm"
-            onClick={onRequest}
-            className="w-full border-0 bg-[#0D9488] text-xs font-medium text-white shadow-sm hover:bg-[#0F766E] hover:text-white active:bg-[#115E59] sm:w-auto"
-          >
-            Request workshop
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
+  const detailsId = `pipeline-details-${row.ref}`
   const title = row.industry_group ? `${row.industry_group} organization` : "Organization"
   const metaParts: string[] = []
   const location = row.hq_country ?? row.region_group
   if (location) metaParts.push(location)
   if (row.size_band) metaParts.push(`${row.size_band} employees`)
   if (row.moves_band && row.moves_band !== "None") metaParts.push(`${row.moves_band} moves/yr`)
-
-  const stackShort = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
-
-  const fields: Array<{ label: string; value: string; node?: React.ReactNode }> = []
-  const outsourcesShort = Array.from(new Set((row.outsources ?? []).map(shortenService)))
-  if (outsourcesShort.length > 0) fields.push({ label: "Outsources", value: outsourcesShort.join(", ") })
-  if ((row.pressures ?? []).length > 0) fields.push({ label: "Top pressures", value: row.pressures!.join(", ") })
-  if ((row.investing_in ?? []).length > 0) fields.push({ label: "Investing in", value: row.investing_in!.join(", ") })
-  if (stackShort.length > 0) fields.push({ label: "Technology", value: stackShort.join(", ") })
-  if (row.program_state) fields.push({ label: "Program state", value: row.program_state })
-  if (row.ai_stage) fields.push({ label: "AI stage", value: row.ai_stage })
-  if (row.contributed || row.contributed_at) {
-    const value = [row.contributed, row.contributed_at].filter(Boolean).join(" · ")
-    fields.push({
-      label: "Contributed",
-      value,
-      node: (
-        <span className="flex min-w-0 items-baseline">
-          {row.contributed && <span className="shrink-0 whitespace-nowrap">{row.contributed}</span>}
-          {row.contributed && row.contributed_at && (
-            <span aria-hidden="true" className="shrink-0 whitespace-pre">
-              {" · "}
-            </span>
-          )}
-          {row.contributed_at && (
-            <span className="min-w-0 truncate" title={row.contributed_at}>
-              {row.contributed_at}
-            </span>
-          )}
-        </span>
-      ),
-    })
-  }
-
   const isActive = row.stage === "RFP active"
+  const shownSignals = signals.slice(0, 3)
+  const hiddenSignals = signals.length - shownSignals.length
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          {/* Anonymous avatar */}
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-600 text-slate-500"
-          >
-            <User className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-slate-100 text-pretty">{title}</p>
-            {metaParts.length > 0 && <p className="mt-0.5 text-xs text-slate-400">{metaParts.join(" · ")}</p>}
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        className="block w-full rounded-lg text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-600 text-slate-500"
+            >
+              <User className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-100 text-pretty">{title}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                {metaParts.length > 0 && <span>{metaParts.join(" · ")}</span>}
+                {row.reporting_line && (
+                  <span className="inline-flex items-center rounded-full border border-slate-600/60 bg-slate-700/30 px-2 py-0.5 text-[11px] text-slate-300">
+                    Reports to {row.reporting_line}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {row.is_new && (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300">
+                New
+              </span>
+            )}
+            <span
+              className={
+                isActive
+                  ? "inline-flex shrink-0 items-center rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
+                  : "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+              }
+            >
+              {row.stage}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            />
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {row.is_new && (
-            <span className="inline-flex shrink-0 items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300">
-              New
-            </span>
-          )}
-          <span
-            className={
-              isActive
-                ? "inline-flex shrink-0 items-center rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
-                : "inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-            }
-          >
-            {row.stage}
+        {shownSignals.length > 0 && (
+          <span className="mt-3 flex flex-wrap gap-1.5 sm:pl-[3.25rem]" aria-label="Signals in your categories">
+            {shownSignals.map((s) => (
+              <span
+                key={s.key}
+                className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+              >
+                {s.label}
+              </span>
+            ))}
+            {hiddenSignals > 0 && (
+              <span className="rounded-full border border-slate-600/60 px-2 py-0.5 text-[11px] text-slate-400">
+                +{hiddenSignals} more
+              </span>
+            )}
           </span>
-        </div>
-      </div>
+        )}
+      </button>
 
-      {fields.length > 0 && (
-        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 sm:pl-[3.25rem]">
-          {fields.map((f) => (
-            <div key={f.label} className="flex min-w-0 flex-col">
-              <dt className="text-[11px] uppercase tracking-wide text-slate-500">{f.label}</dt>
-              <dd className="mt-0.5 min-w-0 text-xs text-slate-300 text-pretty">{f.node ?? f.value}</dd>
-            </div>
+      {open && (
+        <div id={detailsId} className="mt-4 border-t border-slate-700/50 pt-4 sm:pl-[3.25rem]">
+          <RfpPipelineOrgDetails row={row} />
+          <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+            {requested ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                className="w-full border-slate-700/60 bg-transparent text-xs text-slate-400"
+              >
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Workshop requested
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={onRequest}
+                className="w-full border-0 bg-[#0D9488] text-xs font-medium text-white shadow-sm hover:bg-[#0F766E] hover:text-white active:bg-[#115E59]"
+              >
+                Request workshop
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <dt className="text-[11px] uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className="mt-0.5 min-w-0 text-xs text-slate-300 text-pretty">{value}</dd>
+    </div>
+  )
+}
+
+function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
+  const volume: Array<{ label: string; value: string }> = []
+  if (row.spend_band) volume.push({ label: "Program spend", value: row.spend_band })
+  if (row.lt_moves_band) volume.push({ label: "Long-term assignments", value: `${row.lt_moves_band} per year` })
+  if (row.moves_band) volume.push({ label: "Short-term assignments", value: `${row.moves_band} per year` })
+  if (row.trips_band) volume.push({ label: "Business travel", value: `${row.trips_band} trips per year` })
+
+  const outsources = Array.from(new Set((row.outsources ?? []).map(shortenService)))
+  const stack = Array.from(new Set((row.tech_stack ?? []).map(shortenStack)))
+  const providers: Array<{ label: string; value: string }> = []
+  if (outsources.length > 0) providers.push({ label: "Currently outsources", value: outsources.join(", ") })
+  if (stack.length > 0) providers.push({ label: "Technology in use", value: stack.join(", ") })
+
+  const outlook: Array<{ label: string; value: string }> = []
+  if ((row.pressures ?? []).length > 0) outlook.push({ label: "Top pressures", value: row.pressures!.join(", ") })
+  if ((row.investing_in ?? []).length > 0)
+    outlook.push({ label: "Investing in next 12-18 months", value: row.investing_in!.join(", ") })
+
+  const state: Array<{ label: string; value: string }> = []
+  if (row.program_state) state.push({ label: "Program state", value: row.program_state })
+  if (row.ai_stage) state.push({ label: "AI stage", value: row.ai_stage })
+
+  const contributed = [row.contributed, row.contributed_at].filter(Boolean).join(" · ")
+
+  return (
+    <div className="flex flex-col gap-4">
+      {volume.length > 0 && (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+          {volume.map((f) => (
+            <DetailField key={f.label} {...f} />
           ))}
         </dl>
       )}
+      {providers.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Current providers</p>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 rounded-lg border border-slate-700/40 bg-brand-navy-3/30 p-3 sm:grid-cols-2">
+            {providers.map((f) => (
+              <DetailField key={f.label} {...f} />
+            ))}
+          </dl>
+        </div>
+      )}
+      {outlook.length > 0 && (
+        <dl className="flex flex-col gap-2">
+          {outlook.map((f) => (
+            <DetailField key={f.label} {...f} />
+          ))}
+        </dl>
+      )}
+      {state.length > 0 && (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+          {state.map((f) => (
+            <DetailField key={f.label} {...f} />
+          ))}
+        </dl>
+      )}
+      {contributed && <p className="text-[11px] text-slate-500">Contributed {contributed}</p>}
     </div>
   )
 }
@@ -2948,7 +3045,8 @@ export function VendorPremiumDashboardClient() {
         .eq("email", email)
         .maybeSingle()
       if (cancelled || error) return
-      if (data?.service_categories?.length) setVendorCategories(data.service_categories as string[])
+      if (data?.service_categories?.length)
+        setVendorCategories(normalizeServiceCategories(data.service_categories as string[]))
       else setServicesOpen(true)
     })()
     return () => {
@@ -4370,7 +4468,7 @@ export function VendorPremiumDashboardClient() {
             {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
             {/* =================================================================== */}
 
-            <MoveTypeDemandCard rows={currentCommercial} />
+            <MoveTypeDemandCard rows={currentCommercial} filtered={selectedRegion !== null} />
 
             {/* =================================================================== */}
             {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
