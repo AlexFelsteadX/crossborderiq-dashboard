@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { 
   TrendingUp, TrendingDown, Minus, ArrowRight, Sparkles,
-  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock, User, Check, Loader2
+  Database, FileText, MessageSquare, Download, Filter, ChevronDown, ChevronRight, ArrowLeft, RotateCcw, Cpu, Triangle, Layers, Lock, User, Check, Loader2, Info
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -33,6 +34,17 @@ interface MarketOpportunity {
   operational_pressure_pct: number
   ai_activity_pct: number
   tech_intent_pct: number
+  min_component_base: number
+  reportable: boolean
+}
+
+interface CategoryOpportunity {
+  scope: string
+  buys_today_pct: number | null
+  investing_pct: number | null
+  in_market_pct: number | null
+  policy_review_pct: number | null
+  opportunity_score: number | null
   min_component_base: number
   reportable: boolean
 }
@@ -1487,6 +1499,146 @@ interface RadarRow {
   confidence: "full" | "limited"
 }
 
+// Heatmap tile tooltip, portalled to <body> so the scrollable grid and panel
+// borders can't clip it. Prefers above the tile, flips below near the top edge,
+// and clamps horizontally inside the viewport.
+function RadarTileTooltip({ anchor, children }: { anchor: DOMRect; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const gap = 8
+    const edge = 8
+    const { width, height } = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let top = anchor.top - height - gap
+    if (top < edge) top = anchor.bottom + gap
+    top = Math.max(edge, Math.min(top, vh - height - edge))
+    const left = Math.max(edge, Math.min(anchor.left + anchor.width / 2 - width / 2, vw - width - edge))
+    setPos({ top, left })
+  }, [anchor])
+
+  return createPortal(
+    <div
+      ref={ref}
+      role="tooltip"
+      style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
+      className="pointer-events-none z-[100] w-52 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 shadow-xl"
+    >
+      {children}
+    </div>,
+    document.body,
+  )
+}
+
+// Info-icon explainer. Opens on hover (desktop) or tap (mobile), uses the same
+// portalled, edge-flipping placement and styling as RadarTileTooltip, and closes
+// on a second tap, an outside tap, or Escape.
+function InfoExplainer({ label, children }: { label: string; children: React.ReactNode }) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [anchor, setAnchor] = useState<DOMRect | null>(null)
+  const [pinned, setPinned] = useState(false)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const panelId = useRef(`info-${Math.random().toString(36).slice(2, 9)}`).current
+
+  const open = useCallback(() => {
+    if (triggerRef.current) setAnchor(triggerRef.current.getBoundingClientRect())
+  }, [])
+  const close = useCallback(() => {
+    setAnchor(null)
+    setPinned(false)
+    setPos(null)
+  }, [])
+
+  useLayoutEffect(() => {
+    const el = panelRef.current
+    if (!anchor || !el) return
+    const gap = 8
+    const edge = 8
+    const { width, height } = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    let top = anchor.bottom + gap
+    if (top + height > vh - edge) top = anchor.top - height - gap
+    top = Math.max(edge, Math.min(top, vh - height - edge))
+    const left = Math.max(edge, Math.min(anchor.left + anchor.width / 2 - width / 2, vw - width - edge))
+    setPos({ top, left })
+  }, [anchor])
+
+  useEffect(() => {
+    if (!anchor) return
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      close()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close()
+    }
+    const onScroll = () => close()
+    document.addEventListener("pointerdown", onDown)
+    document.addEventListener("keydown", onKey)
+    window.addEventListener("scroll", onScroll, true)
+    window.addEventListener("resize", onScroll)
+    return () => {
+      document.removeEventListener("pointerdown", onDown)
+      document.removeEventListener("keydown", onKey)
+      window.removeEventListener("scroll", onScroll, true)
+      window.removeEventListener("resize", onScroll)
+    }
+  }, [anchor, close])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={label}
+        aria-expanded={!!anchor}
+        aria-controls={anchor ? panelId : undefined}
+        onPointerEnter={(e) => {
+          if (e.pointerType === "mouse") open()
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === "mouse" && !pinned) close()
+        }}
+        onFocus={open}
+        onBlur={() => {
+          if (!pinned) close()
+        }}
+        onClick={() => {
+          if (pinned) close()
+          else {
+            open()
+            setPinned(true)
+          }
+        }}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-500 hover:text-slate-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+      >
+        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      {anchor &&
+        createPortal(
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="dialog"
+            aria-label={label}
+            style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
+            className="z-[100] w-[min(22rem,calc(100vw-16px))] rounded-lg border border-primary/30 bg-brand-navy-3 p-3 shadow-xl"
+          >
+            {children}
+          </div>,
+          document.body,
+        )}
+    </>
+  )
+}
+
 // Cell name assembled from the row's non-null dims, coarsest first.
 function buildRadarCellLabel(row: RadarRow): string {
   const parts: string[] = []
@@ -1804,6 +1956,117 @@ function ScopePill({ filtered }: { filtered: boolean }) {
   )
 }
 
+function ServiceOpportunityPanel({
+  market,
+  segment,
+  isFiltered,
+  loading,
+  hasCategories,
+  onEditServices,
+}: {
+  market: CategoryOpportunity | null
+  segment: CategoryOpportunity | null
+  isFiltered: boolean
+  loading: boolean
+  hasCategories: boolean
+  onEditServices: () => void
+}) {
+  const source = isFiltered ? segment : market
+  const reportable = !!source?.reportable
+  const score = Math.max(0, Math.min(100, source?.opportunity_score ?? 0))
+  const circumference = 2 * Math.PI * 40
+  const components = source
+    ? [
+        { label: "Buy your services today", value: source.buys_today_pct },
+        { label: "Investing in your category next 12-18 months", value: source.investing_pct, hideWhenNull: true },
+        { label: "In or considering a buying cycle", value: source.in_market_pct },
+        { label: "Reviewing or redesigning policy", value: source.policy_review_pct },
+      ].filter((c) => !(c.hideWhenNull && c.value === null))
+    : []
+
+  return (
+    <section
+      aria-labelledby="service-opportunity-heading"
+      className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5"
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <h2 id="service-opportunity-heading" className="text-sm font-semibold text-slate-100">
+          Opportunity Score for your services
+        </h2>
+        <InfoExplainer label="How the Opportunity Score is worked out">
+          <p className="text-xs leading-relaxed text-slate-300">
+            Your score is the average of the components below, computed for your saved service categories from verified
+            leader contributions. Each component is the share of organizations in the current view. Edit your services
+            to change what it measures.
+          </p>
+        </InfoExplainer>
+        <ScopePill filtered={isFiltered} />
+      </div>
+
+      {!hasCategories ? (
+        <p className="text-sm text-slate-400">
+          Add your services to see your score.{" "}
+          <button
+            type="button"
+            onClick={onEditServices}
+            className="font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 rounded"
+          >
+            Edit services
+          </button>
+        </p>
+      ) : loading && !source ? (
+        <div className="h-24 animate-pulse rounded-xl bg-slate-700/30" aria-hidden="true" />
+      ) : !source || !reportable ? (
+        <p className="text-sm text-slate-400">Not enough organizations in this segment to score reliably</p>
+      ) : (
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 flex-col items-center">
+            <div className="relative h-24 w-24">
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#1a3344" strokeWidth="9" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="var(--brand-teal)"
+                  strokeWidth="9"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference * (1 - score / 100)}
+                  className="transition-all duration-700"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold tabular-nums text-primary">
+                {Math.round(score)}
+              </span>
+            </div>
+            {isFiltered && market?.reportable && market.opportunity_score !== null && (
+              <p className="mt-2 text-xs tabular-nums text-slate-400">Market: {Math.round(market.opportunity_score)}</p>
+            )}
+          </div>
+          <ul className="grid flex-1 grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
+            {components.map((c) => (
+              <li key={c.label}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-xs text-slate-300">{c.label}</span>
+                  <span className="text-sm font-semibold tabular-nums text-slate-100">{c.value ?? 0}%</span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#1a3344]">
+                  <div
+                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.max(0, Math.min(100, c.value ?? 0))}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function VendorStatBand({
   rows,
   loading,
@@ -1832,6 +2095,20 @@ function VendorStatBand({
           <h2 id="stat-band-heading" className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Pipeline at a glance
           </h2>
+          <InfoExplainer label="How these numbers are worked out">
+            <p className="text-xs leading-relaxed text-slate-300">
+              <span className="font-semibold text-slate-100">How these numbers are worked out.</span>{" "}
+              Every figure comes from verified, first-party contributions by corporate Global Mobility and HR leaders
+              through GME events and the CBIQ Global Workforce Deployment survey. In market now counts organizations that
+              told us they are currently running an RFP. Considering counts organizations that told us they are actively
+              considering one. Each organization is counted once, using its most recent response. Signals in your
+              category counts pipeline organizations whose own answers suggest relevance to your services: what they
+              outsource today, where they are investing in the next 12 to 18 months, and the pressures they report.
+              Every signal here comes from the buyer&apos;s own hand, not scraped or inferred from third parties. Scope
+              is learned in the room, and the workshop request is how you get there. Organizations are anonymous and are
+              never named.
+            </p>
+          </InfoExplainer>
           <ScopePill filtered={isFiltered} />
         </div>
         <button
@@ -2428,11 +2705,39 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   )
 }
 
-function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
+function DemandRadarPanel({
+  embedded = false,
+  vendorCategories = [],
+}: {
+  embedded?: boolean
+  vendorCategories?: string[]
+}) {
   // Own, stable browser client (createClient() returns a fresh instance per call).
   const [supabase] = useState(() => createClient())
   const [service, setService] = useState<string>("Technology & automation")
+  const [pinnedService, setPinnedService] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [hover, setHover] = useState<{ key: string; rect: DOMRect } | null>(null)
+
+  // Hide the fixed-position tooltip if anything scrolls or resizes underneath it.
+  useEffect(() => {
+    if (!hover) return
+    const clear = () => setHover(null)
+    window.addEventListener("scroll", clear, true)
+    window.addEventListener("resize", clear)
+    return () => {
+      window.removeEventListener("scroll", clear, true)
+      window.removeEventListener("resize", clear)
+    }
+  }, [hover])
+
+  // Saved service categories (pinned service + vendor categories) sort first.
+  const orderedServices = useMemo(() => {
+    const saved = new Set<string>()
+    if (pinnedService) saved.add(mapPinnedToRadarService(pinnedService))
+    for (const c of vendorCategories) saved.add(mapPinnedToRadarService(c))
+    return [...RADAR_SERVICES.filter((s) => saved.has(s)), ...RADAR_SERVICES.filter((s) => !saved.has(s))]
+  }, [pinnedService, vendorCategories])
   const [rows, setRows] = useState<RadarRow[]>([])
   const [loading, setLoading] = useState(true)
   // Open industry x region drilldown key ("industry||region"), one at a time.
@@ -2445,7 +2750,10 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("cbiq_vendor_service_category")
-      if (saved) setService(mapPinnedToRadarService(saved))
+      if (saved) {
+        setService(mapPinnedToRadarService(saved))
+        setPinnedService(saved)
+      }
     } catch {
       // ignore storage access errors — keep the default service
     }
@@ -2504,7 +2812,20 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
     return best
   }, [cellMap])
 
+  // Industry rows in descending order of investment intent (mean want_pct across
+  // reported regions); rows with no reported cells sink to the bottom.
+  const orderedIndustries = useMemo(() => {
+    const avg = (ind: string) => {
+      const vals = RADAR_REGIONS.map((c) => cellMap.get(`${ind}||${c.value}`)?.want_pct).filter(
+        (v): v is number => typeof v === "number",
+      )
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : Number.NEGATIVE_INFINITY
+    }
+    return [...RADAR_INDUSTRIES].sort((a, b) => avg(b) - avg(a))
+  }, [cellMap])
+
   const openCell = openKey ? cellMap.get(openKey) ?? null : null
+  const hoverCell = hover ? cellMap.get(hover.key) ?? null : null
 
   // Drilldown reads deeper rows for the open cell from the SAME payload. Children
   // whose base equals the parent's did not actually split the cell, so omit them.
@@ -2629,7 +2950,7 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
         {/* Service-first selector: composite scores compare only within one service. */}
         <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Service line</p>
         <div className="flex flex-wrap gap-2 mb-5">
-          {RADAR_SERVICES.map((svc) => {
+          {orderedServices.map((svc) => {
             const active = svc === service
             return (
               <button
@@ -2676,7 +2997,7 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                     </div>
                   ))}
                 </div>
-                {RADAR_INDUSTRIES.map((ind) => (
+                {orderedIndustries.map((ind) => (
                   <div key={ind} className={`${RADAR_GRID} mb-1.5`}>
                     <div className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300">
                       {ind}
@@ -2701,9 +3022,13 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                       const isOpen = key === openKey
                       const emerging = cell.have_pct === null
                       return (
-                        <div key={key} className="relative group">
+                        <div key={key}>
                           <button
                             onClick={() => setOpenKey(isOpen ? null : key)}
+                            onMouseEnter={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
+                            onMouseLeave={() => setHover((h) => (h?.key === key ? null : h))}
+                            onFocus={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
+                            onBlur={() => setHover((h) => (h?.key === key ? null : h))}
                             aria-expanded={isOpen}
                             aria-label={`${ind} - ${col.short}: ${Math.round(cell.want_pct)} percent investing`}
                             className={`flex h-14 w-full flex-col items-start justify-center rounded-lg px-2 text-left transition ${TILE_BG[step]} ${TILE_TEXT[step]} hover:brightness-110 ${
@@ -2715,8 +3040,8 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                               <span className="mt-1 text-[10px] font-medium opacity-80">gap +{Math.round(cell.unmet_pct)}</span>
                             )}
                           </button>
-                          {/* Hover / focus tooltip with the full numbers + aim */}
-                          <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 opacity-0 shadow-xl transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                          {hover?.key === key && hoverCell && (
+                          <RadarTileTooltip anchor={hover.rect}>
                             <p className="text-xs font-semibold text-slate-100 text-pretty">{`${ind} - ${col.short}`}</p>
                             <dl className="mt-2 space-y-1 text-[11px]">
                               <div className="flex justify-between gap-2">
@@ -2745,7 +3070,8 @@ function DemandRadarPanel({ embedded = false }: { embedded?: boolean }) {
                                 Limited sample
                               </span>
                             )}
-                          </div>
+                          </RadarTileTooltip>
+                          )}
                         </div>
                       )
                     })}
@@ -2902,7 +3228,7 @@ function DemandGrowingPanel({
           embedded
         />
       ) : (
-        <DemandRadarPanel embedded />
+        <DemandRadarPanel embedded vendorCategories={vendorCategories} />
       )}
     </section>
   )
@@ -2946,7 +3272,7 @@ export function VendorPremiumDashboardClient() {
   const SHOW_YOY = false
 
   // State
-  // Market Opportunity Score: market row drives the unfiltered view; segment row
+  // Market Transformation Index: market row drives the unfiltered view; segment row
   // is the demographic-filtered comparison. Both come from get_market_opportunity.
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
   const [marketOpportunitySegment, setMarketOpportunitySegment] = useState<MarketOpportunity | null>(null)
@@ -3108,7 +3434,50 @@ export function VendorPremiumDashboardClient() {
     selectedTraveller
   )
 
-  // Market Opportunity Score card: same five-demographic-filter rule as the
+  // Opportunity Score for your services: re-fetches on service edits and the
+  // five demographic filters (the only filters get_category_opportunity accepts).
+  const [categoryOpportunity, setCategoryOpportunity] = useState<{
+    market: CategoryOpportunity | null
+    segment: CategoryOpportunity | null
+  }>({ market: null, segment: null })
+  const [categoryOpportunityLoading, setCategoryOpportunityLoading] = useState(false)
+  useEffect(() => {
+    if (vendorCategories.length === 0) {
+      setCategoryOpportunity({ market: null, segment: null })
+      return
+    }
+    let cancelled = false
+    setCategoryOpportunityLoading(true)
+    supabase
+      .rpc("get_category_opportunity", {
+        p_categories: vendorCategories,
+        p_industry: selectedIndustry,
+        p_region: selectedRegion,
+        p_size: selectedSize,
+        p_assignee: selectedAssignee,
+        p_traveller: selectedTraveller,
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          console.log("[v0] Category opportunity RPC error:", error)
+          setCategoryOpportunity({ market: null, segment: null })
+        } else {
+          const rows = (data as CategoryOpportunity[]) ?? []
+          setCategoryOpportunity({
+            market: rows.find((r) => r.scope === "market") ?? null,
+            segment: rows.find((r) => r.scope === "segment") ?? null,
+          })
+        }
+        setCategoryOpportunityLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorCategories, selectedIndustry, selectedRegion, selectedSize, selectedAssignee, selectedTraveller])
+
+  // Market Transformation Index card: same five-demographic-filter rule as the
   // vs-market cards (tech/AI ignored). Segment view only when the segment row
   // exists and is reportable; otherwise fall back to the market view.
   const moIsFiltered = e12IsFiltered
@@ -3388,7 +3757,7 @@ export function VendorPremiumDashboardClient() {
           p_assignee: selectedAssignee,
           p_traveller: selectedTraveller,
         }),
-        // Market Opportunity Score: returns market + segment rows (identical when
+        // Market Transformation Index: returns market + segment rows (identical when
         // unfiltered). Same five demographic filters, null when "All".
         supabase.rpc("get_market_opportunity", {
           p_industry: selectedIndustry,
@@ -3687,6 +4056,15 @@ export function VendorPremiumDashboardClient() {
               onEditServices={() => setServicesOpen(true)}
             />
 
+            <ServiceOpportunityPanel
+              market={categoryOpportunity.market}
+              segment={categoryOpportunity.segment}
+              isFiltered={e12IsFiltered}
+              loading={categoryOpportunityLoading}
+              hasCategories={vendorCategories.length > 0}
+              onEditServices={() => setServicesOpen(true)}
+            />
+
             <div ref={filterBarRef} className="scroll-mt-24 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
               <div className="flex items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
@@ -3963,13 +4341,13 @@ export function VendorPremiumDashboardClient() {
             </div>
 
             {/* =================================================================== */}
-            {/* MARKET OPPORTUNITY SCORE (supporting metric)                       */}
+            {/* MARKET TRANSFORMATION INDEX (supporting metric)                    */}
             {/* =================================================================== */}
 
             <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
               <div className="flex items-center gap-2 mb-6">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Market Opportunity Score™</h2>
+                <h2 className="text-xl font-semibold text-slate-100">Market Transformation Index</h2>
                 {moIsFiltered ? (
                   <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
                     Filtered
@@ -4034,7 +4412,7 @@ export function VendorPremiumDashboardClient() {
                       <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
                         {moSource?.market_opportunity_score || 0}%
                       </span>
-                      <span className="text-xs text-slate-400 mt-1">Market Opportunity</span>
+                      <span className="text-xs text-slate-400 mt-1">Transformation Index</span>
                     </div>
                   </div>
                   {moShowSegment && (
@@ -4089,7 +4467,7 @@ export function VendorPremiumDashboardClient() {
               </div>
               
               <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
-                The Market Opportunity Score™ tracks where operational pressure, transformation activity, technology demand and investment priorities are converging.
+                The Market Transformation Index measures transformation, operational pressure, AI and technology activity across the whole market. It describes the market, not any one vendor&apos;s services.
               </p>
             </div>
 
