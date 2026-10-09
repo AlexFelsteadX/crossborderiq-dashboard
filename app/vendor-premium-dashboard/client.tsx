@@ -2531,8 +2531,10 @@ function RfpPipelineOrg({
   if (row.size_band) metaParts.push(`${row.size_band} employees`)
   if (row.moves_band && row.moves_band !== "None") metaParts.push(`${row.moves_band} moves/yr`)
   const isActive = row.stage === "RFP active"
-  const shownSignals = signals.slice(0, 3)
-  const hiddenSignals = signals.length - shownSignals.length
+  const signalRank = (key: string) => (key.startsWith("i:") ? 0 : key.startsWith("o:") ? 1 : 2)
+  const orderedSignals = [...signals].sort((a, b) => signalRank(a.key) - signalRank(b.key))
+  const shownSignals = orderedSignals.slice(0, 3)
+  const hiddenSignals = orderedSignals.length - shownSignals.length
 
   return (
     <div>
@@ -2593,8 +2595,8 @@ function RfpPipelineOrg({
                 {s.label}
               </span>
             ))}
-            {hiddenSignals > 0 && (
-              <span className="rounded-full border border-slate-600/60 px-2 py-0.5 text-[11px] text-slate-400">
+            {hiddenSignals > 0 && !open && (
+              <span className="cursor-pointer rounded-full border border-slate-600/60 px-2 py-0.5 text-[11px] text-slate-300 underline-offset-2 transition-colors hover:border-primary/50 hover:text-primary hover:underline">
                 +{hiddenSignals} more
               </span>
             )}
@@ -2604,6 +2606,23 @@ function RfpPipelineOrg({
 
       {open && (
         <div id={detailsId} className="mt-4 border-t border-slate-700/50 pt-4 sm:pl-[3.25rem]">
+          {orderedSignals.length > 0 && (
+            <div className="mb-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                Why this matched your services
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {orderedSignals.map((s) => (
+                  <li
+                    key={s.key}
+                    className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                  >
+                    {s.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <RfpPipelineOrgDetails row={row} />
           <div className="mt-4" onClick={(e) => e.stopPropagation()}>
             {requested ? (
