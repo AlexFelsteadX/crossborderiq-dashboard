@@ -1733,6 +1733,7 @@ interface RfpPipelineRow {
   trips_band: string | null
   spend_band: string | null
   reporting_line: string | null
+  sub_sector: string | null
 }
 
 // Normalize a possibly-null array field to a clean string[] (drops empties).
@@ -2278,6 +2279,10 @@ function RfpPipelinePanel({
             trips_band: r.trips_band ?? null,
             spend_band: r.spend_band ?? null,
             reporting_line: r.reporting_line ?? null,
+            sub_sector:
+              typeof r.sub_sector === "string" && r.sub_sector.trim().length > 0
+                ? r.sub_sector.trim()
+                : null,
           }))
         : []
       setRows(norm)
@@ -2524,7 +2529,12 @@ function RfpPipelineOrg({
   onRequest: () => void
 }) {
   const detailsId = `pipeline-details-${row.ref}`
-  const title = row.industry_group ? `${row.industry_group} organization` : "Organization"
+  const title = row.sub_sector
+    ? `${row.sub_sector} organization`
+    : row.industry_group
+      ? `${row.industry_group} organization`
+      : "Organization"
+  const industryChip = row.sub_sector ? row.industry_group : null
   const metaParts: string[] = []
   const location = row.hq_country ?? row.region_group
   if (location) metaParts.push(location)
@@ -2568,6 +2578,11 @@ function RfpPipelineOrg({
             {row.is_new && (
               <span className="inline-flex shrink-0 items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-300">
                 New
+              </span>
+            )}
+            {industryChip && (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-slate-600/60 bg-slate-700/30 px-2.5 py-1 text-xs font-medium text-slate-300">
+                {industryChip}
               </span>
             )}
             <span
