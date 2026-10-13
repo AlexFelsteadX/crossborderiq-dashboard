@@ -2174,143 +2174,401 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   )
 }
 
-type DemandStatus = "Growing" | "Established" | "Emerging"
+// =============================================================================
+// WHERE THE WHITE SPACE IS (ranked openings, best-first)
+// =============================================================================
 
-const DEMAND_STATUS_STYLES: Record<DemandStatus, string> = {
-  Growing: "border-primary/40 bg-primary/10 text-primary",
-  Established: "border-slate-600/50 bg-slate-700/30 text-slate-300",
+const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
+  Opening: "border-primary/40 bg-primary/10 text-primary",
   Emerging: "border-sky-400/40 bg-sky-400/10 text-sky-300",
+  Saturated: "border-slate-600/50 bg-slate-700/30 text-slate-400",
 }
 
-function demandStatus(row: WhitespaceRow): DemandStatus {
-  if (row.have_pct == null) return "Emerging"
-  return row.want_pct > row.have_pct ? "Growing" : "Established"
-}
+// Categories engaged per project rather than outsourced continuously. For these a
+// low "have" is the nature of the service, not unmet demand — so we present them as
+// project demand (interest), never as a provision gap. Category strings must match
+// the RPC output exactly; keep this list easy to extend.
+const PROJECT_BASED_CATEGORIES = ["Consulting / advisory"]
+const PROJECT_DEMAND_PILL = "border-violet-400/40 bg-violet-400/10 text-violet-300"
 
-// "Demand for your services": one plain row per service category, mapped from
-// the filtered whitespace rows onto the nine services-modal categories.
-function DemandGrowingPanel({
+function WhitespacePanel({
   rows,
   loading,
   error,
   isFiltered,
-  vendorCategories,
-  pipelineRows,
-  pipelineLoading,
+  vendorCategories = [],
 }: {
   rows: WhitespaceRow[]
   loading: boolean
   error: string | null
   isFiltered: boolean
-  vendorCategories: string[]
-  pipelineRows: RfpPipelineRow[]
-  pipelineLoading: boolean
+  vendorCategories?: string[]
 }) {
-  const items = useMemo(() => {
-    const mapped = VENDOR_SERVICE_OPTIONS.flatMap((option) => {
-      const row = rows.find((r) => SERVICE_PATTERNS[option.value]?.test(r.category))
-      if (!row) return []
-      const suppressed = row.confidence === "suppressed"
-      return [
-        {
-          value: option.value,
-          label: option.label,
-          row,
-          suppressed,
-          isYours: vendorCategories.includes(option.value),
-          inMarket: pipelineRows.filter((p) => rowSignals(p, [option.value]).length > 0).length,
-        },
-      ]
-    })
-    const demand = (i: (typeof mapped)[number]) => (i.suppressed ? -1 : i.row.want_pct)
-    return mapped.sort((a, b) => Number(b.isYours) - Number(a.isYours) || demand(b) - demand(a))
-  }, [rows, vendorCategories, pipelineRows])
+  // Accordion: only one row expanded at a time.
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+  // "How to read this" definitions toggle (collapsed by default to save vertical space).
+  const [showLegend, setShowLegend] = useState(false)
+  // "Your service" pin — client-side only, persisted across reloads.
+  const [pinnedCategory, setPinnedCategory] = useState<string>("")
 
-  const scrollToPipeline = () =>
-    document.getElementById("rfp-pipeline")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  // Hydrate the pin from localStorage on mount (client-only; avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cbiq_vendor_service_category")
+      if (saved) setPinnedCategory(saved)
+    } catch {
+      /* localStorage unavailable — pin simply stays off */
+    }
+  }, [])
+
+  // Default the pin to the vendor's saved service categories until they pick one here.
+  const userPinnedRef = useRef(false)
+  useEffect(() => {
+    if (userPinnedRef.current || vendorCategories.length === 0 || rows.length === 0) return
+    const match = rows.find((r) => matchesVendorCategory(r.category, vendorCategories))
+    if (match) setPinnedCategory(match.category)
+  }, [rows, vendorCategories])
+
+  const handlePinChange = (value: string) => {
+    userPinnedRef.current = true
+    setPinnedCategory(value)
+    try {
+      if (value) localStorage.setItem("cbiq_vendor_service_category", value)
+      else localStorage.removeItem("cbiq_vendor_service_category")
+    } catch {
+      /* ignore persistence failure */
+    }
+  }
+
+  // Some services are engaged per project rather than outsourced continuously, so a
+  // want-vs-have gap is NOT whitespace for them — it reads as interest, not unmet demand.
+  const isProjectBased = (category: string) => PROJECT_BASED_CATEGORIES.includes(category)
+  // A row gets the "project demand" treatment when it is project-based AND emerging.
+  const isProjectDemand = (r: WhitespaceRow) => isProjectBased(r.category) && r.tag === "Emerging"
+
+  // All non-suppressed opportunity rows, best-first (RPC order), including project-based.
+  const opportunityRows = rows.filter(
+    (r) => (r.tag === "Opening" || r.tag === "Emerging") && r.confidence !== "suppressed",
+  )
+  // Continuous-service openings only — project-based rows are excluded from the count
+  // and from the "biggest opportunity" selection so we never headline interest as a gap.
+  const openRows = opportunityRows.filter((r) => !isProjectBased(r.category))
+  const openCount = openRows.length
+  const scope = isFiltered ? "in this segment" : "across the market"
+  // Rows arrive best-first; lead with the biggest measurable Opening, else the top emerging row.
+  const biggest = openRows.find((r) => r.tag === "Opening" && r.gap !== null) ?? openRows[0] ?? null
+  // If a project-based category would have ranked first (it leads the best-first list),
+  // surface it as a separate honest note rather than as the biggest opening.
+  const topProjectDemand =
+    opportunityRows.length > 0 && isProjectDemand(opportunityRows[0]) ? opportunityRows[0] : null
+
+  // "Your service" options are the categories present in the current rows.
+  const categoryOptions = rows.map((r) => r.category)
+  // The pin only applies when the chosen category is actually in this filtered segment.
+  const pinnedPresent = pinnedCategory !== "" && categoryOptions.includes(pinnedCategory)
+  // Reorder client-side only: pinned row first, everything else keeps RPC (best-first) order.
+  const orderedRows = pinnedPresent
+    ? [
+        ...rows.filter((r) => r.category === pinnedCategory),
+        ...rows.filter((r) => r.category !== pinnedCategory),
+      ]
+    : rows
+  // Chosen a category that isn't reportable in this segment — flag the honest note.
+  const pinnedAbsent = pinnedCategory !== "" && !pinnedPresent
+
+  // Auto-expand the pinned row once per selection (covers both picking it and reload
+  // hydration). After that, normal accordion behavior applies.
+  const autoExpandedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (pinnedPresent && autoExpandedRef.current !== pinnedCategory) {
+      autoExpandedRef.current = pinnedCategory
+      setExpandedCategory(pinnedCategory)
+    }
+    if (!pinnedCategory) autoExpandedRef.current = null
+  }, [pinnedPresent, pinnedCategory])
 
   return (
-    <section
-      aria-labelledby="demand-growing-heading"
-      className="rounded-2xl border border-primary/30 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.35)]"
-    >
-      <div className="mb-5">
+    <section className="rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-          <h2 id="demand-growing-heading" className="text-xl font-semibold text-slate-100">
-            Demand for your services
-          </h2>
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
           <ScopePill filtered={isFiltered} />
         </div>
-        <p className="mt-1.5 text-sm text-slate-400">
-          What this segment buys today, and where it plans to invest next. Use the filters above to change the
-          segment.
-        </p>
+        {!loading && !error && rows.length > 0 && (
+          <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
+            <span className="whitespace-nowrap">Your service:</span>
+            <select
+              value={pinnedPresent ? pinnedCategory : ""}
+              onChange={(e) => handlePinChange(e.target.value)}
+              className="rounded-md border border-primary/25 bg-brand-navy-2 px-2 py-1 text-xs text-slate-200 focus:border-primary/50 focus:outline-none"
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>
+                  {serviceCategoryLabel(cat)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <p className="text-sm text-slate-400 mb-4">
+        Market demand vs what your selected segment already outsources — biggest openings first.
+      </p>
+
+      {/* Slim at-a-glance strip — one line, non-suppressed continuous-service openings only */}
+      {!loading && !error && openCount > 0 && (
+        <div className="rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-2.5 mb-3">
+          <p className="text-sm text-slate-300 text-pretty">
+            <span className="font-semibold text-primary">{openCount}</span> open service{" "}
+            {openCount === 1 ? "line" : "lines"} {scope}
+            {biggest && (
+              <>
+                {" · "}Biggest: <span className="font-semibold text-primary">{biggest.category}</span>
+                {biggest.tag === "Opening" && biggest.gap !== null ? (
+                  <> (+{biggest.gap} pt)</>
+                ) : (
+                  <> ({biggest.want_pct}% wanted)</>
+                )}
+              </>
+            )}
+            {topProjectDemand && (
+              <>
+                {" · "}Strong project-based interest in{" "}
+                <span className="font-semibold text-violet-300">{topProjectDemand.category}</span> (
+                {topProjectDemand.want_pct}%)
+              </>
+            )}
+            .
+          </p>
+        </div>
+      )}
+
+      {/* "How to read this" — definitions collapsed by default to save vertical space */}
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setShowLegend((v) => !v)}
+          aria-expanded={showLegend}
+          className="text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-400 transition-colors"
+        >
+          {showLegend ? "Hide guide" : "How to read this"}
+        </button>
+        {showLegend && (
+          <div className="rounded-lg border border-primary/15 bg-brand-navy-2/40 px-4 py-3 mt-2 space-y-1.5">
+            {(
+              [
+                {
+                  label: "Emerging",
+                  style: WHITESPACE_TAG_STYLES.Emerging,
+                  def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
+                },
+                {
+                  label: "Opening",
+                  style: WHITESPACE_TAG_STYLES.Opening,
+                  def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
+                },
+                {
+                  label: "Saturated",
+                  style: WHITESPACE_TAG_STYLES.Saturated,
+                  def: "provision already matches or exceeds demand. Well-served and more competitive.",
+                },
+                {
+                  label: "Project demand",
+                  style: PROJECT_DEMAND_PILL,
+                  def: "interest in services typically engaged per project rather than outsourced continuously; read as interest, not a provision gap.",
+                },
+              ]
+            ).map(({ label, style, def }) => (
+              <p key={label} className="text-[11px] text-slate-500 leading-relaxed">
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle mr-2 ${style}`}
+                >
+                  {label}
+                </span>
+                {def}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading demand for this segment…</p>
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
+          <p className="text-sm text-slate-400">Finding openings…</p>
+        </div>
       ) : error ? (
-        <p className="text-sm text-red-300">Demand data could not be loaded. Please try again shortly.</p>
-      ) : items.length === 0 ? (
-        <p className="text-sm text-slate-500">No service demand is reportable for this segment yet.</p>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-center">
+          <Database className="h-6 w-6 text-amber-400/70 mx-auto mb-2" />
+          <p className="text-sm text-amber-300">Couldn&apos;t load white-space data.</p>
+          <p className="text-xs text-slate-500 mt-1">{error}</p>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
+          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
+          <p className="text-sm text-slate-400">No white-space data for this segment.</p>
+        </div>
       ) : (
-        <ul className="divide-y divide-slate-700/60 border-y border-slate-700/60">
-          {items.map((item) => {
-            const { row } = item
-            const status = demandStatus(row)
-            return (
-              <li
-                key={item.value}
-                className={`flex flex-col gap-1.5 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 ${
-                  item.suppressed ? "opacity-50" : ""
-                }`}
-              >
-                <div className="flex items-center gap-2 sm:min-w-48">
-                  <span className="font-medium text-slate-100">{item.label}</span>
-                  {item.isYours && (
-                    <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                      Your service
-                    </span>
-                  )}
-                </div>
-                {item.suppressed ? (
-                  <span className="text-sm text-slate-400">
-                    Not enough organizations in this segment to report.
-                  </span>
-                ) : (
-                  <>
-                    {row.have_pct != null && (
-                      <span className="text-sm text-slate-300">
-                        Bought today by {Math.round(row.have_pct)}% of this segment
+        <>
+          {pinnedAbsent && (
+            <div className="rounded-lg border border-slate-600/40 bg-brand-navy-2/60 px-4 py-2 mb-3">
+              <p className="text-[11px] text-slate-400">
+                {serviceCategoryLabel(pinnedCategory)} is not reportable in this segment — showing all categories.
+              </p>
+            </div>
+          )}
+          <div className="space-y-4">
+            {orderedRows.map((row, idx) => {
+              const saturated = row.tag === "Saturated"
+              const suppressed = row.confidence === "suppressed"
+              const limited = row.confidence === "limited"
+              const projectDemand = isProjectDemand(row)
+              const isPinnedRow = pinnedPresent && row.category === pinnedCategory
+              const isExpanded = !suppressed && expandedCategory === row.category
+
+              // The collapsed bar + number + caption, shared by both suppressed and
+              // interactive rows. Suppressed rows draw NO have fill and no number.
+              const barAndSummary = (
+                <>
+                  {/* Single overlay bar: teal = market demand (want); slate overlays from the
+                      left = what this segment already outsources (have). The visible teal beyond
+                      the slate IS the gap (the opening). Emerging + suppressed rows draw no slate. */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-2.5 flex-1 bg-[#1a3344] rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(row.want_pct, 100)}%` }}
+                      />
+                      {!suppressed && !row.is_emerging && row.have_pct !== null && (
+                        <div
+                          className="absolute inset-y-0 left-0 bg-slate-500/80 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(row.have_pct, 100)}%` }}
+                        />
+                      )}
+                    </div>
+                    {/* One number only, gated on having enough segment data */}
+                    {!suppressed && row.tag === "Opening" && row.gap !== null && (
+                      <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt</span>
+                    )}
+                    {!suppressed && row.is_emerging && projectDemand && (
+                      <span className="text-sm font-semibold text-violet-300 shrink-0">
+                        {row.want_pct}% interested
                       </span>
                     )}
-                    <span className="text-sm text-slate-300">
-                      Investment planned by {Math.round(row.want_pct)}%
-                    </span>
-                    <span
-                      className={`w-fit rounded-full border px-2 py-0.5 text-xs font-medium ${DEMAND_STATUS_STYLES[status]}`}
-                    >
-                      {status}
-                    </span>
-                    {!pipelineLoading && item.inMarket > 0 && (
+                    {!suppressed && row.is_emerging && !projectDemand && (
+                      <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}%</span>
+                    )}
+                    {!suppressed && saturated && row.have_pct !== null && (
+                      <span className="text-xs text-slate-500 shrink-0">{row.have_pct}% served</span>
+                    )}
+                  </div>
+
+                  {/* One caption line (interactive rows only) */}
+                  {!suppressed && (
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      {projectDemand
+                        ? `Wanted by ${row.want_pct}% · typically engaged per project, not outsourced`
+                        : row.is_emerging
+                          ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
+                          : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
+                    </p>
+                  )}
+                </>
+              )
+
+              return (
+                <div
+                  key={`${row.category}-${idx}`}
+                  className={`rounded-xl border bg-brand-navy-2/60 overflow-hidden transition-all duration-300 ${
+                    isExpanded ? "border-primary/30" : "border-primary/15"
+                  } ${isPinnedRow ? "ring-1 ring-primary/40" : ""} ${suppressed ? "opacity-60" : ""}`}
+                >
+                  {suppressed ? (
+                    // Suppressed: not expandable, want bar only, no have fill, no number.
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-100">{row.category}</span>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
+                          }`}
+                        >
+                          {projectDemand ? "Project demand" : row.tag}
+                        </span>
+                      </div>
+                      {barAndSummary}
+                      <p className="text-[11px] text-slate-500 italic mt-2">
+                        Not enough organizations in this segment to report provision reliably
+                      </p>
+                    </div>
+                  ) : (
+                    <>
                       <button
                         type="button"
-                        onClick={scrollToPipeline}
-                        className="w-fit text-sm font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
+                        onClick={() => setExpandedCategory(isExpanded ? null : row.category)}
+                        aria-expanded={isExpanded}
+                        className="w-full text-left p-4 cursor-pointer transition-colors duration-300 hover:bg-primary/[0.04]"
                       >
-                        In market now: {item.inMarket}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-slate-100">{row.category}</span>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
+                              }`}
+                            >
+                              {projectDemand ? "Project demand" : row.tag}
+                            </span>
+                          </div>
+                          <ChevronDown
+                            className={`h-4 w-4 text-slate-500 shrink-0 transition-transform duration-300 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                        {barAndSummary}
                       </button>
-                    )}
-                    <span className="text-xs text-slate-500 sm:ml-auto">
-                      Base: {row.want_base_n} organizations
-                    </span>
-                  </>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 space-y-2">
+                          <p className="text-[11px] text-slate-400">
+                            {row.is_emerging ? (
+                              <>Market demand {row.want_pct}%</>
+                            ) : (
+                              <>
+                                Market demand {row.want_pct}% · This segment outsources {row.have_pct}%
+                                {row.have_base_n > 0 && <span className="text-slate-500"> (n={row.have_base_n})</span>}
+                              </>
+                            )}
+                          </p>
+                          {limited && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                              Limited sample
+                            </span>
+                          )}
+                          {projectDemand ? (
+                            <p className="text-[11px] text-slate-500 italic">
+                              The benchmark measures interest, not project scope — what advisory work is needed varies
+                              by program.
+                            </p>
+                          ) : (
+                            row.is_emerging && (
+                              <p className="text-[11px] text-sky-300/80">
+                                New service line — not yet commonly outsourced
+                              </p>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
     </section>
   )
@@ -3283,16 +3541,6 @@ export function VendorPremiumDashboardClient() {
                 onRowsLoaded={handlePipelineRows}
               />
             </div>
-
-            <DemandGrowingPanel
-              rows={whitespace}
-              loading={demandLoading}
-              error={whitespaceError}
-              isFiltered={isFiltered}
-              vendorCategories={vendorCategories}
-              pipelineRows={pipelineRows}
-              pipelineLoading={pipelineLoading}
-            />
           </div>
         )}
 
@@ -3700,6 +3948,14 @@ export function VendorPremiumDashboardClient() {
                 )
               })()}
             </div>
+
+            <WhitespacePanel
+              rows={whitespace}
+              loading={demandLoading}
+              error={whitespaceError}
+              isFiltered={isFiltered}
+              vendorCategories={vendorCategories}
+            />
 
             {/* =================================================================== */}
             {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
