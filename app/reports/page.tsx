@@ -112,8 +112,21 @@ type EventBriefing = {
   date: string
   tag: string
   omitBriefingPrefix?: boolean
+  subtitle?: string
+  readLabel?: string
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
+  {
+    title: "Reimagining the Future of Global Workforce Management",
+    subtitle: "Where Global Mobility meets Business Travel",
+    description:
+      "What 52 organizations in one Amsterdam room revealed about business travel and international remote work, benchmarked against the live CBIQ pool. Every figure aggregated. No organization named.",
+    cover: "/reports/covers/gme-gte-amsterdam-2026-cover.png",
+    file: "/reports/GME_x_GTE_Amsterdam_October_2026_Insights_Report.pdf",
+    date: "GME x GTE Amsterdam · October 2026",
+    tag: "Event briefing",
+    readLabel: "Read the briefing",
+  },
   {
     title: "Doing More With Less: Restructuring Global Mobility in 2026",
     description:
@@ -419,6 +432,9 @@ export default function ReportsPage() {
                   <h3 className="text-base font-medium text-slate-100 mb-2 leading-tight text-balance">
                     {briefing.title}
                   </h3>
+                  {briefing.subtitle && (
+                    <p className="text-sm text-primary mb-2 text-pretty">{briefing.subtitle}</p>
+                  )}
                   <p className="text-sm text-slate-400 flex-1 mb-5 text-pretty">{briefing.description}</p>
 
                   {isSignedIn ? (
@@ -435,7 +451,7 @@ export default function ReportsPage() {
                           onClick={() => track("event_briefing_open", { report: briefing.title })}
                         >
                           <BookOpen className="h-4 w-4" />
-                          Read
+                          {briefing.readLabel ?? "Read"}
                         </a>
                       </Button>
                       <a
