@@ -1032,511 +1032,12 @@ function DemandColumn({
 }
 
 // =============================================================================
-// WHERE THE WHITE SPACE IS (ranked openings, best-first)
-// =============================================================================
-
-const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
-  Opening: "border-primary/40 bg-primary/10 text-primary",
-  Emerging: "border-sky-400/40 bg-sky-400/10 text-sky-300",
-  Saturated: "border-slate-600/50 bg-slate-700/30 text-slate-400",
-}
-
-// Categories engaged per project rather than outsourced continuously. For these a
-// low "have" is the nature of the service, not unmet demand — so we present them as
-// project demand (interest), never as a provision gap. Category strings must match
-// the RPC output exactly; keep this list easy to extend.
-const PROJECT_BASED_CATEGORIES = ["Consulting / advisory"]
-const PROJECT_DEMAND_PILL = "border-violet-400/40 bg-violet-400/10 text-violet-300"
-
-function WhitespacePanel({
-  rows,
-  loading,
-  error,
-  isFiltered,
-  vendorCategories = [],
-  embedded = false,
-}: {
-  rows: WhitespaceRow[]
-  loading: boolean
-  error: string | null
-  isFiltered: boolean
-  vendorCategories?: string[]
-  embedded?: boolean
-}) {
-  // Accordion: only one row expanded at a time.
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
-  // "How to read this" definitions toggle (collapsed by default to save vertical space).
-  const [showLegend, setShowLegend] = useState(false)
-  // "Your service" pin — client-side only, persisted across reloads.
-  const [pinnedCategory, setPinnedCategory] = useState<string>("")
-
-  // Hydrate the pin from localStorage on mount (client-only; avoids SSR mismatch).
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cbiq_vendor_service_category")
-      if (saved) setPinnedCategory(saved)
-    } catch {
-      /* localStorage unavailable — pin simply stays off */
-    }
-  }, [])
-
-  // Default the pin to the vendor's saved service categories until they pick one here.
-  const userPinnedRef = useRef(false)
-  useEffect(() => {
-    if (userPinnedRef.current || vendorCategories.length === 0 || rows.length === 0) return
-    const match = rows.find((r) => matchesVendorCategory(r.category, vendorCategories))
-    if (match) setPinnedCategory(match.category)
-  }, [rows, vendorCategories])
-
-  const handlePinChange = (value: string) => {
-    userPinnedRef.current = true
-    setPinnedCategory(value)
-    try {
-      if (value) localStorage.setItem("cbiq_vendor_service_category", value)
-      else localStorage.removeItem("cbiq_vendor_service_category")
-    } catch {
-      /* ignore persistence failure */
-    }
-  }
-
-  // Some services are engaged per project rather than outsourced continuously, so a
-  // want-vs-have gap is NOT whitespace for them — it reads as interest, not unmet demand.
-  const isProjectBased = (category: string) => PROJECT_BASED_CATEGORIES.includes(category)
-  // A row gets the "project demand" treatment when it is project-based AND emerging.
-  const isProjectDemand = (r: WhitespaceRow) => isProjectBased(r.category) && r.tag === "Emerging"
-
-  // All non-suppressed opportunity rows, best-first (RPC order), including project-based.
-  const opportunityRows = rows.filter(
-    (r) => (r.tag === "Opening" || r.tag === "Emerging") && r.confidence !== "suppressed",
-  )
-  // Continuous-service openings only — project-based rows are excluded from the count
-  // and from the "biggest opportunity" selection so we never headline interest as a gap.
-  const openRows = opportunityRows.filter((r) => !isProjectBased(r.category))
-  const openCount = openRows.length
-  const scope = isFiltered ? "in this segment" : "across the market"
-  // Rows arrive best-first; lead with the biggest measurable Opening, else the top emerging row.
-  const biggest = openRows.find((r) => r.tag === "Opening" && r.gap !== null) ?? openRows[0] ?? null
-  // If a project-based category would have ranked first (it leads the best-first list),
-  // surface it as a separate honest note rather than as the biggest opening.
-  const topProjectDemand =
-    opportunityRows.length > 0 && isProjectDemand(opportunityRows[0]) ? opportunityRows[0] : null
-
-  // "Your service" options are the categories present in the current rows.
-  const categoryOptions = rows.map((r) => r.category)
-  // The pin only applies when the chosen category is actually in this filtered segment.
-  const pinnedPresent = pinnedCategory !== "" && categoryOptions.includes(pinnedCategory)
-  // Reorder client-side only: pinned row first, everything else keeps RPC (best-first) order.
-  const orderedRows = pinnedPresent
-    ? [
-        ...rows.filter((r) => r.category === pinnedCategory),
-        ...rows.filter((r) => r.category !== pinnedCategory),
-      ]
-    : rows
-  // Chosen a category that isn't reportable in this segment — flag the honest note.
-  const pinnedAbsent = pinnedCategory !== "" && !pinnedPresent
-
-  // Auto-expand the pinned row once per selection (covers both picking it and reload
-  // hydration). After that, normal accordion behavior applies.
-  const autoExpandedRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (pinnedPresent && autoExpandedRef.current !== pinnedCategory) {
-      autoExpandedRef.current = pinnedCategory
-      setExpandedCategory(pinnedCategory)
-    }
-    if (!pinnedCategory) autoExpandedRef.current = null
-  }, [pinnedPresent, pinnedCategory])
-
-  return (
-    <div
-      className={
-        embedded
-          ? ""
-          : "rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
-      }
-    >
-      <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          {embedded ? (
-            <h3 className="text-sm font-semibold text-slate-200">White space by service</h3>
-          ) : (
-            <>
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
-            </>
-          )}
-        </div>
-        {!loading && !error && rows.length > 0 && (
-          <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
-            <span className="whitespace-nowrap">Your service:</span>
-            <select
-              value={pinnedPresent ? pinnedCategory : ""}
-              onChange={(e) => handlePinChange(e.target.value)}
-              className="rounded-md border border-primary/25 bg-brand-navy-2 px-2 py-1 text-xs text-slate-200 focus:border-primary/50 focus:outline-none"
-            >
-              <option value="">All categories</option>
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>
-                  {serviceCategoryLabel(cat)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      <p className="text-sm text-slate-400 mb-4">
-        Market demand vs what your selected segment already outsources — biggest openings first.
-      </p>
-
-      {/* Slim at-a-glance strip — one line, non-suppressed continuous-service openings only */}
-      {!loading && !error && openCount > 0 && (
-        <div className="rounded-lg border border-primary/25 bg-primary/[0.06] px-4 py-2.5 mb-3">
-          <p className="text-sm text-slate-300 text-pretty">
-            <span className="font-semibold text-primary">{openCount}</span> open service{" "}
-            {openCount === 1 ? "line" : "lines"} {scope}
-            {biggest && (
-              <>
-                {" · "}Biggest: <span className="font-semibold text-primary">{biggest.category}</span>
-                {biggest.tag === "Opening" && biggest.gap !== null ? (
-                  <> (+{biggest.gap} pt)</>
-                ) : (
-                  <> ({biggest.want_pct}% wanted)</>
-                )}
-              </>
-            )}
-            {topProjectDemand && (
-              <>
-                {" · "}Strong project-based interest in{" "}
-                <span className="font-semibold text-violet-300">{topProjectDemand.category}</span> (
-                {topProjectDemand.want_pct}%)
-              </>
-            )}
-            .
-          </p>
-        </div>
-      )}
-
-      {/* "How to read this" — definitions collapsed by default to save vertical space */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setShowLegend((v) => !v)}
-          aria-expanded={showLegend}
-          className="text-[11px] text-slate-500 underline underline-offset-2 hover:text-slate-400 transition-colors"
-        >
-          {showLegend ? "Hide guide" : "How to read this"}
-        </button>
-        {showLegend && (
-          <div className="rounded-lg border border-primary/15 bg-brand-navy-2/40 px-4 py-3 mt-2 space-y-1.5">
-            {(
-              [
-                {
-                  label: "Emerging",
-                  style: WHITESPACE_TAG_STYLES.Emerging,
-                  def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
-                },
-                {
-                  label: "Opening",
-                  style: WHITESPACE_TAG_STYLES.Opening,
-                  def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
-                },
-                {
-                  label: "Saturated",
-                  style: WHITESPACE_TAG_STYLES.Saturated,
-                  def: "provision already matches or exceeds demand. Well-served and more competitive.",
-                },
-                {
-                  label: "Project demand",
-                  style: PROJECT_DEMAND_PILL,
-                  def: "interest in services typically engaged per project rather than outsourced continuously; read as interest, not a provision gap.",
-                },
-              ]
-            ).map(({ label, style, def }) => (
-              <p key={label} className="text-[11px] text-slate-500 leading-relaxed">
-                <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide align-middle mr-2 ${style}`}
-                >
-                  {label}
-                </span>
-                {def}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2 animate-pulse" />
-          <p className="text-sm text-slate-400">Finding openings…</p>
-        </div>
-      ) : error ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-center">
-          <Database className="h-6 w-6 text-amber-400/70 mx-auto mb-2" />
-          <p className="text-sm text-amber-300">Couldn&apos;t load white-space data.</p>
-          <p className="text-xs text-slate-500 mt-1">{error}</p>
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-          <Database className="h-6 w-6 text-slate-500 mx-auto mb-2" />
-          <p className="text-sm text-slate-400">No white-space data for this segment.</p>
-        </div>
-      ) : (
-        <>
-          {pinnedAbsent && (
-            <div className="rounded-lg border border-slate-600/40 bg-brand-navy-2/60 px-4 py-2 mb-3">
-              <p className="text-[11px] text-slate-400">
-                {serviceCategoryLabel(pinnedCategory)} is not reportable in this segment — showing all categories.
-              </p>
-            </div>
-          )}
-          <div className="space-y-4">
-            {orderedRows.map((row, idx) => {
-              const saturated = row.tag === "Saturated"
-              const suppressed = row.confidence === "suppressed"
-              const limited = row.confidence === "limited"
-              const projectDemand = isProjectDemand(row)
-              const isPinnedRow = pinnedPresent && row.category === pinnedCategory
-              const isExpanded = !suppressed && expandedCategory === row.category
-
-              // The collapsed bar + number + caption, shared by both suppressed and
-              // interactive rows. Suppressed rows draw NO have fill and no number.
-              const barAndSummary = (
-                <>
-                  {/* Single overlay bar: teal = market demand (want); slate overlays from the
-                      left = what this segment already outsources (have). The visible teal beyond
-                      the slate IS the gap (the opening). Emerging + suppressed rows draw no slate. */}
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-2.5 flex-1 bg-[#1a3344] rounded-full overflow-hidden">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(row.want_pct, 100)}%` }}
-                      />
-                      {!suppressed && !row.is_emerging && row.have_pct !== null && (
-                        <div
-                          className="absolute inset-y-0 left-0 bg-slate-500/80 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(row.have_pct, 100)}%` }}
-                        />
-                      )}
-                    </div>
-                    {/* One number only, gated on having enough segment data */}
-                    {!suppressed && row.tag === "Opening" && row.gap !== null && (
-                      <span className="text-sm font-semibold text-primary shrink-0">+{row.gap} pt</span>
-                    )}
-                    {!suppressed && row.is_emerging && projectDemand && (
-                      <span className="text-sm font-semibold text-violet-300 shrink-0">
-                        {row.want_pct}% interested
-                      </span>
-                    )}
-                    {!suppressed && row.is_emerging && !projectDemand && (
-                      <span className="text-sm font-semibold text-sky-300 shrink-0">{row.want_pct}%</span>
-                    )}
-                    {!suppressed && saturated && row.have_pct !== null && (
-                      <span className="text-xs text-slate-500 shrink-0">{row.have_pct}% served</span>
-                    )}
-                  </div>
-
-                  {/* One caption line (interactive rows only) */}
-                  {!suppressed && (
-                    <p className="text-[11px] text-slate-500 mt-1.5">
-                      {projectDemand
-                        ? `Wanted by ${row.want_pct}% · typically engaged per project, not outsourced`
-                        : row.is_emerging
-                          ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
-                          : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
-                    </p>
-                  )}
-                </>
-              )
-
-              return (
-                <div
-                  key={`${row.category}-${idx}`}
-                  className={`rounded-xl border bg-brand-navy-2/60 overflow-hidden transition-all duration-300 ${
-                    isExpanded ? "border-primary/30" : "border-primary/15"
-                  } ${isPinnedRow ? "ring-1 ring-primary/40" : ""} ${suppressed ? "opacity-60" : ""}`}
-                >
-                  {suppressed ? (
-                    // Suppressed: not expandable, want bar only, no have fill, no number.
-                    <div className="p-4">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className="text-sm font-medium text-slate-100">{row.category}</span>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                            projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
-                          }`}
-                        >
-                          {projectDemand ? "Project demand" : row.tag}
-                        </span>
-                      </div>
-                      {barAndSummary}
-                      <p className="text-[11px] text-slate-500 italic mt-2">
-                        Not enough organizations in this segment to report provision reliably
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedCategory(isExpanded ? null : row.category)}
-                        aria-expanded={isExpanded}
-                        className="w-full text-left p-4 cursor-pointer transition-colors duration-300 hover:bg-primary/[0.04]"
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-slate-100">{row.category}</span>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
-                              }`}
-                            >
-                              {projectDemand ? "Project demand" : row.tag}
-                            </span>
-                          </div>
-                          <ChevronDown
-                            className={`h-4 w-4 text-slate-500 shrink-0 transition-transform duration-300 ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
-                        </div>
-                        {barAndSummary}
-                      </button>
-
-                      {isExpanded && (
-                        <div className="px-4 pb-4 space-y-2">
-                          <p className="text-[11px] text-slate-400">
-                            {row.is_emerging ? (
-                              <>Market demand {row.want_pct}%</>
-                            ) : (
-                              <>
-                                Market demand {row.want_pct}% · This segment outsources {row.have_pct}%
-                                {row.have_base_n > 0 && <span className="text-slate-500"> (n={row.have_base_n})</span>}
-                              </>
-                            )}
-                          </p>
-                          {limited && (
-                            <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                              Limited sample
-                            </span>
-                          )}
-                          {projectDemand ? (
-                            <p className="text-[11px] text-slate-500 italic">
-                              The benchmark measures interest, not project scope — what advisory work is needed varies
-                              by program.
-                            </p>
-                          ) : (
-                            row.is_emerging && (
-                              <p className="text-[11px] text-sky-300/80">
-                                New service line — not yet commonly outsourced
-                              </p>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// =============================================================================
 // ZONE HEADER (slim full-width label row used before each zone)
 // =============================================================================
 
-// =============================================================================
-// DEMAND RADAR — service-first heatmap (get_vendor_demand_radar).
-// Self-contained: owns its service selection and fetch, independent of the
-// global segment filters. Composite scores are only comparable WITHIN one
-// service, so this never renders a cross-service ranking. The grid is industry
-// rows x region columns; clicking a tile opens a drilldown and can aim the
-// dashboard filters at that cell (via onAim).
-// =============================================================================
-
-const RADAR_SERVICES = [
-  "Immigration",
-  "Technology & automation",
-  "Data & analytics",
-  "Risk & compliance",
-  "Employee & family experience",
-  "Policy & program design",
-  "Cost & managed services",
-] as const
-
-// Map a pinned white-space category (free-form RPC string) to the nearest radar
-// service by keyword. Falls back to Technology & automation.
-function mapPinnedToRadarService(pinned: string): string {
-  const p = pinned.toLowerCase()
-  const rules: Array<[RegExp, string]> = [
-    [/immigrat|visa/, "Immigration"],
-    [/data|analytic|report|insight|dashboard/, "Data & analytics"],
-    [/risk|complian|tax|legal|audit/, "Risk & compliance"],
-    [/employee|family|experience|assignee|wellbeing|relocation/, "Employee & family experience"],
-    [/policy|program|process|strategy|design/, "Policy & program design"],
-    [/cost|managed|outsourc|expense|budget|spend|payroll/, "Cost & managed services"],
-    [/tech|automat|platform|software|tool|system|digital/, "Technology & automation"],
-  ]
-  for (const [re, svc] of rules) if (re.test(p)) return svc
-  return "Technology & automation"
-}
-
-interface RadarRow {
-  service_category: string
-  industry: string | null
-  region: string | null
-  size_band: string | null
-  assignee_band: string | null
-  granularity: number
-  base_n: number
-  want_pct: number
-  have_pct: number | null
-  unmet_pct: number
-  composite_score: number
-  confidence: "full" | "limited"
-}
-
-// Heatmap tile tooltip, portalled to <body> so the scrollable grid and panel
-// borders can't clip it. Prefers above the tile, flips below near the top edge,
-// and clamps horizontally inside the viewport.
-function RadarTileTooltip({ anchor, children }: { anchor: DOMRect; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const gap = 8
-    const edge = 8
-    const { width, height } = el.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    let top = anchor.top - height - gap
-    if (top < edge) top = anchor.bottom + gap
-    top = Math.max(edge, Math.min(top, vh - height - edge))
-    const left = Math.max(edge, Math.min(anchor.left + anchor.width / 2 - width / 2, vw - width - edge))
-    setPos({ top, left })
-  }, [anchor])
-
-  return createPortal(
-    <div
-      ref={ref}
-      role="tooltip"
-      style={{ position: "fixed", top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
-      className="pointer-events-none z-[100] w-52 rounded-lg border border-primary/30 bg-brand-navy-3 p-3 shadow-xl"
-    >
-      {children}
-    </div>,
-    document.body,
-  )
-}
-
-// Info-icon explainer. Opens on hover (desktop) or tap (mobile), uses the same
-// portalled, edge-flipping placement and styling as RadarTileTooltip, and closes
-// on a second tap, an outside tap, or Escape.
+// Info-icon explainer. Opens on hover (desktop) or tap (mobile), portalled to
+// <body> with edge-flipping placement, and closes on a second tap, an outside
+// tap, or Escape.
 function InfoExplainer({ label, children }: { label: string; children: React.ReactNode }) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -1636,72 +1137,6 @@ function InfoExplainer({ label, children }: { label: string; children: React.Rea
           document.body,
         )}
     </>
-  )
-}
-
-// Cell name assembled from the row's non-null dims, coarsest first.
-function buildRadarCellLabel(row: RadarRow): string {
-  const parts: string[] = []
-  if (row.industry) parts.push(row.industry)
-  if (row.region) parts.push(row.region)
-  if (row.size_band) parts.push(row.size_band)
-  if (row.assignee_band) parts.push(`${row.assignee_band} assignees`)
-  return parts.join(" - ")
-}
-
-// Grid axes use the canonical filter values so Aim always sets valid filters.
-// Region columns carry a short header label; the value is the full filter value.
-const RADAR_REGIONS: Array<{ value: string; short: string }> = [
-  { value: "Americas", short: "Americas" },
-  { value: "Europe (Inc. UK & Ireland)", short: "Europe" },
-  { value: "Middle East", short: "Middle East" },
-  { value: "Asia-Pacific (APAC & Australia)", short: "APAC" },
-]
-
-// Industry rows, 'Other' deliberately excluded.
-const RADAR_INDUSTRIES = [
-  "Professional Services",
-  "Technology & IT",
-  "Financial Services",
-  "Manufacturing & Industrial",
-  "Retail & Consumer",
-  "Healthcare & Life Sciences",
-  "Energy & Utilities",
-  "Media & Entertainment",
-]
-
-// 5-step teal intensity scale by want_pct. Text flips dark on the hottest steps
-// so the number keeps contrast against the bright teal fills.
-function tileStep(want: number): number {
-  if (want >= 60) return 4
-  if (want >= 45) return 3
-  if (want >= 30) return 2
-  if (want >= 15) return 1
-  return 0
-}
-const TILE_BG = ["bg-primary/10", "bg-primary/25", "bg-primary/40", "bg-primary/60", "bg-primary/80"]
-const TILE_TEXT = ["text-slate-300", "text-slate-100", "text-slate-50", "text-slate-900", "text-slate-900"]
-const RADAR_GRID = "grid grid-cols-[minmax(132px,1.3fr)_repeat(4,minmax(76px,1fr))] gap-1.5"
-
-// Compact horizontal bar for a drilldown child row (want_pct fill, gap, base).
-function RadarBar({ label, row }: { label: string; row: RadarRow }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-36 shrink-0 truncate text-xs text-slate-300" title={label}>
-        {label}
-      </span>
-      <div className="relative h-2 flex-1 rounded-full bg-slate-700/40">
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-primary"
-          style={{ width: `${Math.max(2, Math.min(100, row.want_pct))}%` }}
-        />
-      </div>
-      <span className="w-9 shrink-0 text-right text-xs font-semibold text-slate-200">{Math.round(row.want_pct)}%</span>
-      <span className="w-10 shrink-0 text-right text-[10px] text-primary">
-        {row.have_pct === null ? "" : `+${Math.round(row.unmet_pct)}`}
-      </span>
-      <span className="w-14 shrink-0 text-right text-[10px] text-slate-500">n={row.base_n.toLocaleString()}</span>
-    </div>
   )
 }
 
@@ -2739,530 +2174,143 @@ function RfpPipelineOrgDetails({ row }: { row: RfpPipelineRow }) {
   )
 }
 
-function DemandRadarPanel({
-  embedded = false,
-  vendorCategories = [],
-}: {
-  embedded?: boolean
-  vendorCategories?: string[]
-}) {
-  // Own, stable browser client (createClient() returns a fresh instance per call).
-  const [supabase] = useState(() => createClient())
-  const [service, setService] = useState<string>("Technology & automation")
-  const [pinnedService, setPinnedService] = useState<string | null>(null)
-  const [hydrated, setHydrated] = useState(false)
-  const [hover, setHover] = useState<{ key: string; rect: DOMRect } | null>(null)
+type DemandStatus = "Growing" | "Established" | "Emerging"
 
-  // Hide the fixed-position tooltip if anything scrolls or resizes underneath it.
-  useEffect(() => {
-    if (!hover) return
-    const clear = () => setHover(null)
-    window.addEventListener("scroll", clear, true)
-    window.addEventListener("resize", clear)
-    return () => {
-      window.removeEventListener("scroll", clear, true)
-      window.removeEventListener("resize", clear)
-    }
-  }, [hover])
-
-  // Saved service categories (pinned service + vendor categories) sort first.
-  const orderedServices = useMemo(() => {
-    const saved = new Set<string>()
-    if (pinnedService) saved.add(mapPinnedToRadarService(pinnedService))
-    for (const c of vendorCategories) saved.add(mapPinnedToRadarService(c))
-    return [...RADAR_SERVICES.filter((s) => saved.has(s)), ...RADAR_SERVICES.filter((s) => !saved.has(s))]
-  }, [pinnedService, vendorCategories])
-  const [rows, setRows] = useState<RadarRow[]>([])
-  const [loading, setLoading] = useState(true)
-  // Open industry x region drilldown key ("industry||region"), one at a time.
-  const [openKey, setOpenKey] = useState<string | null>(null)
-  // "How to read this radar" explainer: open by default on first visit only.
-  const [howtoOpen, setHowtoOpen] = useState(false)
-
-  // Default the service to the vendor's pinned category (mapped), once, on mount,
-  // and decide the explainer's first-visit default from a localStorage flag.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("cbiq_vendor_service_category")
-      if (saved) {
-        setService(mapPinnedToRadarService(saved))
-        setPinnedService(saved)
-      }
-    } catch {
-      // ignore storage access errors — keep the default service
-    }
-    try {
-      const seen = localStorage.getItem("cbiq_radar_howto_seen")
-      if (!seen) {
-        setHowtoOpen(true)
-        localStorage.setItem("cbiq_radar_howto_seen", "1")
-      }
-    } catch {
-      // ignore storage access errors — leave the explainer collapsed
-    }
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      setOpenKey(null)
-      const { data } = await supabase.rpc("get_vendor_demand_radar", { p_year: 2026, p_service: service })
-      if (cancelled) return
-      setRows(Array.isArray(data) ? (data as RadarRow[]) : [])
-      setLoading(false)
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [service, hydrated, supabase])
-
-  // Grid cells = industry x region (granularity 2: both dims set, no size/
-  // assignee). Keyed "industry||region"; 'Other' and off-axis rows are ignored.
-  // Cells missing from the payload are below the reporting floor.
-  const cellMap = useMemo(() => {
-    const m = new Map<string, RadarRow>()
-    for (const r of rows) {
-      if (!r.industry || !r.region || r.size_band || r.assignee_band) continue
-      if (r.industry === "Other") continue
-      m.set(`${r.industry}||${r.region}`, r)
-    }
-    return m
-  }, [rows])
-
-  // Strongest signal = highest composite among grid cells (gets the ring accent).
-  const topKey = useMemo(() => {
-    let best: string | null = null
-    let bestScore = Number.NEGATIVE_INFINITY
-    for (const [k, r] of cellMap) {
-      if (r.composite_score > bestScore) {
-        bestScore = r.composite_score
-        best = k
-      }
-    }
-    return best
-  }, [cellMap])
-
-  // Industry rows in descending order of investment intent (mean want_pct across
-  // reported regions); rows with no reported cells sink to the bottom.
-  const orderedIndustries = useMemo(() => {
-    const avg = (ind: string) => {
-      const vals = RADAR_REGIONS.map((c) => cellMap.get(`${ind}||${c.value}`)?.want_pct).filter(
-        (v): v is number => typeof v === "number",
-      )
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : Number.NEGATIVE_INFINITY
-    }
-    return [...RADAR_INDUSTRIES].sort((a, b) => avg(b) - avg(a))
-  }, [cellMap])
-
-  const openCell = openKey ? cellMap.get(openKey) ?? null : null
-  const hoverCell = hover ? cellMap.get(hover.key) ?? null : null
-
-  // Drilldown reads deeper rows for the open cell from the SAME payload. Children
-  // whose base equals the parent's did not actually split the cell, so omit them.
-  const drilldown = useMemo(() => {
-    if (!openCell) return { sizes: [] as RadarRow[], sizeAssignee: [] as RadarRow[] }
-    const kids = rows.filter(
-      (r) =>
-        r.industry === openCell.industry &&
-        r.region === openCell.region &&
-        !!r.size_band &&
-        r.base_n !== openCell.base_n,
-    )
-    return {
-      sizes: kids.filter((r) => !r.assignee_band).sort((a, b) => b.want_pct - a.want_pct),
-      sizeAssignee: kids.filter((r) => !!r.assignee_band).sort((a, b) => b.want_pct - a.want_pct),
-    }
-  }, [openCell, rows])
-
-  const hasData = cellMap.size > 0
-  const shortFor = (region: string) => RADAR_REGIONS.find((c) => c.value === region)?.short ?? region
-  // Live worked example = the current ringed (top-composite) cell, if any.
-  const exampleCell = topKey ? cellMap.get(topKey) ?? null : null
-
-  return (
-    <div>
-      {/* Header — ZoneHeader style, unnumbered (Radar is a lens on Zone 01, not a new zone). */}
-      {embedded ? (
-        <p className="text-xs text-slate-500">
-          Where investment intent points, segment by segment. This view is market-wide and does not change your
-          filters.
-        </p>
-      ) : (
-        <div className="pt-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Demand Radar</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Where investment intent points, segment by segment - built from live benchmark data and growing with every
-            event.
-          </p>
-          <div className="mt-3 border-b border-primary/15" />
-        </div>
-      )}
-
-      <div
-        className={
-          embedded
-            ? "mt-4"
-            : "mt-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
-        }
-      >
-        {/* How to read this radar — collapsible, open on first visit only */}
-        <div className="mb-5">
-          <button
-            onClick={() => setHowtoOpen((v) => !v)}
-            aria-expanded={howtoOpen}
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-primary transition-colors"
-          >
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${howtoOpen ? "rotate-0" : "-rotate-90"}`}
-              aria-hidden="true"
-            />
-            How to read this radar
-          </button>
-          {/* grid-rows 0fr -> 1fr gives a smooth height transition with no jump */}
-          <div
-            className={`grid transition-all duration-300 ease-out ${howtoOpen ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0"}`}
-          >
-            <div className="overflow-hidden">
-              <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-4">
-                <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
-                  {/* Intensity swatch */}
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 flex shrink-0 gap-0.5">
-                      {TILE_BG.map((c) => (
-                        <span key={c} className={`h-3 w-1.5 rounded-[1px] ${c}`} />
-                      ))}
-                    </span>
-                    <p className="text-[10px] leading-snug text-slate-400">
-                      <span className="font-semibold text-slate-200">Darker teal = stronger investment intent.</span>{" "}
-                      The percentage is how many organizations in that cell name this service area as a top investment
-                      focus for the next 12-18 months.
-                    </p>
-                  </div>
-                  {/* Gap chip */}
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 inline-flex shrink-0 items-center rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
-                      gap +X
-                    </span>
-                    <p className="text-[10px] leading-snug text-slate-400">
-                      <span className="font-semibold text-slate-200">Intent running ahead of what programs already buy.</span>{" "}
-                      The bigger the gap, the more unmet demand.
-                    </p>
-                  </div>
-                  {/* Hatched tile */}
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 h-4 w-4 shrink-0 rounded-[2px] border border-dashed border-slate-700/70 bg-slate-800/20 [background-image:repeating-linear-gradient(45deg,transparent,transparent_3px,rgb(148_163_184_/_0.12)_3px,rgb(148_163_184_/_0.12)_6px)]" />
-                    <p className="text-[10px] leading-snug text-slate-400">
-                      <span className="font-semibold text-slate-200">Hatched = below our reporting floor.</span> Fewer
-                      than 15 organizations, so we do not show a figure. These fill in as the benchmark grows.
-                    </p>
-                  </div>
-                  {/* Ring */}
-                  <div className="flex items-start gap-2">
-                    <span className="mt-0.5 h-4 w-4 shrink-0 rounded-[2px] ring-2 ring-inset ring-primary" />
-                    <p className="text-[10px] leading-snug text-slate-400">
-                      <span className="font-semibold text-slate-200">The ringed tile is this service&apos;s strongest overall signal,</span>{" "}
-                      balancing intent, unmet demand, and sample depth.
-                    </p>
-                  </div>
-                </div>
-                {exampleCell && (
-                  <p className="mt-3 border-t border-slate-700/40 pt-3 text-[10px] leading-snug text-slate-500">
-                    Example: {exampleCell.industry} in {shortFor(exampleCell.region as string)} -{" "}
-                    {Math.round(exampleCell.want_pct)}% name this a top investment focus, from{" "}
-                    {exampleCell.base_n.toLocaleString()} organizations. Click the tile to see company-size detail.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Service-first selector: composite scores compare only within one service. */}
-        <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Service line</p>
-        <div className="flex flex-wrap gap-2 mb-5">
-          {orderedServices.map((svc) => {
-            const active = svc === service
-            return (
-              <button
-                key={svc}
-                onClick={() => setService(svc)}
-                className={
-                  active
-                    ? "rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
-                    : "rounded-full border border-slate-700 bg-brand-navy-2 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-primary/50 hover:text-primary transition-colors"
-                }
-              >
-                {svc}
-              </button>
-            )
-          })}
-        </div>
-
-        {loading ? (
-          <div className="overflow-hidden">
-            <div className={RADAR_GRID}>
-              {Array.from({ length: 5 * (RADAR_INDUSTRIES.length + 1) }).map((_, i) => (
-                <div key={i} className="h-14 rounded-lg bg-brand-navy-2/40 animate-pulse" />
-              ))}
-            </div>
-          </div>
-        ) : !hasData ? (
-          <div className="rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
-            <p className="text-sm text-slate-400">
-              Not enough data yet for this service line - the radar grows with every event.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Heatmap: industry rows x region columns. Scrolls horizontally on
-                narrow screens with the industry label column pinned. */}
-            <div className="overflow-x-auto pb-1">
-              <div className="min-w-[560px]">
-                {/* Column headers */}
-                <div className={RADAR_GRID}>
-                  <div className="sticky left-0 z-10 bg-brand-navy-3" />
-                  {RADAR_REGIONS.map((col) => (
-                    <div key={col.value} className="px-1 pb-1 text-center text-[11px] font-medium text-slate-400">
-                      {col.short}
-                    </div>
-                  ))}
-                </div>
-                {orderedIndustries.map((ind) => (
-                  <div key={ind} className={`${RADAR_GRID} mb-1.5`}>
-                    <div className="sticky left-0 z-10 flex items-center bg-brand-navy-3 pr-2 text-xs text-slate-300">
-                      {ind}
-                    </div>
-                    {RADAR_REGIONS.map((col) => {
-                      const key = `${ind}||${col.value}`
-                      const cell = cellMap.get(key)
-                      if (!cell) {
-                        // Below reporting floor
-                        return (
-                          <div
-                            key={key}
-                            className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-700/70 bg-slate-800/20 [background-image:repeating-linear-gradient(45deg,transparent,transparent_5px,rgb(148_163_184_/_0.07)_5px,rgb(148_163_184_/_0.07)_10px)]"
-                          >
-                            <Lock className="h-3 w-3 text-slate-600" aria-hidden="true" />
-                            <span className="sr-only">{`${ind} - ${col.short}: below reporting floor`}</span>
-                          </div>
-                        )
-                      }
-                      const step = tileStep(cell.want_pct)
-                      const isTop = key === topKey
-                      const isOpen = key === openKey
-                      const emerging = cell.have_pct === null
-                      return (
-                        <div key={key}>
-                          <button
-                            onClick={() => setOpenKey(isOpen ? null : key)}
-                            onMouseEnter={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
-                            onMouseLeave={() => setHover((h) => (h?.key === key ? null : h))}
-                            onFocus={(e) => setHover({ key, rect: e.currentTarget.getBoundingClientRect() })}
-                            onBlur={() => setHover((h) => (h?.key === key ? null : h))}
-                            aria-expanded={isOpen}
-                            aria-label={`${ind} - ${col.short}: ${Math.round(cell.want_pct)} percent investing`}
-                            className={`flex h-14 w-full flex-col items-start justify-center rounded-lg px-2 text-left transition ${TILE_BG[step]} ${TILE_TEXT[step]} hover:brightness-110 ${
-                              isTop ? "ring-2 ring-primary ring-offset-2 ring-offset-brand-navy-3 shadow-[0_0_16px_-2px_rgb(var(--brand-teal-rgb)_/_0.6)]" : ""
-                            } ${isOpen ? "outline outline-2 outline-primary/70" : ""}`}
-                          >
-                            <span className="text-lg font-bold leading-none">{Math.round(cell.want_pct)}%</span>
-                            {!emerging && (
-                              <span className="mt-1 text-[10px] font-medium opacity-80">gap +{Math.round(cell.unmet_pct)}</span>
-                            )}
-                          </button>
-                          {hover?.key === key && hoverCell && (
-                          <RadarTileTooltip anchor={hover.rect}>
-                            <p className="text-xs font-semibold text-slate-100 text-pretty">{`${ind} - ${col.short}`}</p>
-                            <dl className="mt-2 space-y-1 text-[11px]">
-                              <div className="flex justify-between gap-2">
-                                <dt className="text-slate-400">Investing</dt>
-                                <dd className="font-semibold text-primary">{Math.round(cell.want_pct)}%</dd>
-                              </div>
-                              <div className="flex justify-between gap-2">
-                                <dt className="text-slate-400">Providing today</dt>
-                                <dd className="font-medium text-slate-200">
-                                  {emerging ? "Emerging" : `${Math.round(cell.have_pct as number)}%`}
-                                </dd>
-                              </div>
-                              {!emerging && (
-                                <div className="flex justify-between gap-2">
-                                  <dt className="text-slate-400">Unmet gap</dt>
-                                  <dd className="font-medium text-slate-200">+{Math.round(cell.unmet_pct)}</dd>
-                                </div>
-                              )}
-                              <div className="flex justify-between gap-2">
-                                <dt className="text-slate-400">Base</dt>
-                                <dd className="font-medium text-slate-200">{cell.base_n.toLocaleString()}</dd>
-                              </div>
-                            </dl>
-                            {cell.confidence === "limited" && (
-                              <span className="mt-2 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                                Limited sample
-                              </span>
-                            )}
-                          </RadarTileTooltip>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-400">
-              <div className="flex items-center gap-1.5">
-                <span>Less</span>
-                <span className="flex gap-0.5">
-                  {TILE_BG.map((c) => (
-                    <span key={c} className={`h-3 w-4 rounded-sm ${c}`} />
-                  ))}
-                </span>
-                <span>more investment intent</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-3 w-4 rounded-sm border border-dashed border-slate-700/70 bg-slate-800/20" />
-                Below reporting floor
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-3 w-4 rounded-sm ring-2 ring-inset ring-primary" />
-                Strongest signal
-              </div>
-            </div>
-
-            {/* Persistent methodology caption (independent of the explainer) */}
-            <p className="mt-3 text-[11px] leading-snug text-slate-500">
-              Intent measured from the benchmark&apos;s investment-focus question; provision from what programs already
-              outsource. Bases stated on every tile.
-            </p>
-
-            {/* Drilldown: same-payload deeper rows for the open industry x region cell */}
-            {openCell && (
-              <div className="mt-4 rounded-xl border border-primary/25 bg-brand-navy-2/60 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-100 text-pretty">
-                      {`${openCell.industry} - ${shortFor(openCell.region as string)}`}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      {Math.round(openCell.want_pct)}% investing
-                      {openCell.have_pct === null
-                        ? " - emerging"
-                        : `, gap +${Math.round(openCell.unmet_pct)}`}{" "}
-                      · Base {openCell.base_n.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                {drilldown.sizes.length === 0 && drilldown.sizeAssignee.length === 0 ? (
-                  <p className="mt-3 text-xs text-slate-500">
-                    No finer breakdown above the reporting floor for this cell.
-                  </p>
-                ) : (
-                  <div className="mt-4 space-y-4">
-                    {drilldown.sizes.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">By company size</p>
-                        <div className="space-y-2">
-                          {drilldown.sizes.map((r, i) => (
-                            <RadarBar key={`s-${i}`} label={r.size_band ?? ""} row={r} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {drilldown.sizeAssignee.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                          By size and assignee population
-                        </p>
-                        <div className="space-y-2">
-                          {drilldown.sizeAssignee.map((r, i) => (
-                            <RadarBar
-                              key={`sa-${i}`}
-                              label={`${r.size_band ?? ""} · ${r.assignee_band ?? ""}`}
-                              row={r}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  )
+const DEMAND_STATUS_STYLES: Record<DemandStatus, string> = {
+  Growing: "border-primary/40 bg-primary/10 text-primary",
+  Established: "border-slate-600/50 bg-slate-700/30 text-slate-300",
+  Emerging: "border-sky-400/40 bg-sky-400/10 text-sky-300",
 }
 
-// "Where demand is growing": white space as the body, investment intent
-// (former Demand Radar) as an in-panel view toggle.
+function demandStatus(row: WhitespaceRow): DemandStatus {
+  if (row.have_pct == null) return "Emerging"
+  return row.want_pct > row.have_pct ? "Growing" : "Established"
+}
+
+// "Demand for your services": one plain row per service category, mapped from
+// the filtered whitespace rows onto the nine services-modal categories.
 function DemandGrowingPanel({
   rows,
   loading,
   error,
   isFiltered,
   vendorCategories,
+  pipelineRows,
+  pipelineLoading,
 }: {
   rows: WhitespaceRow[]
   loading: boolean
   error: string | null
   isFiltered: boolean
   vendorCategories: string[]
+  pipelineRows: RfpPipelineRow[]
+  pipelineLoading: boolean
 }) {
-  const [view, setView] = useState<"whitespace" | "intent">("whitespace")
-  const views = [
-    { id: "whitespace" as const, label: "White space" },
-    { id: "intent" as const, label: "Investment intent" },
-  ]
+  const items = useMemo(() => {
+    const mapped = VENDOR_SERVICE_OPTIONS.flatMap((option) => {
+      const row = rows.find((r) => SERVICE_PATTERNS[option.value]?.test(r.category))
+      if (!row) return []
+      const suppressed = row.confidence === "suppressed"
+      return [
+        {
+          value: option.value,
+          label: option.label,
+          row,
+          suppressed,
+          isYours: vendorCategories.includes(option.value),
+          inMarket: pipelineRows.filter((p) => rowSignals(p, [option.value]).length > 0).length,
+        },
+      ]
+    })
+    const demand = (i: (typeof mapped)[number]) => (i.suppressed ? -1 : i.row.want_pct)
+    return mapped.sort((a, b) => Number(b.isYours) - Number(a.isYours) || demand(b) - demand(a))
+  }, [rows, vendorCategories, pipelineRows])
+
+  const scrollToPipeline = () =>
+    document.getElementById("rfp-pipeline")?.scrollIntoView({ behavior: "smooth", block: "start" })
+
   return (
     <section
       aria-labelledby="demand-growing-heading"
       className="rounded-2xl border border-primary/30 bg-brand-navy-2 p-6 lg:p-8 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.35)]"
     >
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-5">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
+          <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 id="demand-growing-heading" className="text-xl font-semibold text-slate-100">
-            Where demand is growing
+            Demand for your services
           </h2>
-          <ScopePill filtered={view === "whitespace" ? isFiltered : false} />
+          <ScopePill filtered={isFiltered} />
         </div>
-        <div role="tablist" aria-label="Demand view" className="flex rounded-full border border-slate-700 p-0.5">
-          {views.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={view === v.id}
-              onClick={() => setView(v.id)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
-                view === v.id ? "bg-primary text-primary-foreground" : "text-slate-300 hover:text-primary"
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <p className="mt-1.5 text-sm text-slate-400">
+          What this segment buys today, and where it plans to invest next. Use the filters above to change the
+          segment.
+        </p>
       </div>
-      {view === "whitespace" ? (
-        <WhitespacePanel
-          rows={rows}
-          loading={loading}
-          error={error}
-          isFiltered={isFiltered}
-          vendorCategories={vendorCategories}
-          embedded
-        />
+
+      {loading ? (
+        <p className="text-sm text-slate-500">Loading demand for this segment…</p>
+      ) : error ? (
+        <p className="text-sm text-red-300">Demand data could not be loaded. Please try again shortly.</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-slate-500">No service demand is reportable for this segment yet.</p>
       ) : (
-        <DemandRadarPanel embedded vendorCategories={vendorCategories} />
+        <ul className="divide-y divide-slate-700/60 border-y border-slate-700/60">
+          {items.map((item) => {
+            const { row } = item
+            const status = demandStatus(row)
+            return (
+              <li
+                key={item.value}
+                className={`flex flex-col gap-1.5 py-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 ${
+                  item.suppressed ? "opacity-50" : ""
+                }`}
+              >
+                <div className="flex items-center gap-2 sm:min-w-48">
+                  <span className="font-medium text-slate-100">{item.label}</span>
+                  {item.isYours && (
+                    <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      Your service
+                    </span>
+                  )}
+                </div>
+                {item.suppressed ? (
+                  <span className="text-sm text-slate-400">
+                    Not enough organizations in this segment to report.
+                  </span>
+                ) : (
+                  <>
+                    {row.have_pct != null && (
+                      <span className="text-sm text-slate-300">
+                        Bought today by {Math.round(row.have_pct)}% of this segment
+                      </span>
+                    )}
+                    <span className="text-sm text-slate-300">
+                      Investment planned by {Math.round(row.want_pct)}%
+                    </span>
+                    <span
+                      className={`w-fit rounded-full border px-2 py-0.5 text-xs font-medium ${DEMAND_STATUS_STYLES[status]}`}
+                    >
+                      {status}
+                    </span>
+                    {!pipelineLoading && item.inMarket > 0 && (
+                      <button
+                        type="button"
+                        onClick={scrollToPipeline}
+                        className="w-fit text-sm font-medium text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60"
+                      >
+                        In market now: {item.inMarket}
+                      </button>
+                    )}
+                    <span className="text-xs text-slate-500 sm:ml-auto">
+                      Base: {row.want_base_n} organizations
+                    </span>
+                  </>
+                )}
+              </li>
+            )
+          })}
+        </ul>
       )}
     </section>
   )
@@ -4227,12 +3275,14 @@ export function VendorPremiumDashboardClient() {
               </div>
             </div>
 
-            <RfpPipelinePanel
-              filters={dashboardFilters}
-              categories={vendorCategories}
-              isFiltered={isFiltered}
-              onRowsLoaded={handlePipelineRows}
-            />
+            <div id="rfp-pipeline" className="scroll-mt-24">
+              <RfpPipelinePanel
+                filters={dashboardFilters}
+                categories={vendorCategories}
+                isFiltered={isFiltered}
+                onRowsLoaded={handlePipelineRows}
+              />
+            </div>
 
             <DemandGrowingPanel
               rows={whitespace}
@@ -4240,6 +3290,8 @@ export function VendorPremiumDashboardClient() {
               error={whitespaceError}
               isFiltered={isFiltered}
               vendorCategories={vendorCategories}
+              pipelineRows={pipelineRows}
+              pipelineLoading={pipelineLoading}
             />
           </div>
         )}
