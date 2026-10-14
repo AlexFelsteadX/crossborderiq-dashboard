@@ -200,12 +200,12 @@ export function TechnologyBuyerIntelligence({
           </div>
           <p className="text-sm text-slate-400">
             {buyerBase > 0
-              ? `Among Global Mobility leaders who have invested in technology · base ${buyerBase}`
+              ? `Among Global Mobility leaders who have invested in technology · from ${buyerBase} organizations`
               : "Among Global Mobility leaders who have invested in technology"}
           </p>
         </div>
         <span className="inline-flex shrink-0 items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          Market-wide
+          Whole market
         </span>
       </div>
 
@@ -283,7 +283,7 @@ export function TechnologyBuyerIntelligence({
           <div className="mt-4 mb-5 flex items-center justify-between gap-4">
             <h3 className="text-sm font-semibold text-slate-200">Leaders who have not invested in technology</h3>
             <span className="shrink-0 rounded-full border border-slate-600/50 bg-slate-700/30 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
-              {`~${nonBuyerBase} not yet invested`}
+              {`${nonBuyerBase} not yet invested`}
             </span>
           </div>
 
