@@ -99,7 +99,7 @@ function breakdownBaseRange(questions: GroupedQuestion[]): string {
   if (bases.length === 0) return ""
   const min = Math.min(...bases)
   const max = Math.max(...bases)
-  return min === max ? `Base n=${min}` : `Bases n=${min}-${max}`
+  return min === max ? `From ${min} organizations` : `From ${min}–${max} organizations`
 }
 
 interface ServiceInterestRow {
@@ -460,7 +460,7 @@ function computeMoveTypeNets(
 // WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary — promoted view)
 // =============================================================================
 
-function MoveTypeDemandCard({ rows, filtered }: { rows: CommercialCurrentRow[]; filtered: boolean }) {
+function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
   const q39 = rows.filter((r) => r.q_code === "Q39")
   if (q39.length === 0) return null
 
@@ -491,7 +491,7 @@ function MoveTypeDemandCard({ rows, filtered }: { rows: CommercialCurrentRow[]; 
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold text-slate-100">Where Global Mobility demand is heading</h2>
-        <ScopePill filtered={filtered} />
+        <CoveragePill segment={false} />
       </div>
       <p className="text-sm text-slate-400 mb-6">
         Net expected change in move-type volumes over the next 12 months
@@ -554,7 +554,7 @@ function QuestionCard({
   // answering-base caption. Scoped to Q52 so no other card is affected.
   const isQ52 = (qCode ?? "").toUpperCase() === "Q52"
   const displayCaption = isQ52
-    ? caption.replace("% of respondents", `% of respondents answering (n=${baseN})`)
+    ? caption.replace("% of respondents", `% of respondents answering · from ${baseN} organizations`)
     : caption
 
   // Agreement-scale detection: every option is a single digit, >=4 distinct
@@ -1392,6 +1392,29 @@ function ScopePill({ filtered }: { filtered: boolean }) {
   )
 }
 
+// Market Research scope pill. `segment` must be true only when filters are active
+// AND the card's data call applies every currently active filter.
+function CoveragePill({ segment }: { segment: boolean }) {
+  return segment ? (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+      This segment
+    </span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+      Whole market
+    </span>
+  )
+}
+
+function ChapterHeading({ title, description }: { title: string; description?: string }) {
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-100 text-balance">{title}</h2>
+      {description && <p className="mt-1 text-sm text-slate-400">{description}</p>}
+    </div>
+  )
+}
+
 function ServiceOpportunityPanel({
   market,
   segment,
@@ -2191,6 +2214,14 @@ const WHITESPACE_TAG_STYLES: Record<WhitespaceTag, string> = {
 const PROJECT_BASED_CATEGORIES = ["Consulting / advisory"]
 const PROJECT_DEMAND_PILL = "border-violet-400/40 bg-violet-400/10 text-violet-300"
 
+// Display labels for the RPC's whitespace tags (the tag values themselves are unchanged).
+const WHITESPACE_TAG_LABELS: Record<string, string> = {
+  Opening: "Few provide this today",
+  Emerging: "Growing",
+  Saturated: "Well served",
+}
+const whitespaceTagLabel = (tag: string) => WHITESPACE_TAG_LABELS[tag] ?? tag
+
 function WhitespacePanel({
   rows,
   loading,
@@ -2292,8 +2323,8 @@ function WhitespacePanel({
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold text-slate-100">Where the white space is</h2>
-          <ScopePill filtered={isFiltered} />
+          <h2 className="text-xl font-semibold text-slate-100">What they buy, and where the gaps are</h2>
+          <CoveragePill segment={isFiltered} />
         </div>
         {!loading && !error && rows.length > 0 && (
           <label className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
@@ -2360,19 +2391,19 @@ function WhitespacePanel({
             {(
               [
                 {
-                  label: "Emerging",
-                  style: WHITESPACE_TAG_STYLES.Emerging,
-                  def: "buyers are seeking this, but it's new enough that there's no established provision to benchmark against. First-mover opportunity.",
-                },
-                {
-                  label: "Opening",
+                  label: whitespaceTagLabel("Opening"),
                   style: WHITESPACE_TAG_STYLES.Opening,
-                  def: "more buyers want this than organizations currently provide it. A measurable demand gap to move into.",
+                  def: "more organizations want this than currently get it from a provider. A measurable gap to move into.",
                 },
                 {
-                  label: "Saturated",
+                  label: whitespaceTagLabel("Emerging"),
+                  style: WHITESPACE_TAG_STYLES.Emerging,
+                  def: "organizations are asking for this, but it is new enough that few outsource it yet, so there is nothing established to compare against. An early opportunity.",
+                },
+                {
+                  label: whitespaceTagLabel("Saturated"),
                   style: WHITESPACE_TAG_STYLES.Saturated,
-                  def: "provision already matches or exceeds demand. Well-served and more competitive.",
+                  def: "most organizations that want this already get it from a provider. Demand is met and competition is higher.",
                 },
                 {
                   label: "Project demand",
@@ -2495,7 +2526,7 @@ function WhitespacePanel({
                             projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
                           }`}
                         >
-                          {projectDemand ? "Project demand" : row.tag}
+                          {projectDemand ? "Project demand" : whitespaceTagLabel(row.tag)}
                         </span>
                       </div>
                       {barAndSummary}
@@ -2519,7 +2550,7 @@ function WhitespacePanel({
                                 projectDemand ? PROJECT_DEMAND_PILL : WHITESPACE_TAG_STYLES[row.tag]
                               }`}
                             >
-                              {projectDemand ? "Project demand" : row.tag}
+                              {projectDemand ? "Project demand" : whitespaceTagLabel(row.tag)}
                             </span>
                           </div>
                           <ChevronDown
@@ -2539,7 +2570,7 @@ function WhitespacePanel({
                             ) : (
                               <>
                                 Market demand {row.want_pct}% · This segment outsources {row.have_pct}%
-                                {row.have_base_n > 0 && <span className="text-slate-500"> (n={row.have_base_n})</span>}
+                                {row.have_base_n > 0 && <span className="text-slate-500"> · From {row.have_base_n} organizations</span>}
                               </>
                             )}
                           </p>
@@ -2607,20 +2638,13 @@ const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
 export function VendorPremiumDashboardClient() {
   const supabase = createClient()
 
-  // Year-on-Year Trends section is intentionally gated off for now.
-  // Flip to true to restore the section (its data, logic, and markup are all still in place).
-  const SHOW_YOY = false
-
   // State
   // Market Transformation Index: market row drives the unfiltered view; segment row
   // is the demographic-filtered comparison. Both come from get_market_opportunity.
   const [marketOpportunity, setMarketOpportunity] = useState<MarketOpportunity | null>(null)
   const [marketOpportunitySegment, setMarketOpportunitySegment] = useState<MarketOpportunity | null>(null)
-  const [yoyData, setYoyData] = useState<YoYRow[]>([])
   const [currentCommercial, setCurrentCommercial] = useState<CommercialCurrentRow[]>([])
   const [earlierCommercial, setEarlierCommercial] = useState<CommercialEarlierRow[]>([])
-  const [serviceInterest, setServiceInterest] = useState<ServiceInterestRow[]>([])
-  const [demandPipeline, setDemandPipeline] = useState<DemandPipelineRow[]>([])
   const [aiAdoption, setAiAdoption] = useState<AiAdoptionRow[]>([])
   const [aiVsMarket, setAiVsMarket] = useState<SegmentVsMarketRow[]>([])
   const [programVsMarket, setProgramVsMarket] = useState<SegmentVsMarketRow[]>([])
@@ -2635,6 +2659,10 @@ export function VendorPremiumDashboardClient() {
   // focused single-theme view. Switching between themes stays in focus mode.
   const [focusedBreakdown, setFocusedBreakdown] = useState<string | null>(null)
   const breakdownTopRef = useRef<HTMLDivElement | null>(null)
+  // Market Research chapter toggles (session only). techChapterOpen null = use the
+  // service-category default until the vendor toggles it.
+  const [breakdownsOpen, setBreakdownsOpen] = useState(false)
+  const [techChapterOpen, setTechChapterOpen] = useState<boolean | null>(null)
   // Accordion state for the "Earlier research" studies (collapsed by default)
   const [expandedStudies, setExpandedStudies] = useState<Set<string>>(new Set())
 
@@ -2661,7 +2689,6 @@ export function VendorPremiumDashboardClient() {
 
   // Live segment size + filter-aware service-demand breakdown.
   const [segmentSize, setSegmentSize] = useState<number | null>(null)
-  const [vendorBreakdown, setVendorBreakdown] = useState<VendorBreakdownRow[]>([])
   const [whitespace, setWhitespace] = useState<WhitespaceRow[]>([])
   const [whitespaceError, setWhitespaceError] = useState<string | null>(null)
   const [demandLoading, setDemandLoading] = useState(true)
@@ -2825,12 +2852,17 @@ export function VendorPremiumDashboardClient() {
   const moShowSuppressedNote = moIsFiltered && !!marketOpportunitySegment && !marketOpportunitySegment.reportable
   const moSource = moShowSegment ? marketOpportunitySegment : marketOpportunity
 
-  // Demand Pipeline RPC (f_demand_pipeline) receives only region/industry/size,
-  // so its pill must reflect exactly those three, not the full filter set.
-  const pipelineIsFiltered = !!(selectedRegion || selectedIndustry || selectedSize)
-  // Stated service interest RPC (f_service_interest) receives only the region,
-  // so its pill reflects region alone.
-  const serviceInterestIsFiltered = selectedRegion !== null
+  // Market Research scope pills: "This segment" only when every active filter is
+  // applied by the card's data call. Five-demographic cards ignore tech / AI.
+  const demographicSegment = e12IsFiltered && selectedTech === null && selectedAi === null
+  // AI Adoption sends region / industry / size only.
+  const aiSegment =
+    !!(selectedRegion || selectedIndustry || selectedSize) &&
+    selectedAssignee === null &&
+    selectedTraveller === null &&
+    selectedTech === null &&
+    selectedAi === null
+  const techChapterExpanded = techChapterOpen ?? vendorCategories.includes("Technology")
 
   const regionOptions = [
     { value: null, label: "All" },
@@ -2899,33 +2931,7 @@ export function VendorPremiumDashboardClient() {
   ]
 
   // ---------------------------------------------------------------------------
-  // FETCH STATIC DATA ON MOUNT (YoY Trends)
-  // ---------------------------------------------------------------------------
-  
-  useEffect(() => {
-    async function fetchStaticData() {
-      try {
-        // Fetch Year-on-Year trends (same view as Premium Dashboard)
-        const { data: yoyRows, error: yoyError } = await supabase
-          .from('v_premium_yoy')
-          .select('*')
-          .order('sort_order', { ascending: true })
-        
-        if (yoyError) {
-          console.log("[v0] YoY error:", yoyError)
-        } else {
-          setYoyData(yoyRows || [])
-        }
-      } catch (err) {
-        console.log("[v0] Static fetch error:", err)
-      }
-    }
-    
-    fetchStaticData()
-  }, [supabase])
-  
-  // ---------------------------------------------------------------------------
-  // FETCH FILTERED DATA (Service Interest, Demand Pipeline)
+  // FETCH FILTERED DATA (AI adoption)
   // ---------------------------------------------------------------------------
   
   useEffect(() => {
@@ -2934,36 +2940,6 @@ export function VendorPremiumDashboardClient() {
       setError(null)
       
       try {
-        // Call f_service_interest RPC with only region filter
-        const { data: interestRows, error: interestError } = await supabase
-          .rpc('f_service_interest', { 
-            p_region_group: selectedRegion
-          })
-        
-        if (interestError) {
-          console.log("[v0] Service interest RPC error:", interestError)
-        } else {
-          // Sort by pct descending
-          const sorted = (interestRows || []).sort((a: ServiceInterestRow, b: ServiceInterestRow) => b.pct - a.pct)
-          setServiceInterest(sorted)
-        }
-        
-        // Call f_demand_pipeline RPC with all three filters
-        const { data: pipelineRows, error: pipelineError } = await supabase
-          .rpc('f_demand_pipeline', { 
-            p_region_group: selectedRegion,
-            p_industry_group: selectedIndustry,
-            p_size_band: selectedSize
-          })
-        
-        if (pipelineError) {
-          console.log("[v0] Demand pipeline RPC error:", pipelineError)
-        } else {
-          // Sort by sort_order
-          const sorted = (pipelineRows || []).sort((a: DemandPipelineRow, b: DemandPipelineRow) => a.sort_order - b.sort_order)
-          setDemandPipeline(sorted)
-        }
-
         // Call get_vendor_ai_adoption with region / industry / size.
         // Filters are already null when "All", so pass them straight through.
         const { data: aiRows, error: aiError } = await supabase
@@ -3047,10 +3023,9 @@ export function VendorPremiumDashboardClient() {
         p_tech: selectedTech,
         p_ai: selectedAi,
       }
-      const [sizeRes, breakdownRes, whitespaceRes, vsMarketRes, programRes, summaryRes, reshapeRes, moRes] =
+      const [sizeRes, whitespaceRes, vsMarketRes, programRes, summaryRes, reshapeRes, moRes] =
         await Promise.all([
         supabase.rpc("get_vendor_segment_size", params),
-        supabase.rpc("get_vendor_breakdown", params),
         supabase.rpc("get_vendor_whitespace", params),
         // AI adoption: filtered segment vs whole-pool market. Only the five
         // demographic filters apply here (never empty string — null when "All").
@@ -3156,13 +3131,6 @@ export function VendorPremiumDashboardClient() {
         )
       }
 
-      if (breakdownRes.error) {
-        console.log("[v0] Vendor breakdown RPC error:", breakdownRes.error)
-        setVendorBreakdown([])
-      } else {
-        setVendorBreakdown((breakdownRes.data as VendorBreakdownRow[]) ?? [])
-      }
-
       if (whitespaceRes.error) {
         console.error("[v0] get_vendor_whitespace RPC error:", whitespaceRes.error, "params:", params)
         setWhitespaceError(whitespaceRes.error.message ?? "Failed to load white-space data")
@@ -3187,34 +3155,6 @@ export function VendorPremiumDashboardClient() {
     selectedTech,
     selectedAi,
   ])
-
-  // ---------------------------------------------------------------------------
-  // DERIVE ESTABLISHED (Q49) & EMERGING (E13) DEMAND COLUMNS
-  // ---------------------------------------------------------------------------
-
-  const establishedDemand = useMemo(() => {
-    const rows = vendorBreakdown.filter((r) => r.q_code === "Q49")
-    const items: DemandItem[] = rows
-      .map((r) => ({ label: r.answer_option, segPct: r.seg_pct, overallPct: r.overall_pct }))
-      .sort((a, b) => b.segPct - a.segPct)
-    return {
-      items,
-      confidence: (rows[0]?.confidence ?? "suppressed") as Confidence,
-      segBaseN: rows[0]?.seg_base_n ?? 0,
-    }
-  }, [vendorBreakdown])
-
-  const emergingDemand = useMemo(() => {
-    const rows = vendorBreakdown.filter((r) => r.q_code === "E13")
-    const items: DemandItem[] = rows
-      .map((r) => ({ label: r.answer_option, segPct: r.seg_pct, overallPct: r.overall_pct }))
-      .sort((a, b) => b.segPct - a.segPct)
-    return {
-      items,
-      confidence: (rows[0]?.confidence ?? "suppressed") as Confidence,
-      segBaseN: rows[0]?.seg_base_n ?? 0,
-    }
-  }, [vendorBreakdown])
 
   // Forces expected to reshape Global Mobility (E12) — market-wide, reads from
   // currentCommercial (2026 wave) exactly like groupedByPillar. NOT filter-aware.
@@ -3666,296 +3606,13 @@ export function VendorPremiumDashboardClient() {
                     <span className="text-slate-500">Counting responses…</span>
                   ) : (
                     <>
-                      Based on{" "}
+                      You&apos;re looking at{" "}
                       <span className="text-primary font-semibold">{segmentSize ?? 0}</span> organizations
                     </>
                   )}
                 </p>
               </div>
             </div>
-
-            {/* =================================================================== */}
-            {/* MARKET TRANSFORMATION INDEX (supporting metric)                    */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 lg:p-8 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Market Transformation Index</h2>
-                {moIsFiltered ? (
-                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                    Filtered
-                  </span>
-                ) : (
-                  <span className="ml-1 inline-flex items-center rounded-full border border-slate-600/50 bg-slate-700/30 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                    Market-wide
-                  </span>
-                )}
-              </div>
-              {moShowSuppressedNote && (
-                <div className="mb-6 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
-                  Not enough organizations in this segment to compare, showing the market-wide view.
-                </div>
-              )}
-              {(moSource?.min_component_base ?? 0) > 0 && (
-                <p className="-mt-2 mb-6 text-xs text-slate-500">
-                  Smallest component base: n={moSource?.min_component_base}
-                </p>
-              )}
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Score Gauge - Matching homepage ring style */}
-                <div className="flex flex-col items-center justify-center">
-                  <div className="relative w-44 h-44">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                      {/* Background track - muted dark */}
-                      <circle 
-                        cx="100" cy="100" r="85" 
-                        fill="none" 
-                        stroke="#1a3344" 
-                        strokeWidth="14" 
-                      />
-                      {/* Progress arc - bright teal */}
-                      <circle 
-                        cx="100" cy="100" r="85" 
-                        fill="none" 
-                        stroke="url(#mosGradient)" 
-                        strokeWidth="14" 
-                        strokeDasharray={534}
-                        strokeDashoffset={534 * (1 - (moSource?.market_opportunity_score || 0) / 100)}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000"
-                        filter="url(#mosGlow)"
-                      />
-                      {/* Gradient and glow definitions */}
-                      <defs>
-                        <linearGradient id="mosGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stopColor="var(--brand-teal)" />
-                          <stop offset="100%" stopColor="#2dd4bf" />
-                        </linearGradient>
-                        <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
-                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                          <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                          </feMerge>
-                        </filter>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                        {moSource?.market_opportunity_score || 0}%
-                      </span>
-                      <span className="text-xs text-slate-400 mt-1">Transformation Index</span>
-                    </div>
-                  </div>
-                  {moShowSegment && (
-                    <p className="mt-3 text-xs text-slate-400 tabular-nums">
-                      market: {marketOpportunity?.market_opportunity_score || 0}%
-                    </p>
-                  )}
-                </div>
-
-                {/* Supporting Metrics */}
-                <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-                  {[
-                    {
-                      label: "Transformation Activity",
-                      value: moSource?.transformation_pct,
-                      marketValue: marketOpportunity?.transformation_pct,
-                    },
-                    {
-                      label: "Operational Pressure",
-                      value: moSource?.operational_pressure_pct,
-                      marketValue: marketOpportunity?.operational_pressure_pct,
-                    },
-                    {
-                      label: "AI Activity",
-                      value: moSource?.ai_activity_pct,
-                      marketValue: marketOpportunity?.ai_activity_pct,
-                    },
-                    {
-                      label: "Technology Intent",
-                      value: moSource?.tech_intent_pct,
-                      marketValue: marketOpportunity?.tech_intent_pct,
-                      caption: "Evaluating, implementing, or considering technology (2026 wave)",
-                    },
-                  ].map((metric) => (
-                    <div key={metric.label} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
-                      <p className="text-xs text-slate-400 mb-1">{metric.label}</p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-bold text-primary drop-shadow-[0_0_10px_rgb(var(--brand-teal-rgb)_/_0.3)]">{metric.value ?? 0}%</p>
-                        {moShowSegment && (
-                          <span className="text-xs font-normal text-slate-500 tabular-nums">market {metric.marketValue ?? 0}%</span>
-                        )}
-                      </div>
-                      <div className="w-full bg-[#1a3344] rounded-full h-2 mt-2">
-                        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${metric.value ?? 0}%` }} />
-                      </div>
-                      {metric.caption && (
-                        <p className="mt-2 text-[11px] leading-snug text-slate-500">{metric.caption}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <p className="text-xs text-slate-500 mt-6 text-center max-w-2xl mx-auto">
-                The Market Transformation Index measures transformation, operational pressure, AI and technology activity across the whole market. It describes the market, not any one vendor&apos;s services.
-              </p>
-            </div>
-
-            {/* =================================================================== */}
-            {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)] mt-8">
-              <div className="flex items-center gap-2 mb-2">
-                <Layers className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
-                <ScopePill filtered={e12IsFiltered} />
-              </div>
-
-              {(() => {
-                // Canonical answer order from the RPC rows, so every state renders
-                // in the same sequence.
-                const orderIndex = new Map(programVsMarket.map((r, i) => [r.answer, i]))
-                const byOrder = <T extends { answer: string }>(a: T, b: T) =>
-                  (orderIndex.get(a.answer) ?? 99) - (orderIndex.get(b.answer) ?? 99)
-
-                // Market-only distribution: a labelled bar per answer, base_n once.
-                // Used for the unfiltered view and the insufficient-segment fallback.
-                const marketOnlyView = (
-                  dist: { answer: string; pct: number }[],
-                  baseN: number,
-                  note?: string,
-                ) => (
-                  <>
-                    {note && (
-                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
-                        {note}
-                      </div>
-                    )}
-                    <div className="space-y-4">
-                      {dist.map((row, idx) => {
-                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
-                        return (
-                          <div key={idx}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
-                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
-                            </div>
-                            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                              <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${width}%` }} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-5">Based on {baseN} responses</p>
-                  </>
-                )
-
-                // ---- Comparison mode: a demographic filter is applied and we have vs-market data ----
-                // Gated on the five-demographic boolean because program_state's RPC receives
-                // only those filters; a tech-only or AI-only selection must not present
-                // market-wide data as segment data.
-                if (e12IsFiltered && programVsMarket.length > 0) {
-                  const rows = [...programVsMarket].sort(byOrder)
-                  const marketBase = programVsMarket[0]?.market_base ?? 0
-                  const segmentReportable = rows.every((r) => r.segment_reportable)
-
-                  // Segment too thin to compare → market rate only, with the note.
-                  if (!segmentReportable) {
-                    const marketDist = rows.map((r) => ({ answer: r.answer, pct: r.market_pct }))
-                    return marketOnlyView(
-                      marketDist,
-                      marketBase,
-                      "Not enough responses in this segment to compare — showing market rate.",
-                    )
-                  }
-
-                  // Direction carried by icon (not colour). Words are fixed:
-                  // above market / below market / in line with market.
-                  const dirMeta = (d: string) => {
-                    if (d === "above")
-                      return { label: "above market", icon: <Triangle className="h-3 w-3 fill-current" /> }
-                    if (d === "below")
-                      return { label: "below market", icon: <Triangle className="h-3 w-3 fill-current rotate-180" /> }
-                    return { label: "in line with market", icon: <Minus className="h-3 w-3" /> }
-                  }
-
-                  return (
-                    <>
-                      <p className="text-xs text-slate-500 mb-5">
-                        vs all benchmark respondents (n={marketBase})
-                      </p>
-                      <div className="space-y-5">
-                        {rows.map((row, idx) => {
-                          const seg = Math.max(0, Math.min(100, row.segment_pct ?? 0))
-                          const mkt = Math.max(0, Math.min(100, row.market_pct ?? 0))
-                          const meta = dirMeta(row.direction)
-                          return (
-                            <div key={idx}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
-                                <span className="flex items-center gap-1 text-xs text-slate-400">
-                                  {meta.icon}
-                                  {row.direction !== "in_line" && (
-                                    <span className="text-slate-300">{Math.abs(Math.round(row.delta))}pp</span>
-                                  )}
-                                  <span>{meta.label}</span>
-                                </span>
-                              </div>
-                              {/* Segment = primary neutral accent bar */}
-                              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
-                                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${seg}%` }} />
-                              </div>
-                              {/* Market = faint reference beneath */}
-                              <div className="mt-1 flex items-center gap-2">
-                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/30">
-                                  <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/50" style={{ width: `${mkt}%` }} />
-                                </div>
-                                <span className="text-[10px] text-slate-500 shrink-0">
-                                  segment {row.segment_pct}% · market {row.market_pct}%
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-5">
-                        Segment n={rows[0]?.segment_base ?? 0} · market n={marketBase}
-                      </p>
-                    </>
-                  )
-                }
-
-                // ---- No filters applied → market distribution only, no comparison ----
-                if (programVsMarket.length === 0) {
-                  return (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                      <p className="text-slate-400">
-                        Not enough responses for this segment — try broadening your filters
-                      </p>
-                    </div>
-                  )
-                }
-                return marketOnlyView(
-                  [...programVsMarket].sort(byOrder).map((r) => ({ answer: r.answer, pct: r.market_pct })),
-                  programVsMarket[0]?.market_base ?? 0,
-                )
-              })()}
-            </div>
-
-            <WhitespacePanel
-              rows={whitespace}
-              loading={demandLoading}
-              error={whitespaceError}
-              isFiltered={isFiltered}
-              vendorCategories={vendorCategories}
-            />
 
             {/* =================================================================== */}
             {/* SEGMENT DIVERGENCE SUMMARY (headline read of the filtered view)     */}
@@ -3999,14 +3656,404 @@ export function VendorPremiumDashboardClient() {
               const sentence = clauses.join("; ")
               return (
                 <div className="rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-slate-100">What stands out here</h2>
+                    <CoveragePill segment={isFiltered} />
+                  </div>
                   <p className="text-sm sm:text-base leading-relaxed text-slate-200">
-                    <span className="font-semibold text-slate-100">In this segment:</span> {sentence}.
+                    {sentence}.
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">compared with all benchmark respondents</p>
+                  <p className="mt-1 text-xs text-slate-500">compared with the whole market</p>
                 </div>
               )
             })()}
 
+            <WhitespacePanel
+              rows={whitespace}
+              loading={demandLoading}
+              error={whitespaceError}
+              isFiltered={isFiltered}
+              vendorCategories={vendorCategories}
+            />
+
+            <section aria-labelledby="chapter-programs" className="space-y-6">
+              <div id="chapter-programs">
+                <ChapterHeading title="How programs are changing" />
+              </div>
+            {/* =================================================================== */}
+            {/* PROGRAM STATE (event-sourced GM leaders — segment vs market)        */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Layers className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
+                <CoveragePill segment={demographicSegment && programVsMarket.length > 0 && programVsMarket.every((r) => r.segment_reportable)} />
+              </div>
+
+              {(() => {
+                // Canonical answer order from the RPC rows, so every state renders
+                // in the same sequence.
+                const orderIndex = new Map(programVsMarket.map((r, i) => [r.answer, i]))
+                const byOrder = <T extends { answer: string }>(a: T, b: T) =>
+                  (orderIndex.get(a.answer) ?? 99) - (orderIndex.get(b.answer) ?? 99)
+
+                // Market-only distribution: a labelled bar per answer, base_n once.
+                // Used for the unfiltered view and the insufficient-segment fallback.
+                const marketOnlyView = (
+                  dist: { answer: string; pct: number }[],
+                  baseN: number,
+                  note?: string,
+                ) => (
+                  <>
+                    {note && (
+                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                        {note}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      {dist.map((row, idx) => {
+                        const width = Math.max(0, Math.min(100, row.pct ?? 0))
+                        return (
+                          <div key={idx}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
+                              <span className="text-sm font-semibold text-primary">{row.pct}%</span>
+                            </div>
+                            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                              <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${width}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-5">From {baseN} organizations</p>
+                  </>
+                )
+
+                // ---- Comparison mode: a demographic filter is applied and we have vs-market data ----
+                // Gated on the five-demographic boolean because program_state's RPC receives
+                // only those filters; a tech-only or AI-only selection must not present
+                // market-wide data as segment data.
+                if (e12IsFiltered && programVsMarket.length > 0) {
+                  const rows = [...programVsMarket].sort(byOrder)
+                  const marketBase = programVsMarket[0]?.market_base ?? 0
+                  const segmentReportable = rows.every((r) => r.segment_reportable)
+
+                  // Segment too thin to compare → market rate only, with the note.
+                  if (!segmentReportable) {
+                    const marketDist = rows.map((r) => ({ answer: r.answer, pct: r.market_pct }))
+                    return marketOnlyView(
+                      marketDist,
+                      marketBase,
+                      "Not enough responses in this segment to compare — showing market rate.",
+                    )
+                  }
+
+                  // Direction carried by icon (not colour). Words are fixed:
+                  // above market / below market / in line with market.
+                  const dirMeta = (d: string) => {
+                    if (d === "above")
+                      return { label: "above market", icon: <Triangle className="h-3 w-3 fill-current" /> }
+                    if (d === "below")
+                      return { label: "below market", icon: <Triangle className="h-3 w-3 fill-current rotate-180" /> }
+                    return { label: "in line with market", icon: <Minus className="h-3 w-3" /> }
+                  }
+
+                  return (
+                    <>
+                      <p className="text-xs text-slate-500 mb-5">
+                        Compared with the whole market · from {marketBase} organizations
+                      </p>
+                      <div className="space-y-5">
+                        {rows.map((row, idx) => {
+                          const seg = Math.max(0, Math.min(100, row.segment_pct ?? 0))
+                          const mkt = Math.max(0, Math.min(100, row.market_pct ?? 0))
+                          const meta = dirMeta(row.direction)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-sm font-medium text-slate-200">{displayAnswerLabel(row.answer)}</span>
+                                <span className="flex items-center gap-1 text-xs text-slate-400">
+                                  {meta.icon}
+                                  {row.direction !== "in_line" && (
+                                    <span className="text-slate-300">{Math.abs(Math.round(row.delta))}pp</span>
+                                  )}
+                                  <span>{meta.label}</span>
+                                </span>
+                              </div>
+                              {/* Segment = primary neutral accent bar */}
+                              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-700/40">
+                                <div className="absolute inset-y-0 left-0 rounded-full bg-primary" style={{ width: `${seg}%` }} />
+                              </div>
+                              {/* Market = faint reference beneath */}
+                              <div className="mt-1 flex items-center gap-2">
+                                <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-700/30">
+                                  <div className="absolute inset-y-0 left-0 rounded-full bg-slate-500/50" style={{ width: `${mkt}%` }} />
+                                </div>
+                                <span className="text-[10px] text-slate-500 shrink-0">
+                                  segment {row.segment_pct}% · market {row.market_pct}%
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-5">
+                        This segment: from {rows[0]?.segment_base ?? 0} organizations · whole market: from {marketBase} organizations
+                      </p>
+                    </>
+                  )
+                }
+
+                // ---- No filters applied → market distribution only, no comparison ----
+                if (programVsMarket.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">
+                        Not enough responses for this segment — try broadening your filters
+                      </p>
+                    </div>
+                  )
+                }
+                return marketOnlyView(
+                  [...programVsMarket].sort(byOrder).map((r) => ({ answer: r.answer, pct: r.market_pct })),
+                  programVsMarket[0]?.market_base ?? 0,
+                )
+              })()}
+            </div>
+
+            {/* =================================================================== */}
+            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
+            {/* =================================================================== */}
+
+            <MoveTypeDemandCard rows={currentCommercial} />
+
+            {/* =================================================================== */}
+            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">
+                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
+                </h2>
+                <CoveragePill segment={demographicSegment && reshapeVsMarket.length > 0 && reshapeVsMarket.every((r) => r.segment_reportable)} />
+              </div>
+              <p className="text-sm text-slate-400 mb-1">
+                Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
+              </p>
+              <p className="text-xs text-slate-500 mb-6">Segment views are directional; multiple answers allowed.</p>
+
+              {(() => {
+                // E12 keeps pct-descending order in every state. The RPC already
+                // returns rows pct-descending, so filtered/suppressed views are
+                // rendered in RPC order (never re-sorted); the unfiltered view
+                // keeps the existing pct-descending reshapeSignals sort.
+                const hasVsMarket = reshapeVsMarket.length > 0
+                const segmentReportable = hasVsMarket && reshapeVsMarket.every((r) => r.segment_reportable)
+
+                // ---- Filtered + reportable: segment bars with market marker ----
+                if (e12IsFiltered && hasVsMarket && segmentReportable) {
+                  return (
+                    <>
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-slate-500">Segment figures</span>
+                      </div>
+                      <p className="mb-4 text-xs text-slate-500">
+                        Teal bar = your selected segment. Vertical marker = market-wide benchmark.
+                      </p>
+                      <div className="space-y-2">
+                        {reshapeVsMarket.map((row, idx) => {
+                          const seg = Math.round(row.segment_pct)
+                          const mkt = Math.round(row.market_pct)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
+                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">
+                                  {seg}%
+                                  <span className="ml-1.5 text-xs font-normal text-slate-500">market: {mkt}%</span>
+                                </span>
+                              </div>
+                              <div className="relative h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.min(seg, 100)}%` }}
+                                />
+                                <span
+                                  className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
+                                  style={{ left: `${Math.min(mkt, 100)}%` }}
+                                  title={`Market ${mkt}%`}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                }
+
+                // ---- Filtered but segment too thin: market-wide view, muted bars ----
+                if (e12IsFiltered && hasVsMarket && !segmentReportable) {
+                  return (
+                    <>
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] text-slate-500">Whole-market figures</span>
+                      </div>
+                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                        Not enough organizations in this segment to compare, showing the market-wide view.
+                      </div>
+                      <div className="space-y-2">
+                        {reshapeVsMarket.map((row, idx) => {
+                          const pctDisplay = Math.round(row.market_pct)
+                          return (
+                            <div key={idx}>
+                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
+                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                              </div>
+                              <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-slate-500/50 rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                }
+
+                // ---- Unfiltered (or no vs-market rows): existing market-wide view ----
+                if (reshapeSignals.items.length === 0) {
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
+                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
+                      <p className="text-slate-400">No data available.</p>
+                    </div>
+                  )
+                }
+                return (
+                  <>
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] text-slate-500">Whole-market figures</span>
+                    </div>
+                    <div className="space-y-2">
+                      {reshapeSignals.items.map((item, idx) => {
+                        const pctDisplay = Math.round(item.pct)
+                        return (
+                          <div key={idx}>
+                            <div className="flex items-start justify-between gap-2 text-sm mb-1">
+                              <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
+                              <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
+                            </div>
+                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(pctDisplay, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+            </section>
+
+            {/* =================================================================== */}
+            {/* MARKET PULSE (four headline statements, segment vs market)          */}
+            {/* =================================================================== */}
+
+            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold text-slate-100">Market pulse</h2>
+                <CoveragePill segment={demographicSegment && moShowSegment} />
+              </div>
+              {(moSource?.min_component_base ?? 0) > 0 && (
+                <p className="mb-5 text-xs text-slate-500">From at least {moSource?.min_component_base} organizations</p>
+              )}
+              {moShowSuppressedNote && (
+                <div className="mb-5 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
+                  Not enough organizations in this segment to compare, showing the whole market.
+                </div>
+              )}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  {
+                    key: "transformation",
+                    value: moSource?.transformation_pct,
+                    marketValue: marketOpportunity?.transformation_pct,
+                    statement: "are reviewing or redesigning their policies",
+                  },
+                  {
+                    key: "pressure",
+                    value: moSource?.operational_pressure_pct,
+                    marketValue: marketOpportunity?.operational_pressure_pct,
+                    statement: "report operational pressure on their programs",
+                  },
+                  {
+                    key: "ai",
+                    value: moSource?.ai_activity_pct,
+                    marketValue: marketOpportunity?.ai_activity_pct,
+                    statement: "are already active with AI",
+                  },
+                  {
+                    key: "tech",
+                    value: moSource?.tech_intent_pct,
+                    marketValue: marketOpportunity?.tech_intent_pct,
+                    statement: "are evaluating, implementing or considering technology",
+                  },
+                ].map((metric) => (
+                  <li key={metric.key} className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-4">
+                    <p className="text-base leading-snug text-slate-200 text-pretty">
+                      <span className="text-2xl font-bold text-primary tabular-nums">{metric.value ?? 0}%</span>{" "}
+                      {metric.statement}
+                    </p>
+                    {moShowSegment && (
+                      <p className="mt-1.5 text-xs text-slate-500 tabular-nums">
+                        vs {metric.marketValue ?? 0}% across the whole market
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* =================================================================== */}
+            {/* TECHNOLOGY BUYING CHAPTER (collapsible, category-aware default)      */}
+            {/* =================================================================== */}
+
+            <section aria-labelledby="chapter-tech" className="space-y-6">
+              <button
+                type="button"
+                onClick={() => setTechChapterOpen(!techChapterExpanded)}
+                aria-expanded={techChapterExpanded}
+                aria-controls="chapter-tech-content"
+                className={techChapterExpanded
+                  ? "w-full flex items-center justify-between gap-4 text-left"
+                  : "w-full rounded-2xl border border-slate-700/40 bg-brand-navy-2/40 px-6 py-4 flex items-center justify-between gap-4 text-left hover:bg-primary/5 transition-colors"}
+              >
+                {techChapterExpanded ? (
+                  <h2 id="chapter-tech" className="text-2xl font-semibold tracking-tight text-slate-100 text-balance">Technology buying</h2>
+                ) : (
+                  <h2 id="chapter-tech" className="text-base font-medium text-slate-200">
+                    Technology buying <span className="text-slate-400 font-normal">· how Global Mobility programs buy and fund technology</span>
+                  </h2>
+                )}
+                <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${techChapterExpanded ? "rotate-180" : ""}`} />
+              </button>
+              {techChapterExpanded && (
+                <div id="chapter-tech-content" className="space-y-6">
             <TechnologyBuyerIntelligence supabase={supabase} />
 
             {/* =================================================================== */}
@@ -4017,7 +4064,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
-                <ScopePill filtered={isFiltered} />
+                <CoveragePill segment={aiSegment && aiVsMarket.length > 0} />
               </div>
 
               {(() => {
@@ -4088,7 +4135,7 @@ export function VendorPremiumDashboardClient() {
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-slate-500 mt-5">Based on {baseN} responses</p>
+                      <p className="text-xs text-slate-500 mt-5">From {baseN} organizations</p>
                     </>
                   )
                 }
@@ -4122,7 +4169,7 @@ export function VendorPremiumDashboardClient() {
                   return (
                     <>
                       <p className="text-xs text-slate-500 mb-5">
-                        vs all benchmark respondents (n={marketBase})
+                        Compared with the whole market · from {marketBase} organizations
                       </p>
                       <div className="space-y-5">
                         {rows.map((row, idx) => {
@@ -4159,7 +4206,7 @@ export function VendorPremiumDashboardClient() {
                         })}
                       </div>
                       <p className="text-xs text-slate-500 mt-5">
-                        Segment n={rows[0]?.segment_base ?? 0} · market n={marketBase}
+                        This segment: from {rows[0]?.segment_base ?? 0} organizations · whole market: from {marketBase} organizations
                       </p>
                     </>
                   )
@@ -4183,167 +4230,37 @@ export function VendorPremiumDashboardClient() {
                 )
               })()}
             </div>
+                </div>
+              )}
+            </section>
 
-            {/* =================================================================== */}
-            {/* WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary)           */}
-            {/* =================================================================== */}
-
-            <MoveTypeDemandCard rows={currentCommercial} filtered={selectedRegion !== null} />
-
-            {/* =================================================================== */}
-            {/* WHAT WILL RESHAPE GLOBAL MOBILITY (E12, market-wide)                */}
-            {/* =================================================================== */}
-
-            <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-slate-100">
-                  {displayVendorLabel("E12", reshapeSignals.questionLabel)}
-                </h2>
-                <ScopePill filtered={e12IsFiltered} />
-              </div>
-              <p className="text-sm text-slate-400 mb-1">
-                Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
-              </p>
-              <p className="text-xs text-slate-500 mb-6">Segment views are directional; multiple answers allowed.</p>
-
-              {(() => {
-                // E12 keeps pct-descending order in every state. The RPC already
-                // returns rows pct-descending, so filtered/suppressed views are
-                // rendered in RPC order (never re-sorted); the unfiltered view
-                // keeps the existing pct-descending reshapeSignals sort.
-                const hasVsMarket = reshapeVsMarket.length > 0
-                const segmentReportable = hasVsMarket && reshapeVsMarket.every((r) => r.segment_reportable)
-
-                // ---- Filtered + reportable: segment bars with market marker ----
-                if (e12IsFiltered && hasVsMarket && segmentReportable) {
-                  return (
-                    <>
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] text-slate-500">Segment figures</span>
-                      </div>
-                      <p className="mb-4 text-xs text-slate-500">
-                        Teal bar = your selected segment. Vertical marker = market-wide benchmark.
-                      </p>
-                      <div className="space-y-2">
-                        {reshapeVsMarket.map((row, idx) => {
-                          const seg = Math.round(row.segment_pct)
-                          const mkt = Math.round(row.market_pct)
-                          return (
-                            <div key={idx}>
-                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
-                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">
-                                  {seg}%
-                                  <span className="ml-1.5 text-xs font-normal text-slate-500">market: {mkt}%</span>
-                                </span>
-                              </div>
-                              <div className="relative h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                                  style={{ width: `${Math.min(seg, 100)}%` }}
-                                />
-                                <span
-                                  className="absolute top-0 bottom-0 w-0.5 bg-slate-300/70"
-                                  style={{ left: `${Math.min(mkt, 100)}%` }}
-                                  title={`Market ${mkt}%`}
-                                />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )
-                }
-
-                // ---- Filtered but segment too thin: market-wide view, muted bars ----
-                if (e12IsFiltered && hasVsMarket && !segmentReportable) {
-                  return (
-                    <>
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] text-slate-500">Market-wide figures</span>
-                      </div>
-                      <div className="mb-4 rounded-lg border border-slate-600/40 bg-slate-700/20 px-3 py-2 text-xs text-slate-400">
-                        Not enough organizations in this segment to compare, showing the market-wide view.
-                      </div>
-                      <div className="space-y-2">
-                        {reshapeVsMarket.map((row, idx) => {
-                          const pctDisplay = Math.round(row.market_pct)
-                          return (
-                            <div key={idx}>
-                              <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                                <span className="text-slate-400 break-words flex-1 min-w-0">{row.answer}</span>
-                                <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                              </div>
-                              <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-slate-500/50 rounded-full transition-all duration-300"
-                                  style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )
-                }
-
-                // ---- Unfiltered (or no vs-market rows): existing market-wide view ----
-                if (reshapeSignals.items.length === 0) {
-                  return (
-                    <div className="rounded-xl border border-primary/20 bg-brand-navy-2/80 p-8 text-center">
-                      <Database className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                      <p className="text-slate-400">No data available.</p>
-                    </div>
-                  )
-                }
-                return (
-                  <>
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] text-slate-500">Market-wide figures</span>
-                    </div>
-                    <div className="space-y-2">
-                      {reshapeSignals.items.map((item, idx) => {
-                        const pctDisplay = Math.round(item.pct)
-                        return (
-                          <div key={idx}>
-                            <div className="flex items-start justify-between gap-2 text-sm mb-1">
-                              <span className="text-slate-400 break-words flex-1 min-w-0">{item.answer_option}</span>
-                              <span className="text-slate-200 font-medium shrink-0 tabular-nums">{pctDisplay}%</span>
-                            </div>
-                            <div className="h-3 bg-[#1a3344] rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-[var(--brand-teal)] rounded-full transition-all duration-300"
-                                style={{ width: `${Math.min(pctDisplay, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
-
+            <section aria-labelledby="chapter-dig-deeper" className="space-y-4">
+              <h2 id="chapter-dig-deeper" className="text-2xl font-semibold tracking-tight text-slate-100 text-balance">Dig deeper</h2>
             {/* =================================================================== */}
             {/* SECTION 3: COMMERCIAL INTELLIGENCE BREAKDOWNS - COLLAPSIBLE */}
             {/* =================================================================== */}
             
             <div ref={breakdownTopRef} id="commercial-breakdowns" className="space-y-4 scroll-mt-24">
-              <div className="mb-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <h2 className="text-xl font-semibold text-slate-100">Commercial Intelligence Breakdowns</h2>
-                  <ScopePill filtered={false} />
+              <button
+                type="button"
+                onClick={() => setBreakdownsOpen((v) => !v)}
+                aria-expanded={breakdownsOpen}
+                aria-controls="commercial-breakdowns-content"
+                className="w-full rounded-2xl border border-slate-700/40 bg-brand-navy-2/40 px-6 py-4 flex items-center justify-between gap-4 text-left hover:bg-primary/5 transition-colors"
+              >
+                <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-100">Commercial Intelligence Breakdowns</h3>
+                    <CoveragePill segment={false} />
+                  </div>
+                  <p className="text-sm text-slate-400">
+                    Data points grouped by vendor pillar, from the latest 2026 Global Workforce Deployment wave.
+                  </p>
                 </div>
-                <p className="text-sm text-slate-400">
-                  Data points grouped by vendor pillar. Based on the latest 2026 Global Workforce Deployment wave.
-                </p>
-              </div>
+                <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${breakdownsOpen ? "rotate-180" : ""}`} />
+              </button>
 
-              {(() => {
+              {breakdownsOpen && (() => {
                 // Build the list of non-empty themes once, applying the same
                 // display-visibility rules used by the original accordion.
                 const isDefaultView = !selectedRegion && !selectedIndustry && !selectedSize
@@ -4538,8 +4455,8 @@ export function VendorPremiumDashboardClient() {
               <div className="space-y-4">
                 <div className="mb-1">
                   <div className="mb-1 flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-slate-300">Earlier research</h2>
-                    <ScopePill filtered={false} />
+                    <h3 className="text-lg font-semibold text-slate-300">Earlier research</h3>
+                    <CoveragePill segment={false} />
                   </div>
                   <p className="text-sm text-slate-500">
                     From earlier one-off GME studies (2022–2023). Shown for context — not part of the current wave.
@@ -4598,6 +4515,7 @@ export function VendorPremiumDashboardClient() {
                 </div>
               </div>
             )}
+            </section>
 
             {/* =================================================================== */}
             {/* SECTION 4: REPORTS & BRIEFINGS */}
