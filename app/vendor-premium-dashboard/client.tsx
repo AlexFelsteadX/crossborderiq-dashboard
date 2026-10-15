@@ -1171,6 +1171,90 @@ interface RfpPipelineRow {
   sub_sector: string | null
 }
 
+type PipelineStageFilter = "all" | "rfp" | "considering"
+type PipelineDateSort = "newest" | "oldest"
+
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+}
+
+// Contribution date as epoch ms, or null when it can't be parsed. Only the date
+// portion before any "·" suffix is read; RPC values look like "Oct 2026",
+// "3+ months ago", or "Sep 2026 · London, UK".
+function parseContributionDate(value: string | null): number | null {
+  if (!value) return null
+  const datePart = value.split("·")[0].trim()
+  if (!datePart) return null
+  const monthYear = datePart.match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/)
+  if (monthYear) {
+    const month = MONTH_INDEX[monthYear[1].slice(0, 3).toLowerCase()]
+    if (month !== undefined) return Date.UTC(Number(monthYear[2]), month, 1)
+  }
+  const relative = datePart.match(/^(\d+)\+?\s+(day|week|month|year)s?\s+ago$/i)
+  if (relative) {
+    const n = Number(relative[1])
+    const d = new Date()
+    const unit = relative[2].toLowerCase()
+    if (unit === "day") d.setDate(d.getDate() - n)
+    else if (unit === "week") d.setDate(d.getDate() - n * 7)
+    else if (unit === "month") d.setMonth(d.getMonth() - n)
+    else d.setFullYear(d.getFullYear() - n)
+    return d.getTime()
+  }
+  const iso = Date.parse(datePart)
+  return Number.isNaN(iso) ? null : iso
+}
+
+// Stable date sort; rows without a parseable date always sink to the end.
+function sortPipelineByDate(rows: RfpPipelineRow[], order: PipelineDateSort): RfpPipelineRow[] {
+  return rows
+    .map((row, index) => ({ row, index, t: parseContributionDate(row.contributed) }))
+    .sort((a, b) => {
+      if (a.t === null || b.t === null) {
+        if (a.t === b.t) return a.index - b.index
+        return a.t === null ? 1 : -1
+      }
+      if (a.t !== b.t) return order === "newest" ? b.t - a.t : a.t - b.t
+      return a.index - b.index
+    })
+    .map((x) => x.row)
+}
+
+function PipelineToggleGroup<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: Array<{ value: T; label: string }>
+  onChange: (v: T) => void
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-1.5">
+      {options.map((o) => {
+        const active = o.value === value
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(o.value)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 ${
+              active
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-slate-600 text-slate-300 hover:border-primary/50 hover:text-primary"
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // Normalize a possibly-null array field to a clean string[] (drops empties).
 function cleanArray(v: unknown): string[] {
   if (!Array.isArray(v)) return []
@@ -1683,6 +1767,8 @@ function RfpPipelinePanel({
   const [openRef, setOpenRef] = useState<string | null>(null)
   // Default view: only rows carrying a signal for the vendor's saved categories.
   const [showAllRows, setShowAllRows] = useState(false)
+  const [stageFilter, setStageFilter] = useState<PipelineStageFilter>("all")
+  const [dateSort, setDateSort] = useState<PipelineDateSort>("newest")
   const router = useRouter()
   // Refs the current user has already requested a workshop for. Held in memory
   // only; never rendered.
@@ -1694,7 +1780,7 @@ function RfpPipelinePanel({
   // Collapse back to the first 5 whenever any filter changes.
   useEffect(() => {
     setExpanded(false)
-  }, [filters, categories, showAllRows])
+  }, [filters, categories, showAllRows, stageFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -1813,7 +1899,26 @@ function RfpPipelinePanel({
   )
   const canNarrow = categories.length > 0
   const narrowed = canNarrow && !showAllRows
-  const visible = narrowed ? filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0) : filtered
+  const relevant = narrowed ? filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0) : filtered
+
+  // Stage counts reflect every other active filter, so each label matches what selecting it shows.
+  const stageCounts = useMemo(() => {
+    let rfp = 0
+    relevant.forEach((r) => {
+      if (r.stage === "RFP active") rfp += 1
+    })
+    return { all: relevant.length, rfp, considering: relevant.length - rfp }
+  }, [relevant])
+
+  const visible = useMemo(() => {
+    const staged =
+      stageFilter === "rfp"
+        ? relevant.filter((r) => r.stage === "RFP active")
+        : stageFilter === "considering"
+          ? relevant.filter((r) => r.stage === "Considering")
+          : relevant
+    return sortPipelineByDate(staged, dateSort)
+  }, [relevant, stageFilter, dateSort])
 
   return (
     <div>
@@ -1853,6 +1958,28 @@ function RfpPipelinePanel({
           </div>
         ) : (
           <>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <PipelineToggleGroup<PipelineStageFilter>
+                label="Filter by stage"
+                value={stageFilter}
+                onChange={setStageFilter}
+                options={[
+                  { value: "all", label: `All (${stageCounts.all})` },
+                  { value: "rfp", label: `In RFP now (${stageCounts.rfp})` },
+                  { value: "considering", label: `Considering (${stageCounts.considering})` },
+                ]}
+              />
+              <PipelineToggleGroup<PipelineDateSort>
+                label="Sort by contribution date"
+                value={dateSort}
+                onChange={setDateSort}
+                options={[
+                  { value: "newest", label: "Newest first" },
+                  { value: "oldest", label: "Oldest first" },
+                ]}
+              />
+            </div>
+
             {/* Relevance toggle: defaults to rows with a signal in the vendor's categories. */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-slate-400">
@@ -1884,9 +2011,11 @@ function RfpPipelinePanel({
             {visible.length === 0 ? (
               <div className="mt-4 rounded-xl border border-slate-700/40 bg-brand-navy-2/40 p-8 text-center">
                 <p className="text-sm text-slate-400">
-                  {narrowed && filtered.length > 0
-                    ? "No organizations in this view carry a signal for your categories yet."
-                    : "No organizations match the current filters."}
+                  {relevant.length > 0 && stageFilter !== "all"
+                    ? `No organizations at the ${stageFilter === "rfp" ? "RFP now" : "Considering"} stage in this view.`
+                    : narrowed && filtered.length > 0
+                      ? "No organizations in this view carry a signal for your categories yet."
+                      : "No organizations match the current filters."}
                 </p>
               </div>
             ) : (
