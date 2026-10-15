@@ -1626,10 +1626,17 @@ function VendorStatBand({
   const active = rows.filter((r) => r.stage === "RFP active").length
   const considering = rows.length - active
   const signals = rows.filter((r) => rowSignals(r, categories).length > 0).length
-  const tiles = [
-    { label: "In market now", value: active, accent: true },
-    { label: "Considering", value: considering, accent: false },
-    { label: "Signals in your category", value: signals, accent: false },
+  const allCategoriesSelected = VENDOR_SERVICE_OPTIONS.every((o) => categories.includes(o.value))
+  const tiles: { label: string; value: string; accent: boolean }[] = [
+    { label: "In market now", value: active.toLocaleString(), accent: true },
+    { label: "Considering", value: considering.toLocaleString(), accent: false },
+    allCategoriesSelected
+      ? {
+          label: "match your services",
+          value: `${signals.toLocaleString()} of ${rows.length.toLocaleString()}`,
+          accent: false,
+        }
+      : { label: "Signals in your category", value: signals.toLocaleString(), accent: false },
   ]
   return (
     <section aria-labelledby="stat-band-heading" className="space-y-2">
@@ -1670,7 +1677,7 @@ function VendorStatBand({
               <div className="h-6 w-12 rounded bg-brand-navy-3 animate-pulse" />
             ) : (
               <p className={`text-xl font-bold leading-none ${t.accent ? "text-primary" : "text-slate-100"}`}>
-                {t.value.toLocaleString()}
+                {t.value}
               </p>
             )}
             <p className="mt-1.5 text-xs text-slate-400">{t.label}</p>
