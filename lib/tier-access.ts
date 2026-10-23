@@ -51,6 +51,37 @@ export async function checkTierAccess(
   }
 }
 
+/** Landing page for a tier after sign-in: dashboards for paid tiers, home otherwise. */
+export function dashboardPathForTier(tier: Tier): string {
+  if (tier === "vendor") return "/vendor-premium-dashboard"
+  if (tier === "premium") return "/premium-dashboard"
+  return "/"
+}
+
+/** Accepts only same-origin relative paths ("/x"), rejecting protocol-relative "//host". */
+export function safeRelativePath(next: string | null | undefined): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null
+  return next
+}
+
+/**
+ * Post-authentication destination: an explicit `next` wins; otherwise route by
+ * the signed-in user's tier (current_tier RPC, same source as checkTierAccess).
+ */
+export async function resolvePostAuthPath(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  next: string | null,
+): Promise<string> {
+  const explicit = safeRelativePath(next)
+  if (explicit) return explicit
+  try {
+    const { data } = await supabase.rpc("current_tier")
+    return dashboardPathForTier((data as Tier) || "free")
+  } catch {
+    return "/"
+  }
+}
+
 /**
  * Server-side guard that redirects to login if not authenticated.
  * Call this at the top of a protected page.

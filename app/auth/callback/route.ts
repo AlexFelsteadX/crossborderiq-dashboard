@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolvePostAuthPath } from '@/lib/tier-access'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
-  // Only allow same-origin relative redirects.
-  const safeNext = next.startsWith('/') ? next : '/'
+  // Explicit ?next wins; without it, destination is resolved by tier after
+  // trial activation (premium/vendor -> their dashboard, everyone else -> /).
+  const next = searchParams.get('next')
 
   const supabase = await createClient()
 
@@ -19,7 +20,8 @@ export async function GET(request: Request) {
       } catch {
         // never block auth on trial activation
       }
-      return NextResponse.redirect(`${origin}${safeNext}`)
+      const destination = await resolvePostAuthPath(supabase, next)
+      return NextResponse.redirect(`${origin}${destination}`)
     }
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
   }
@@ -37,7 +39,8 @@ export async function GET(request: Request) {
     } catch {
       // never block auth on trial activation
     }
-    return NextResponse.redirect(`${origin}${safeNext}`)
+    const destination = await resolvePostAuthPath(supabase, next)
+    return NextResponse.redirect(`${origin}${destination}`)
   }
 
   // Genuinely not authenticated and no code to exchange: send to login.

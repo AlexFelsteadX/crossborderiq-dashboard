@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -23,6 +24,12 @@ function LoginForm() {
 
   const supabase = createClient()
 
+  // Carry ?next through the flow; when absent, /auth/callback routes by tier.
+  const searchParams = useSearchParams()
+  const rawNext = searchParams.get("next")
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null
+  const callbackPath = next ? `/auth/callback?next=${encodeURIComponent(next)}` : "/auth/callback"
+
   // Shared sign-in email send. Sends both the magic link and the 6-digit code
   // (governed by the Supabase email template). Returns true on success.
   const sendSignInEmail = async (trimmedEmail: string) => {
@@ -30,7 +37,7 @@ function LoginForm() {
       email: trimmedEmail,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}${callbackPath}`,
       },
     })
   }
@@ -87,7 +94,7 @@ function LoginForm() {
     // same post-authentication path the magic link uses. No duplicated logic.
     // Keep `verifying` true so the button stays in its loading state until the
     // full-page navigation takes over.
-    window.location.href = "/auth/callback?next=/"
+    window.location.href = callbackPath
   }
 
   const handleResend = async () => {
