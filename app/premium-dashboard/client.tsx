@@ -13,7 +13,10 @@ import {
   Loader2,
   Download,
   ArrowLeft,
+  X,
 } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
@@ -1154,6 +1157,24 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
 // MAIN CLIENT
 // =============================================================================
 
+const WELCOME_TRIAL_SEEN_KEY = "cbiq_welcome_trial_seen"
+
+type OwnSegment = Pick<Filters, "industry" | "region" | "size">
+
+interface GapBriefSegments {
+  hasResponse?: boolean
+  segments?: { region_group: string | null; industry_group: string | null; size_band: string | null }
+}
+
+const gapBriefFetcher = (url: string) => fetch(url).then((r) => r.json())
+
+// Match a stored segment value to a filter option label, tolerant of dash/space variants.
+function matchOption(options: string[], value: string | null | undefined): string | null {
+  if (!value) return null
+  const norm = (s: string) => s.toLowerCase().replace(/[\u2013\u2014]/g, "-").replace(/\s+/g, " ").trim()
+  return options.find((o) => norm(o) === norm(value)) ?? null
+}
+
 export function PremiumDashboardClient() {
   const supabase = useMemo(() => createClient(), [])
   const { tier } = useAuth()
@@ -1161,6 +1182,49 @@ export function PremiumDashboardClient() {
   const tierLabel = tier === "vendor" ? "Vendor Member Access" : "Premium Member Access"
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
+
+  // One-time welcome strip for ?welcome=trial, read on first render only and
+  // suppressed for the rest of the browser session once shown.
+  const searchParams = useSearchParams()
+  const [welcomeRequested] = useState(() => searchParams.get("welcome") === "trial")
+  const [welcomeVisible, setWelcomeVisible] = useState(false)
+  useEffect(() => {
+    if (!welcomeRequested) return
+    try {
+      if (sessionStorage.getItem(WELCOME_TRIAL_SEEN_KEY)) return
+      sessionStorage.setItem(WELCOME_TRIAL_SEEN_KEY, "1")
+    } catch {
+      // sessionStorage unavailable: still show once for this page view
+    }
+    setWelcomeVisible(true)
+  }, [welcomeRequested])
+
+  // Pre-fill peer filters from the user's own segment. Same SWR key as the gap
+  // panel, so this shares its single /api/gap-brief request.
+  const { data: gapBrief } = useSWR<GapBriefSegments>("/api/gap-brief", gapBriefFetcher, {
+    revalidateOnFocus: false,
+  })
+  const [ownSegment, setOwnSegment] = useState<OwnSegment | null>(null)
+  const [prefillResolved, setPrefillResolved] = useState(false)
+  if (!prefillResolved && gapBrief !== undefined) {
+    setPrefillResolved(true)
+    const seg = gapBrief.hasResponse ? gapBrief.segments : undefined
+    const own: OwnSegment = {
+      industry: matchOption(INDUSTRY_OPTIONS, seg?.industry_group),
+      region: matchOption(REGION_OPTIONS, seg?.region_group),
+      size: matchOption(SIZE_OPTIONS, seg?.size_band),
+    }
+    const untouched = filters.industry === null && filters.region === null && filters.size === null
+    if (untouched && (own.industry || own.region || own.size)) {
+      setOwnSegment(own)
+      setFilters((prev) => ({ ...prev, ...own }))
+    }
+  }
+  const showingOwnSegment =
+    ownSegment !== null &&
+    filters.industry === ownSegment.industry &&
+    filters.region === ownSegment.region &&
+    filters.size === ownSegment.size
 
   // Data state
   const [segmentSize, setSegmentSize] = useState<number | null>(null)
@@ -1467,6 +1531,25 @@ export function PremiumDashboardClient() {
 
       <GlobalNav />
 
+      {welcomeVisible && (
+        <div role="status" className="border-b border-primary/30 bg-primary/10">
+          <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-start gap-4">
+            <p className="flex-1 text-sm text-slate-100 leading-relaxed text-pretty">
+              <strong className="font-semibold text-primary">Welcome to CBIQ Premium.</strong>{" "}
+              {"This dashboard includes your own program’s position wherever we hold your verified answers; start with Your Gaps, Explained below."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setWelcomeVisible(false)}
+              className="shrink-0 rounded-md p-1 text-slate-300 hover:text-slate-100 hover:bg-primary/20 transition-colors"
+              aria-label="Dismiss welcome message"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <TrialBanner />
 
       <main className="max-w-[1400px] mx-auto px-6 py-10">
@@ -1579,6 +1662,20 @@ export function PremiumDashboardClient() {
               </Button>
             </div>
           </div>
+
+          {showingOwnSegment && (
+            <p className="mb-4 text-xs text-slate-300 flex items-center gap-2 flex-wrap">
+              <span>Showing your segment; reset to view the whole market.</span>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+              >
+                <RotateCcw className="h-3 w-3" />
+                View whole market
+              </button>
+            </p>
+          )}
 
           {filtersOpen && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">

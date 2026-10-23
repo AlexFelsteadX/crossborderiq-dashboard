@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolvePostAuthPath } from '@/lib/tier-access'
 import { type EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
-  const next = searchParams.get('next') ?? '/'
+  const next = searchParams.get('next')
 
   if (token_hash && type) {
     const supabase = await createClient()
@@ -18,13 +19,19 @@ export async function GET(request: Request) {
       } catch {
         // never block auth on trial activation
       }
-      // Resolve `next` against the request origin and only allow same-origin
-      // redirects to avoid open-redirect vulnerabilities.
-      const redirectUrl = new URL(next, origin)
-      if (redirectUrl.origin === origin) {
-        return NextResponse.redirect(redirectUrl.toString())
+
+      if (next) {
+        // Resolve `next` against the request origin and only allow same-origin
+        // redirects to avoid open-redirect vulnerabilities.
+        const redirectUrl = new URL(next, origin)
+        if (redirectUrl.origin === origin) {
+          return NextResponse.redirect(redirectUrl.toString())
+        }
       }
-      return NextResponse.redirect(`${origin}/`)
+
+      // No (valid) next: route by tier.
+      const destination = await resolvePostAuthPath(supabase, null)
+      return NextResponse.redirect(`${origin}${destination}`)
     }
   }
 
