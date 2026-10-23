@@ -1171,7 +1171,13 @@ const gapBriefFetcher = (url: string) => fetch(url).then((r) => r.json())
 // Match a stored segment value to a filter option label, tolerant of dash/space variants.
 function matchOption(options: string[], value: string | null | undefined): string | null {
   if (!value) return null
-  const norm = (s: string) => s.toLowerCase().replace(/[\u2013\u2014]/g, "-").replace(/\s+/g, " ").trim()
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[\u2010-\u2015\u2212]/g, "-")
+      .replace(/\s*-\s*/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
   return options.find((o) => norm(o) === norm(value)) ?? null
 }
 
