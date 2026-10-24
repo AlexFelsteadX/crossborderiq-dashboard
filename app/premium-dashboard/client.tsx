@@ -33,6 +33,15 @@ import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
+import { YourScorePanel, type MySummary } from "./your-score-panel"
+
+type DashboardTab = "score" | "trends" | "explore"
+
+const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
+  { id: "score", label: "Your Score" },
+  { id: "trends", label: "Trends" },
+  { id: "explore", label: "Explore the Benchmark" },
+]
 
 // Temporary master switch: hide every respondent-count / base-size display across
 // the whole premium dashboard. Flip to `true` to restore all "n=" / base counts.
@@ -1206,6 +1215,28 @@ export function PremiumDashboardClient() {
   // Reflect the actual tier in the header badge (Vendor members also access this dashboard).
   const tierLabel = tier === "vendor" ? "Vendor Member Access" : "Premium Member Access"
 
+  const [activeTab, setActiveTab] = useState<DashboardTab>("score")
+  const {
+    data: mySummary,
+    error: mySummaryError,
+    isLoading: loadingMySummary,
+  } = useSWR<MySummary | null>(
+    "rpc:get_my_summary",
+    async () => {
+      const { data, error } = await supabase.rpc("get_my_summary")
+      if (error) throw error
+      const row = Array.isArray(data) ? data[0] : data
+      return (row as MySummary | undefined) ?? null
+    },
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  // Without a summary row the page falls back to the original single-view layout.
+  const summaryUnavailable = !loadingMySummary && (Boolean(mySummaryError) || !mySummary)
+  const showTabs = !summaryUnavailable
+  const showScore = showTabs && activeTab === "score"
+  const showTrends = !showTabs || activeTab === "trends"
+  const showExplore = !showTabs || activeTab === "explore"
+
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
   // One-time welcome strip for ?welcome=trial, read on first render only and
@@ -1593,9 +1624,48 @@ export function PremiumDashboardClient() {
           </p>
         </div>
 
-        {/* ================= CBIQ INSIGHTS: YOUR GAPS, EXPLAINED ================= */}
-        <GapAnalysisPanel />
+        {/* ============================ DASHBOARD TABS ============================ */}
+        {showTabs && (
+          <div
+            role="tablist"
+            aria-label="Dashboard view"
+            className="mb-8 flex w-full rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
+          >
+            {DASHBOARD_TABS.map((t) => {
+              const active = activeTab === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  id={`dashboard-tab-${t.id}`}
+                  aria-selected={active}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex-1 min-w-0 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold leading-tight transition-colors ${
+                    active
+                      ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                      : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
+        {/* ============================ YOUR SCORE ============================ */}
+        {showScore && (
+          <div role="tabpanel" aria-labelledby="dashboard-tab-score">
+            <YourScorePanel summary={mySummary ?? null} loading={loadingMySummary} />
+          </div>
+        )}
+
+        {/* ================= CBIQ INSIGHTS: YOUR GAPS, EXPLAINED (fallback layout) ================= */}
+        {!showTabs && <GapAnalysisPanel />}
+
+        {showExplore && (
+        <>
         {/* ============================ YEAR TABS ============================ */}
         <div className="mb-6">
           <div
@@ -1979,10 +2049,13 @@ export function PremiumDashboardClient() {
               )
             })()}
         </div>
+        </>
+        )}
 
         {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS (2026 only) ============================ */}
-        {!is2025 && (
-        <div className="mb-16">
+        {/* In the tabbed view the year selector lives on Explore, so Trends always shows 2025 → 2026. */}
+        {showTrends && (showTabs || !is2025) && (
+        <div className={showTabs ? "mb-8" : "mb-16"}>
           <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-700/60">
             <TrendingUp className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
@@ -2007,7 +2080,15 @@ export function PremiumDashboardClient() {
         </div>
         )}
 
+        {showTabs && activeTab === "trends" && (
+          <section className="mb-16 rounded-xl border border-dashed border-primary/30 bg-brand-navy-2/40 p-6">
+            <h2 className="text-base font-semibold text-slate-100 mb-1">Coming here</h2>
+            <p className="text-sm text-slate-400">{"Your score’s movement month by month as the benchmark grows."}</p>
+          </section>
+        )}
+
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
+        {showExplore && (
         <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           <div
             ref={breakdownTopRef}
@@ -2146,6 +2227,7 @@ export function PremiumDashboardClient() {
             )
           })()}
         </div>
+        )}
       </main>
 
       <GlobalFooter />
