@@ -2746,7 +2746,6 @@ function WhitespacePanel({
                             ) : (
                               <>
                                 Market demand {row.want_pct}% · This segment outsources {row.have_pct}%
-                                {row.have_base_n > 0 && <span className="text-slate-500"> · From {row.have_base_n} organizations</span>}
                               </>
                             )}
                           </p>
@@ -3028,10 +3027,7 @@ export function VendorPremiumDashboardClient() {
   const moShowSuppressedNote = moIsFiltered && !!marketOpportunitySegment && !marketOpportunitySegment.reportable
   const moSource = moShowSegment ? marketOpportunitySegment : marketOpportunity
 
-  // Market Research scope pills: "This segment" only when every active filter is
-  // applied by the card's data call. Five-demographic cards ignore tech / AI.
-  const demographicSegment = e12IsFiltered && selectedTech === null && selectedAi === null
-  // AI Adoption sends region / industry / size only.
+  // AI Adoption scope pill: its data call sends region / industry / size only.
   const aiSegment =
     !!(selectedRegion || selectedIndustry || selectedSize) &&
     selectedAssignee === null &&
@@ -3837,7 +3833,7 @@ export function VendorPremiumDashboardClient() {
                   <div className="mb-2 flex items-center gap-2">
                     <h2 className="text-base font-semibold text-slate-100">What stands out here</h2>
                     <MarketResearchInfo id="standsOut" />
-                    <CoveragePill segment={isFiltered} />
+                    <CoveragePill segment={e12IsFiltered} />
                   </div>
                   <p className="text-sm sm:text-base leading-relaxed text-slate-200">
                     {sentence}.
@@ -3868,7 +3864,7 @@ export function VendorPremiumDashboardClient() {
                 <Layers className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
                 <MarketResearchInfo id="programState" />
-                <CoveragePill segment={demographicSegment && programVsMarket.length > 0 && programVsMarket.every((r) => r.segment_reportable)} />
+                <CoveragePill segment={e12IsFiltered && programVsMarket.length > 0 && programVsMarket.every((r) => r.segment_reportable)} />
               </div>
 
               {(() => {
@@ -4021,7 +4017,7 @@ export function VendorPremiumDashboardClient() {
                   {displayVendorLabel("E12", reshapeSignals.questionLabel)}
                 </h2>
                 <MarketResearchInfo id="reshapingForces" />
-                <CoveragePill segment={demographicSegment && reshapeVsMarket.length > 0 && reshapeVsMarket.every((r) => r.segment_reportable)} />
+                <CoveragePill segment={e12IsFiltered && reshapeVsMarket.length > 0 && reshapeVsMarket.every((r) => r.segment_reportable)} />
               </div>
               <p className="text-sm text-slate-400 mb-1">
                 Forward-looking signal. The forces buyers expect to reshape Global Mobility over the next three years.
@@ -4169,7 +4165,7 @@ export function VendorPremiumDashboardClient() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Market pulse</h2>
                 <MarketResearchInfo id="marketPulse" />
-                <CoveragePill segment={demographicSegment && moShowSegment} />
+                <CoveragePill segment={moShowSegment} />
               </div>
               {(moSource?.min_component_base ?? 0) > 0 && (
                 <p className="mb-5 text-xs text-slate-500">From at least {moSource?.min_component_base} organizations</p>
@@ -4333,8 +4329,8 @@ export function VendorPremiumDashboardClient() {
                   )
                 }
 
-                // ---- Comparison mode: a filter is applied and we have vs-market data ----
-                if (isFiltered && aiVsMarket.length > 0) {
+                // ---- Comparison mode: a demographic filter is applied and we have vs-market data ----
+                if (e12IsFiltered && aiVsMarket.length > 0) {
                   const rows = [...aiVsMarket].sort(byOrder)
                   const marketBase = aiVsMarket[0]?.market_base ?? 0
                   const segmentReportable = rows.every((r) => r.segment_reportable)
