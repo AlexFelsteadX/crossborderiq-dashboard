@@ -23,7 +23,8 @@ import { GlobalFooter } from "@/components/global-footer"
 import { TrialBanner } from "@/components/trial-banner"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/use-auth"
-import { CircularGauge, formatPct, maturityBand } from "@/components/dashboard-ui"
+import { CircularGauge, formatPct } from "@/components/dashboard-ui"
+import { mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { THEME_ORDER, themeForPillar, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
 import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
 import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
@@ -1418,7 +1419,7 @@ export function PremiumDashboardClient() {
 
   // BLOCK 1/2 derived values
   const mmiResolved = mmi ? resolve(mmi.confidence, mmi.index_score, mmi.overall_index) : null
-  const band = mmiResolved ? maturityBand(mmiResolved.value) : ""
+  const band = mmiResolved ? mmiBand(mmiResolved.value).name : ""
   const scoreComponents = mmi
     ? [
         { label: "Defined strategy", pct: mmi.defined_strategy },
@@ -1529,7 +1530,7 @@ export function PremiumDashboardClient() {
   const bottomPillar = rankablePillars[rankablePillars.length - 1]
   const marketRead = mmi ? (
     <>
-      Across the benchmark, Global Mobility maturity sits in the {maturityBand(Math.round(mmi.overall_index))} band (
+      Across the benchmark, Global Mobility maturity sits in the {mmiBand(Math.round(mmi.overall_index)).name} band (
       {Math.round(mmi.overall_index)}/100).
       {rankablePillars.length >= 2 && (
         <>
@@ -1786,7 +1787,7 @@ export function PremiumDashboardClient() {
                   {mmi.confidence === "limited" && <LimitedChip base={mmi.base_n} />}
                 </div>
                 <p className="text-[11px] text-slate-500 mb-2">
-                  {"Score out of 100 · 0–39 Emerging · 40–59 Developing · 60–79 Established · 80–100 Leading"}
+                  {bandScaleLabel}
                 </p>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and technology & AI maturity.

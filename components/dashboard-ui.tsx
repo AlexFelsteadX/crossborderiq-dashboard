@@ -1,5 +1,7 @@
 "use client"
 
+import { mmiBand } from "@/lib/scoring"
+
 // Shared visual primitives for the Contributor & Premium dashboards so the two
 // feel like one product (circular gauges, percentage formatting, maturity band).
 
@@ -10,10 +12,7 @@ export function formatPct(value: number): string {
 
 // Maturity band derived from the 0–100 index value.
 export function maturityBand(score: number): string {
-  if (score >= 80) return "Leading"
-  if (score >= 60) return "Established"
-  if (score >= 40) return "Developing"
-  return "Emerging"
+  return mmiBand(score).name
 }
 
 // Circular/radial progress ring (SVG donut): muted slate track + teal arc.
