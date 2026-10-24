@@ -30,6 +30,7 @@ import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
 import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
+import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 
 // Temporary master switch: hide every respondent-count / base-size display across
@@ -619,6 +620,16 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
       })()
     : null
 
+  const questionInfo = (variant?: QuestionInfoVariant) => (
+    <QuestionInfo
+      questionText={displayQuestionLabel(q.qCode, q.questionLabel)}
+      multiSelect={isMultiSelect}
+      base={suppressed ? q.overallBaseN : q.segBaseN}
+      fallback={suppressed}
+      variant={variant}
+    />
+  )
+
   if (isDirectionMatrix && matrixRows) {
     const netLabel = (net: number) =>
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
@@ -628,6 +639,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
         </h4>
+          {questionInfo("moveType")}
         </div>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
@@ -700,6 +712,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
           <h4 className="text-sm font-medium text-slate-200 leading-tight text-center">
             {displayQuestionLabel(q.qCode, q.questionLabel)}
           </h4>
+          {questionInfo()}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
           <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} />
@@ -753,6 +766,7 @@ function PremiumQuestionCard({ q, isFiltered }: { q: GroupedQuestion; isFiltered
         <h4 className="text-sm font-medium text-slate-200 leading-tight">
           {displayQuestionLabel(q.qCode, q.questionLabel)}
         </h4>
+        {questionInfo(isAgreementScale ? "agreementScale" : undefined)}
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <BaseLine base={suppressed ? q.overallBaseN : q.segBaseN} multiSelect={isMultiSelect} />
