@@ -24,8 +24,8 @@ const E10_CANONICAL = [
 const E16_CANONICAL = [
   "Yes — a dedicated Global Mobility / assignment management platform",
   "Partially — some tasks are supported by technology",
-  "Yes — but primarily spreadsheets and general office tools",
-  "No — our program is managed manually",
+  "No — we manage the program with spreadsheets and general office tools",
+  "We are currently evaluating or implementing a solution",
 ];
 
 const DEDUP_MONTHS = 12;
