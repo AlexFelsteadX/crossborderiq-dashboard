@@ -235,7 +235,7 @@ export function YourScorePanel({ summary, loading }: { summary: MySummary | null
   return (
     <>
       <HeroCard s={summary} />
-      <GapAnalysisPanel />
+      <GapAnalysisPanel suppressEmptyState={!summary.has_data || summary.my_score == null} />
       <ComponentTiles s={summary} />
     </>
   )
