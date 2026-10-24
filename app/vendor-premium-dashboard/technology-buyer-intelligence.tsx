@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Cpu } from "lucide-react"
 
 // =============================================================================
@@ -51,11 +51,13 @@ interface SupabaseLike {
 interface TechnologyBuyerIntelligenceProps {
   rows?: TechBuyerRow[]
   supabase?: SupabaseLike
+  headingAddon?: ReactNode
 }
 
 export function TechnologyBuyerIntelligence({
   rows,
   supabase,
+  headingAddon,
 }: TechnologyBuyerIntelligenceProps) {
   // Resolve which rows to show:
   //  - explicit `rows` prop wins (static preview / parent-provided data)
@@ -103,6 +105,7 @@ export function TechnologyBuyerIntelligence({
         <div className="flex items-center gap-2 mb-2">
           <Cpu className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-semibold text-slate-100">Technology Buyer Intelligence</h2>
+          {headingAddon}
         </div>
         <p className="text-sm text-slate-400 leading-relaxed max-w-prose">
           This view unlocks once enough Global Mobility leaders who have invested in technology have contributed. It is
@@ -197,6 +200,7 @@ export function TechnologyBuyerIntelligence({
           <div className="flex items-center gap-2 mb-1">
             <Cpu className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-semibold text-slate-100">Technology Buyer Intelligence</h2>
+          {headingAddon}
           </div>
           <p className="text-sm text-slate-400">
             {buyerBase > 0
