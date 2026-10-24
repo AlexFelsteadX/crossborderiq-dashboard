@@ -4150,13 +4150,13 @@ export function VendorPremiumDashboardClient() {
                     key: "transformation",
                     value: moSource?.transformation_pct,
                     marketValue: marketOpportunity?.transformation_pct,
-                    statement: "are reviewing or redesigning their policies",
+                    statement: "are actively transforming their mobility function",
                   },
                   {
                     key: "pressure",
                     value: moSource?.operational_pressure_pct,
                     marketValue: marketOpportunity?.operational_pressure_pct,
-                    statement: "report operational pressure on their programs",
+                    statement: "name cost management a top operational pressure",
                   },
                   {
                     key: "ai",
