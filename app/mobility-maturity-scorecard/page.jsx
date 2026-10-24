@@ -5,6 +5,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
 import { CircularGauge } from "@/components/dashboard-ui"
+import { mmiBand } from "@/lib/scoring"
 import { createClient } from "@/lib/supabase/client"
 import { toPng } from "html-to-image"
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, ArrowRight, Check, Share2, X } from "lucide-react"
@@ -94,11 +95,16 @@ function cdf(z) { // Abramowitz-Stegun approximation
   let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
   return z > 0 ? 1 - p : p
 }
+const ARCHETYPE_LINES = {
+  Leading: "Mobility is a strategic, well-aligned function with mature technology and AI. You're operating ahead of most peers.",
+  Established: "A defined strategy and solid foundations. The gap to leading sits in alignment, future-readiness, or tech depth.",
+  Developing: "The pieces are forming. Strategy and tooling are partway there, with clear room to tighten alignment and adoption.",
+  Emerging: "Mobility runs operationally without a defined strategic core. The biggest gains are in strategy and technology foundations.",
+}
+
 function archetype(s) {
-  if (s >= 80) return { name: "Strategic Leader", line: "Mobility is a strategic, well-aligned function with mature technology and AI. You're operating ahead of most peers." }
-  if (s >= 60) return { name: "Established", line: "A defined strategy and solid foundations. The gap to leading sits in alignment, future-readiness, or tech depth." }
-  if (s >= 40) return { name: "Building Momentum", line: "The pieces are forming. Strategy and tooling are partway there, with clear room to tighten alignment and adoption." }
-  return { name: "Reactive", line: "Mobility runs operationally without a defined strategic core. The biggest gains are in strategy and technology foundations." }
+  const { name } = mmiBand(s)
+  return { name, line: ARCHETYPE_LINES[name] }
 }
 
 // =================================================================

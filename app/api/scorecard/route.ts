@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { mmiBand } from "@/lib/scoring";
 
 /*
   POST /api/scorecard
@@ -30,10 +31,7 @@ const E16_CANONICAL = [
 const DEDUP_MONTHS = 12;
 
 function archetypeFor(score: number) {
-  if (score >= 80) return "Strategic Leader";
-  if (score >= 60) return "Established";
-  if (score >= 40) return "Building Momentum";
-  return "Reactive";
+  return mmiBand(score).name;
 }
 
 async function verifyTurnstile(token: string | undefined, ip: string | null) {
