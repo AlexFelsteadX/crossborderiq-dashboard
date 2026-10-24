@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client"
 import { TechnologyBuyerIntelligence } from "./technology-buyer-intelligence"
 import { MARKET_RESEARCH_EXPLAINERS, type MarketResearchExplainerId } from "@/lib/market-research-explainers"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
+import { QuestionInfo } from "@/components/dashboard/question-info"
 
 // =============================================================================
 // TYPES
@@ -553,6 +554,7 @@ function QuestionCard({
   answers,
   subtag,
   neutralizeDirection,
+  earlierResearch,
 }: { 
   qCode?: string
   questionLabel: string
@@ -564,6 +566,7 @@ function QuestionCard({
   // percentage bars. Used for outlook questions where "Increase" (e.g. rising
   // pressure) must not be styled as positive/green.
   neutralizeDirection?: boolean
+  earlierResearch?: boolean
 }) {
   // Q52 (RFP activity) gets a display-only subtitle, answer relabeling, and an
   // answering-base caption. Scoped to Q52 so no other card is affected.
@@ -678,13 +681,34 @@ function QuestionCard({
       })()
     : null
 
+  // Same multi-select rule as the premium breakdown cards: not an agreement
+  // scale or direction matrix, and shown percentages total more than 115%.
+  const isMultiSelect =
+    !isAgreementScale && !isDirectionMatrix && answers.reduce((s, a) => s + Math.round(a.pct), 0) > 115
+
+  const earlierResearchInfo = earlierResearch ? (
+    <span className="ml-1 inline-flex align-middle">
+      <QuestionInfo
+        questionText={displayVendorLabel(qCode, questionLabel)}
+        multiSelect={isMultiSelect}
+        base={baseN}
+        fallback={false}
+        variant={isAgreementScale ? "agreementScale" : isDirectionMatrix ? "moveType" : undefined}
+        earlierResearch
+      />
+    </span>
+  ) : null
+
   if (isDirectionMatrix && matrixRows) {
     const netLabel = (net: number) =>
       net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
     return (
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         <div className="mb-1 flex items-start justify-between gap-2">
-          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
+          <p className="text-sm text-slate-200">
+            {displayVendorLabel(qCode, questionLabel)}
+            {earlierResearchInfo}
+          </p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
               {subtag}
@@ -748,7 +772,10 @@ function QuestionCard({
     return (
       <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         <div className="mb-1 flex items-start justify-between gap-2">
-          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
+          <p className="text-sm text-slate-200">
+            {displayVendorLabel(qCode, questionLabel)}
+            {earlierResearchInfo}
+          </p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
               {subtag}
@@ -768,7 +795,10 @@ function QuestionCard({
   return (
     <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
         <div className="mb-1 flex items-start justify-between gap-2">
-          <p className="text-sm text-slate-200">{displayVendorLabel(qCode, questionLabel)}</p>
+          <p className="text-sm text-slate-200">
+            {displayVendorLabel(qCode, questionLabel)}
+            {earlierResearchInfo}
+          </p>
           {subtag && (
             <span className="shrink-0 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
               {subtag}
@@ -4604,6 +4634,7 @@ export function VendorPremiumDashboardClient() {
                                   baseN={q.baseN}
                                   answers={q.answers}
                                   subtag={q.vendorPillar}
+                                  earlierResearch
                                 />
                               ))}
                             </div>
