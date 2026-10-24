@@ -22,6 +22,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
 import { TechnologyBuyerIntelligence } from "./technology-buyer-intelligence"
+import { MARKET_RESEARCH_EXPLAINERS, type MarketResearchExplainerId } from "@/lib/market-research-explainers"
 
 // =============================================================================
 // TYPES
@@ -456,6 +457,17 @@ function computeMoveTypeNets(
     .sort((a, b) => b.net - a.net)
 }
 
+function MarketResearchInfo({ id }: { id: MarketResearchExplainerId }) {
+  const { title, body } = MARKET_RESEARCH_EXPLAINERS[id]
+  return (
+    <InfoExplainer label={title}>
+      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-300">
+        <span className="font-semibold text-slate-100">{title}.</span> {body}
+      </p>
+    </InfoExplainer>
+  )
+}
+
 // =============================================================================
 // WHERE GLOBAL MOBILITY DEMAND IS HEADING (Q39 net summary — promoted view)
 // =============================================================================
@@ -478,6 +490,7 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
   if (nets.length === 0) return null
 
   const maxAbs = Math.max(1, ...nets.map((n) => Math.abs(n.net)))
+  const minShownBase = Math.min(...nets.map((n) => n.baseN))
 
   const netLabel = (net: number) =>
     net > 0 ? `net +${net}` : net < 0 ? `net \u2212${Math.abs(net)}` : "net 0"
@@ -491,6 +504,7 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
       <div className="flex items-center gap-2 mb-1">
         <TrendingUp className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold text-slate-100">Where Global Mobility demand is heading</h2>
+        <MarketResearchInfo id="moveTypes" />
         <CoveragePill segment={false} />
       </div>
       <p className="text-sm text-slate-400 mb-6">
@@ -517,6 +531,7 @@ function MoveTypeDemandCard({ rows }: { rows: CommercialCurrentRow[] }) {
           </div>
         ))}
       </div>
+      <p className="text-xs text-slate-500 mt-5">From at least {minShownBase} organizations</p>
       {hasOmitted && (
         <p className="mt-4 text-xs text-slate-500">
           Some move types are not shown yet - not enough responses to report a direction.
@@ -2481,6 +2496,7 @@ function WhitespacePanel({
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-semibold text-slate-100">What they buy, and where the gaps are</h2>
+          <MarketResearchInfo id="whitespace" />
           <CoveragePill segment={isFiltered} />
         </div>
         {!loading && !error && rows.length > 0 && (
@@ -2661,6 +2677,9 @@ function WhitespacePanel({
                         : row.is_emerging
                           ? `Wanted by ${row.want_pct}% · not yet commonly outsourced`
                           : `Wanted by ${row.want_pct}% · outsourced by ${row.have_pct}%`}
+                      {row.want_base_n > 0 &&
+                        row.have_base_n > 0 &&
+                        ` · from ${row.want_base_n} / ${row.have_base_n} organizations`}
                     </p>
                   )}
                 </>
@@ -3320,7 +3339,8 @@ export function VendorPremiumDashboardClient() {
     const items = rows
       .map((r) => ({ answer_option: r.answer_option, pct: r.pct }))
       .sort((a, b) => b.pct - a.pct)
-    return { items, questionLabel: rows[0]?.question_label ?? "" }
+    const baseN = rows.reduce((max, r) => Math.max(max, r.base_n ?? 0), 0)
+    return { items, questionLabel: rows[0]?.question_label ?? "", baseN }
   }, [currentCommercial])
 
   // ---------------------------------------------------------------------------
@@ -3768,6 +3788,7 @@ export function VendorPremiumDashboardClient() {
                     </>
                   )}
                 </p>
+                <MarketResearchInfo id="segmentCount" />
               </div>
             </div>
 
@@ -3815,6 +3836,7 @@ export function VendorPremiumDashboardClient() {
                 <div className="rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4">
                   <div className="mb-2 flex items-center gap-2">
                     <h2 className="text-base font-semibold text-slate-100">What stands out here</h2>
+                    <MarketResearchInfo id="standsOut" />
                     <CoveragePill segment={isFiltered} />
                   </div>
                   <p className="text-sm sm:text-base leading-relaxed text-slate-200">
@@ -3845,6 +3867,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Layers className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Program State</h2>
+                <MarketResearchInfo id="programState" />
                 <CoveragePill segment={demographicSegment && programVsMarket.length > 0 && programVsMarket.every((r) => r.segment_reportable)} />
               </div>
 
@@ -3997,6 +4020,7 @@ export function VendorPremiumDashboardClient() {
                 <h2 className="text-xl font-semibold text-slate-100">
                   {displayVendorLabel("E12", reshapeSignals.questionLabel)}
                 </h2>
+                <MarketResearchInfo id="reshapingForces" />
                 <CoveragePill segment={demographicSegment && reshapeVsMarket.length > 0 && reshapeVsMarket.every((r) => r.segment_reportable)} />
               </div>
               <p className="text-sm text-slate-400 mb-1">
@@ -4050,6 +4074,10 @@ export function VendorPremiumDashboardClient() {
                           )
                         })}
                       </div>
+                      <p className="text-xs text-slate-500 mt-5">
+                        This segment: from {reshapeVsMarket[0]?.segment_base ?? 0} organizations · whole market: from{" "}
+                        {reshapeVsMarket[0]?.market_base ?? 0} organizations
+                      </p>
                     </>
                   )
                 }
@@ -4083,6 +4111,9 @@ export function VendorPremiumDashboardClient() {
                           )
                         })}
                       </div>
+                      <p className="text-xs text-slate-500 mt-5">
+                        From {reshapeVsMarket[0]?.market_base ?? 0} organizations
+                      </p>
                     </>
                   )
                 }
@@ -4120,6 +4151,9 @@ export function VendorPremiumDashboardClient() {
                         )
                       })}
                     </div>
+                    {reshapeSignals.baseN > 0 && (
+                      <p className="text-xs text-slate-500 mt-5">From {reshapeSignals.baseN} organizations</p>
+                    )}
                   </>
                 )
               })()}
@@ -4134,6 +4168,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">Market pulse</h2>
+                <MarketResearchInfo id="marketPulse" />
                 <CoveragePill segment={demographicSegment && moShowSegment} />
               </div>
               {(moSource?.min_component_base ?? 0) > 0 && (
@@ -4211,7 +4246,7 @@ export function VendorPremiumDashboardClient() {
               </button>
               {techChapterExpanded && (
                 <div id="chapter-tech-content" className="space-y-6">
-            <TechnologyBuyerIntelligence supabase={supabase} />
+            <TechnologyBuyerIntelligence supabase={supabase} headingAddon={<MarketResearchInfo id="techBuyer" />} />
 
             {/* =================================================================== */}
             {/* AI ADOPTION (event-sourced GM leaders — filterable, precedes breakdowns) */}
@@ -4221,6 +4256,7 @@ export function VendorPremiumDashboardClient() {
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold text-slate-100">AI Adoption</h2>
+                <MarketResearchInfo id="aiAdoption" />
                 <CoveragePill segment={aiSegment && aiVsMarket.length > 0} />
               </div>
 
@@ -4398,16 +4434,31 @@ export function VendorPremiumDashboardClient() {
             {/* =================================================================== */}
             
             <div ref={breakdownTopRef} id="commercial-breakdowns" className="space-y-4 scroll-mt-24">
-              <button
-                type="button"
+              {/* Header is a div (not a button) so the (i) explainer button can sit beside the heading; the
+                  toggle itself is the button inside the h3, and clicking anywhere else on the header also toggles. */}
+              <div
                 onClick={() => setBreakdownsOpen((v) => !v)}
-                aria-expanded={breakdownsOpen}
-                aria-controls="commercial-breakdowns-content"
-                className="w-full rounded-2xl border border-slate-700/40 bg-brand-navy-2/40 px-6 py-4 flex items-center justify-between gap-4 text-left hover:bg-primary/5 transition-colors"
+                className="w-full cursor-pointer rounded-2xl border border-slate-700/40 bg-brand-navy-2/40 px-6 py-4 flex items-center justify-between gap-4 text-left hover:bg-primary/5 transition-colors"
               >
                 <div>
                   <div className="mb-1 flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-slate-100">Commercial Intelligence Breakdowns</h3>
+                    <h3 className="text-lg font-semibold text-slate-100">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setBreakdownsOpen((v) => !v)
+                        }}
+                        aria-expanded={breakdownsOpen}
+                        aria-controls="commercial-breakdowns-content"
+                        className="rounded text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                      >
+                        Commercial Intelligence Breakdowns
+                      </button>
+                    </h3>
+                    <span className="inline-flex" onClick={(e) => e.stopPropagation()}>
+                      <MarketResearchInfo id="commercialBreakdowns" />
+                    </span>
                     <CoveragePill segment={false} />
                   </div>
                   <p className="text-sm text-slate-400">
@@ -4415,7 +4466,7 @@ export function VendorPremiumDashboardClient() {
                   </p>
                 </div>
                 <ChevronDown aria-hidden="true" className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${breakdownsOpen ? "rotate-180" : ""}`} />
-              </button>
+              </div>
 
               {breakdownsOpen && (() => {
                 // Build the list of non-empty themes once, applying the same
@@ -4613,6 +4664,7 @@ export function VendorPremiumDashboardClient() {
                 <div className="mb-1">
                   <div className="mb-1 flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-slate-300">Earlier research</h3>
+                    <MarketResearchInfo id="earlierResearch" />
                     <CoveragePill segment={false} />
                   </div>
                   <p className="text-sm text-slate-500">
