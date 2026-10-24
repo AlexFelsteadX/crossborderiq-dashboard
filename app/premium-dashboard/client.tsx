@@ -1013,7 +1013,7 @@ function BreakdownSection({
     ? directionalSummary.bestAhead && directionalSummary.bestBehind
       ? (
           <>
-            In this area you sit above the market for similar organizations on{" "}
+            In this area your segment sits above the market for similar organizations on{" "}
             <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>, and below on{" "}
             <span className="font-semibold text-slate-200">{directionalSummary.bestBehind.label}</span>.
           </>
@@ -1021,13 +1021,13 @@ function BreakdownSection({
       : directionalSummary.bestAhead
         ? (
             <>
-              In this area you sit above the market for similar organizations, most notably on{" "}
+              In this area your segment sits above the market for similar organizations, most notably on{" "}
               <span className="font-semibold text-slate-200">{directionalSummary.bestAhead.label}</span>.
             </>
           )
         : (
             <>
-              In this area you sit below the market for similar organizations, most notably on{" "}
+              In this area your segment sits below the market for similar organizations, most notably on{" "}
               <span className="font-semibold text-slate-200">{directionalSummary.bestBehind!.label}</span>.
             </>
           )
@@ -1765,6 +1765,9 @@ export function PremiumDashboardClient() {
                   </span>
                   {mmi.confidence === "limited" && <LimitedChip base={mmi.base_n} />}
                 </div>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  {"Score out of 100 · 0–39 Emerging · 40–59 Developing · 60–79 Established · 80–100 Leading"}
+                </p>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
                   Composite of strategy, alignment, future-readiness and technology & AI maturity.
                 </p>

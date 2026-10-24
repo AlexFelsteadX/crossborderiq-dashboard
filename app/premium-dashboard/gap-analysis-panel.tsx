@@ -27,7 +27,23 @@ interface GapBriefResponse {
   generatedAt?: string
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = async (url: string) => {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(`gap-brief ${r.status}`)
+  return r.json()
+}
+
+const AI_BRIEF_DISCLOSURE =
+  "Written by AI from your gap analysis and live peer data. The figures are computed from the benchmark, not generated."
+
+// Mirrors the rules in lib/gap-engine.ts computeGaps; severity is set per rule, not by a numeric cut-off.
+const SEVERITY_DEFINITION: Record<Severity, string> = {
+  critical:
+    "Critical: your answer is at the weak end where peers are clearly ahead (e.g. spreadsheets while 50%+ of peers run dedicated or partial platforms, no formal success measurement, or all three business-travel governance gaps).",
+  gap: "Gap: a clear shortfall against peers (e.g. no AI use while 40%+ of peers pilot or run it, measuring success but not ROI, a leadership expectation with no matching investment, or one or two business-travel governance gaps).",
+  attention:
+    "Attention: you are moving but behind peers (e.g. evaluating a platform, planning AI, or a top pressure with no matching investment).",
+}
 
 const SEVERITY_CHIP: Record<Severity, string> = {
   critical: "bg-red-500/15 text-red-300 border-red-500/30",
@@ -47,6 +63,7 @@ function GapCard({ gap }: { gap: Gap }) {
       <div className="flex items-start justify-between gap-3 mb-2">
         <h4 className="text-base font-semibold text-slate-100">{gap.dimension}</h4>
         <span
+          title={SEVERITY_DEFINITION[gap.severity]}
           className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${SEVERITY_CHIP[gap.severity]}`}
         >
           {SEVERITY_LABEL[gap.severity]}
@@ -155,6 +172,7 @@ function buildPdf(data: GapBriefResponse) {
     [100, 116, 139],
     6,
   )
+  line(AI_BRIEF_DISCLOSURE, 8.5, [100, 116, 139], 6)
   doc.save("cbiq-gap-brief.pdf")
 }
 
@@ -169,7 +187,7 @@ function Skeleton() {
 }
 
 export function GapAnalysisPanel() {
-  const { data, error, isLoading } = useSWR<GapBriefResponse>("/api/gap-brief", fetcher, {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<GapBriefResponse>("/api/gap-brief", fetcher, {
     revalidateOnFocus: false,
   })
   const [tracked, setTracked] = useState(false)
@@ -192,8 +210,26 @@ export function GapAnalysisPanel() {
 
   if (isLoading) return shell(<Skeleton />)
 
-  // Soft-fail: never break the dashboard if the endpoint errors.
-  if (error || !data) return null
+  // The route reports a get_my_workforce_response failure as hasResponse:false with engineReady:false.
+  const loadFailed = !!error || !data || (!data.hasResponse && data.engineReady === false)
+  if (loadFailed) {
+    return shell(
+      <div className="text-center py-6" role="alert">
+        <h2 className="text-xl font-bold text-slate-100 mb-2">Your Gaps, Explained</h2>
+        <p className="text-slate-400 max-w-xl mx-auto mb-5">
+          {"We couldn't load your answers just now. Refresh to retry."}
+        </p>
+        <button
+          type="button"
+          onClick={() => mutate()}
+          disabled={isValidating}
+          className="inline-flex items-center rounded-lg border border-primary/40 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
+        >
+          {isValidating ? "Retrying…" : "Retry"}
+        </button>
+      </div>,
+    )
+  }
 
   if (!data.hasResponse) {
     return shell(
@@ -259,7 +295,8 @@ export function GapAnalysisPanel() {
 
       {data.entitled && data.brief && (
         <div className="rounded-xl border border-primary/20 bg-brand-navy/60 p-5 mb-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary mb-3">Your CBIQ Brief</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-primary mb-1">Your CBIQ Brief</h3>
+          <p className="text-[11px] text-slate-500 mb-3">{AI_BRIEF_DISCLOSURE}</p>
           <div className="space-y-3">
             {data.brief.split(/\n{2,}/).map((para, i) => (
               <p key={i} className="text-sm leading-relaxed text-slate-200">
@@ -279,6 +316,12 @@ export function GapAnalysisPanel() {
           Your written brief is temporarily unavailable; your gap analysis is current.
         </p>
       )}
+
+      <ul className="mb-4 space-y-1 text-[11px] leading-relaxed text-slate-500" aria-label="Severity levels">
+        {(["critical", "gap", "attention"] as Severity[]).map((s) => (
+          <li key={s}>{SEVERITY_DEFINITION[s]}</li>
+        ))}
+      </ul>
 
       <div className="grid gap-4 md:grid-cols-2">
         {gaps.map((g) => (

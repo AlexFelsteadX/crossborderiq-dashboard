@@ -296,7 +296,7 @@ function ReportBody() {
           <div className="meta">
             <div>Generated {generatedDate}</div>
             <div>
-              Based on {segmentSize !== null ? segmentSize.toLocaleString() : "—"} responses in this cohort
+              Based on {segmentSize !== null ? segmentSize.toLocaleString() : "—"} organizations in this cohort
             </div>
           </div>
         </section>
@@ -328,9 +328,11 @@ function ReportBody() {
             </div>
             <div className="bar-caption">
               {mmiDelta !== null
-                ? mmiDelta >= 0
+                ? mmiDelta >= 2
                   ? "This cohort scores above the market average."
-                  : "This cohort scores below the market average."
+                  : mmiDelta <= -2
+                    ? "This cohort scores below the market average."
+                    : "This cohort scores in line with the market average."
                 : ""}
             </div>
           </section>
