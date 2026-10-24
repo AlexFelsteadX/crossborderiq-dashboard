@@ -6,6 +6,7 @@ import { useState } from "react"
 import { track } from "@vercel/analytics"
 import { jsPDF } from "jspdf"
 import type { Gap, Severity } from "@/lib/gap-engine"
+import { PremiumInfo } from "@/components/dashboard/premium-info"
 
 interface GapBriefResponse {
   hasResponse: boolean
@@ -215,7 +216,10 @@ export function GapAnalysisPanel() {
   if (loadFailed) {
     return shell(
       <div className="text-center py-6" role="alert">
-        <h2 className="text-xl font-bold text-slate-100 mb-2">Your Gaps, Explained</h2>
+        <h2 className="text-xl font-bold text-slate-100 mb-2 inline-flex items-center gap-2">
+          Your Gaps, Explained
+          <PremiumInfo id="gapsPanel" />
+        </h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-5">
           {"We couldn't load your answers just now. Refresh to retry."}
         </p>
@@ -234,7 +238,10 @@ export function GapAnalysisPanel() {
   if (!data.hasResponse) {
     return shell(
       <div className="text-center py-6">
-        <h2 className="text-xl font-bold text-slate-100 mb-2">Your Gaps, Explained</h2>
+        <h2 className="text-xl font-bold text-slate-100 mb-2 inline-flex items-center gap-2">
+          Your Gaps, Explained
+          <PremiumInfo id="gapsPanel" />
+        </h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-5">
           Complete the benchmark to unlock your gap analysis across every dimension.
         </p>
@@ -263,7 +270,10 @@ export function GapAnalysisPanel() {
   if (!total) {
     return shell(
       <div>
-        <h2 className="text-xl font-bold text-slate-100 mb-1">Your Gaps, Explained</h2>
+        <h2 className="text-xl font-bold text-slate-100 mb-1 inline-flex items-center gap-2">
+          Your Gaps, Explained
+          <PremiumInfo id="gapsPanel" />
+        </h2>
         <p className="text-slate-400">
           No material gaps surfaced against {data.peerLabel ?? "your peer set"} on the dimensions we track. Your program is
           keeping pace with peers.
@@ -276,7 +286,10 @@ export function GapAnalysisPanel() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">Your Gaps, Explained</h2>
+          <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+            Your Gaps, Explained
+            <PremiumInfo id="gapsPanel" />
+          </h2>
           <p className="text-slate-400 mt-1">
             {total} {total === 1 ? "gap" : "gaps"} identified against{" "}
             <span className="font-medium text-slate-200">{data.peerLabel}</span>

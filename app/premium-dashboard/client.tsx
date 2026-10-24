@@ -29,6 +29,7 @@ import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
 import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
 import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
+import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 
 // Temporary master switch: hide every respondent-count / base-size display across
@@ -1046,7 +1047,10 @@ function BreakdownSection({
               height={18}
               className="h-[18px] w-[18px] shrink-0 mt-0.5"
             />
-            <p className="text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
+            <p className="flex-1 text-sm text-slate-200 leading-relaxed text-pretty">{summaryNode}</p>
+            <span className="shrink-0">
+              <PremiumInfo id="breakdownSummary" />
+            </span>
           </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -1617,6 +1621,7 @@ export function PremiumDashboardClient() {
             <div className="flex items-center gap-2">
               <Filter className="h-5 w-5 text-primary" />
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
+              <PremiumInfo id="filtersBar" />
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -1720,7 +1725,7 @@ export function PremiumDashboardClient() {
         </div>
 
         {/* ===================== START HERE — plain-language market summary ===================== */}
-        {!is2025 && marketRead && <WhatThisMeans eyebrow="Start here">{marketRead}</WhatThisMeans>}
+        {!is2025 && marketRead && <WhatThisMeans eyebrow="Start here" eyebrowAside={<PremiumInfo id="startHere" />}>{marketRead}</WhatThisMeans>}
 
         {/* 2025 event-wave explainer banner */}
         {is2025 && (
@@ -1759,6 +1764,7 @@ export function PremiumDashboardClient() {
                     <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
                       Mobility Maturity Index
                     </h2>
+                    <PremiumInfo id="mmiBlock" />
                   </div>
                   <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                     {band}
@@ -1833,7 +1839,10 @@ export function PremiumDashboardClient() {
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
         <div className={`mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
           {isFiltered && primaryPillars.length > 0 && <WhatThisMeans>{pillarNarrative}</WhatThisMeans>}
-          <h2 className="text-xl font-bold text-slate-100 mb-6 pb-3 border-b border-slate-700/60">Pillar snapshot</h2>
+          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-slate-700/60">
+            <h2 className="text-xl font-bold text-slate-100">Pillar snapshot</h2>
+            <PremiumInfo id="pillarSnapshot" />
+          </div>
           {primaryPillars.length === 0 ? (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
               {loadingMain ? "Loading pillars…" : "No pillar data for this selection."}
@@ -1962,6 +1971,7 @@ export function PremiumDashboardClient() {
           <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-700/60">
             <TrendingUp className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
+            <PremiumInfo id="yoyTrends" />
             {loadingYoY && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           <p className="text-xs text-slate-500 mb-6">
@@ -2008,7 +2018,10 @@ export function PremiumDashboardClient() {
               return (
                 <div>
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-slate-100">Explore the benchmark</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-slate-100">Explore the benchmark</h3>
+                      <PremiumInfo id="themeOverview" />
+                    </div>
                     <p className="text-sm text-slate-400">Select a topic to see how your peers responded.</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
