@@ -187,7 +187,7 @@ function Skeleton() {
   )
 }
 
-export function GapAnalysisPanel() {
+export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmptyState?: boolean } = {}) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<GapBriefResponse>("/api/gap-brief", fetcher, {
     revalidateOnFocus: false,
   })
@@ -236,6 +236,7 @@ export function GapAnalysisPanel() {
   }
 
   if (!data.hasResponse) {
+    if (suppressEmptyState) return null
     return shell(
       <div className="text-center py-6">
         <h2 className="text-xl font-bold text-slate-100 mb-2 inline-flex items-center gap-2">
