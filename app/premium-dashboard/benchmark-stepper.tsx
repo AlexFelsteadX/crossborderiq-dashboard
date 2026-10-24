@@ -53,8 +53,8 @@ const E10_OPTIONS = [
 const E16_OPTIONS = [
   "Yes — a dedicated Global Mobility / assignment management platform",
   "Partially — some tasks are supported by technology",
-  "Yes — but primarily spreadsheets and general office tools",
-  "No — our program is managed manually",
+  "No — we manage the program with spreadsheets and general office tools",
+  "We are currently evaluating or implementing a solution",
 ]
 
 const SCALE_VALUES = ["0", "1", "2", "3", "4", "5", "6", "7"]
