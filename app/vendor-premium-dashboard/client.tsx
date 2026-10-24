@@ -1625,18 +1625,34 @@ function VendorStatBand({
 }) {
   const active = rows.filter((r) => r.stage === "RFP active").length
   const considering = rows.length - active
-  const signals = rows.filter((r) => rowSignals(r, categories).length > 0).length
-  const allCategoriesSelected = VENDOR_SERVICE_OPTIONS.every((o) => categories.includes(o.value))
-  const tiles: { label: string; value: string; accent: boolean }[] = [
-    { label: "In market now", value: active.toLocaleString(), accent: true },
-    { label: "Considering", value: considering.toLocaleString(), accent: false },
-    allCategoriesSelected
+  const matching = rows.filter((r) => rowSignals(r, categories).length > 0).length
+  const total = rows.length
+  const tiles: { label: string; value: string; accent: boolean; info: string }[] = [
+    {
+      label: "In market now",
+      value: active.toLocaleString(),
+      accent: true,
+      info: "Organizations that told us directly they are in a Global Mobility RFP.",
+    },
+    {
+      label: "Considering",
+      value: considering.toLocaleString(),
+      accent: false,
+      info: "Organizations that told us they are considering an RFP within the next 12 months.",
+    },
+    categories.length > 0
       ? {
-          label: "match your services",
-          value: `${signals.toLocaleString()} of ${rows.length.toLocaleString()}`,
+          label: "Match your services",
+          value: `${matching.toLocaleString()} of ${total.toLocaleString()}`,
           accent: false,
+          info: `Of the ${total.toLocaleString()} organizations in a buying cycle, ${matching.toLocaleString()} show at least one signal matching your selected services: they outsource one of them today, are investing in that area, or report a matching pressure.`,
         }
-      : { label: "Signals in your category", value: signals.toLocaleString(), accent: false },
+      : {
+          label: "In a buying cycle",
+          value: total.toLocaleString(),
+          accent: false,
+          info: "Organizations that told us they are in a Global Mobility RFP now or considering one within the next 12 months.",
+        },
   ]
   return (
     <section aria-labelledby="stat-band-heading" className="space-y-2">
@@ -1680,7 +1696,12 @@ function VendorStatBand({
                 {t.value}
               </p>
             )}
-            <p className="mt-1.5 text-xs text-slate-400">{t.label}</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <p className="text-xs text-slate-400">{t.label}</p>
+              <InfoExplainer label={`About ${t.label}`}>
+                <p className="text-xs leading-relaxed text-slate-300">{t.info}</p>
+              </InfoExplainer>
+            </div>
           </div>
         ))}
       </div>
