@@ -1220,6 +1220,7 @@ export function PremiumDashboardClient() {
     data: mySummary,
     error: mySummaryError,
     isLoading: loadingMySummary,
+    mutate: refreshMySummary,
   } = useSWR<MySummary | null>(
     "rpc:get_my_summary",
     async () => {
@@ -1657,7 +1658,7 @@ export function PremiumDashboardClient() {
         {/* ============================ YOUR SCORE ============================ */}
         {showScore && (
           <div role="tabpanel" aria-labelledby="dashboard-tab-score">
-            <YourScorePanel summary={mySummary ?? null} loading={loadingMySummary} />
+            <YourScorePanel summary={mySummary ?? null} loading={loadingMySummary} onRefresh={() => refreshMySummary()} />
           </div>
         )}
 

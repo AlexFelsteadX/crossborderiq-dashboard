@@ -1,9 +1,11 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { CircularGauge } from "@/components/dashboard-ui"
 import { MMI_BANDS, mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
+import { BenchmarkStepper } from "./benchmark-stepper"
 
 export interface MySummary {
   has_data: boolean
@@ -46,12 +48,36 @@ function youLabel(key: ComponentKey, value: number | null): string {
   return value >= 100 ? "Yes" : "Not yet"
 }
 
-function ScoreRing({ value, label }: { value: number | null; label: string }) {
+function useCountUp(target: number | null, enabled: boolean, durationMs = 1000) {
+  const [current, setCurrent] = useState<number | null>(enabled ? 0 : target)
+
+  useEffect(() => {
+    if (!enabled || target == null || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCurrent(target)
+      return
+    }
+    let frame = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / durationMs, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setCurrent(target * eased)
+      if (t < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [target, enabled, durationMs])
+
+  return current
+}
+
+function ScoreRing({ value, label, animate = false }: { value: number | null; label: string; animate?: boolean }) {
+  const displayed = useCountUp(value, animate)
   const size = 168
   const stroke = 12
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
-  const ratio = Math.min(Math.max((value ?? 0) / 100, 0), 1)
+  const ratio = Math.min(Math.max((displayed ?? 0) / 100, 0), 1)
 
   return (
     <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
@@ -81,11 +107,11 @@ function ScoreRing({ value, label }: { value: number | null; label: string }) {
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - ratio)}
-          className="text-primary transition-[stroke-dashoffset] duration-700"
+          className={animate ? "text-primary" : "text-primary transition-[stroke-dashoffset] duration-700"}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-        <span className="text-4xl font-bold text-slate-100 tabular-nums">{show(value)}</span>
+        <span className="text-4xl font-bold text-slate-100 tabular-nums">{show(displayed)}</span>
         <span className="text-[11px] text-slate-400 leading-tight mt-0.5">out of 100</span>
         <span className="text-[11px] text-slate-300 leading-tight mt-1 line-clamp-2">{label}</span>
       </div>
@@ -93,33 +119,76 @@ function ScoreRing({ value, label }: { value: number | null; label: string }) {
   )
 }
 
-function HeroCard({ s }: { s: MySummary }) {
+function HeroCard({
+  s,
+  justScored,
+  onSubmitted,
+}: {
+  s: MySummary
+  justScored: boolean
+  onSubmitted: () => Promise<void>
+}) {
+  const [stepperOpen, setStepperOpen] = useState(false)
+  const [ctaHidden, setCtaHidden] = useState(false)
   const peerLabel = s.peer_label ?? "Your peer group"
   const myScore = round(s.my_score)
 
   if (!s.has_data || myScore == null) {
     const ringValue = s.peer_score ?? s.market_score
     const ringLabel = s.peer_score != null ? peerLabel : "The market"
+    const surveyLine = (
+      <p className="text-slate-500 text-sm max-w-xl mt-3">
+        {"Prefer the "}
+        <a
+          href="https://www.cbiq.ai/survey"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-300 underline underline-offset-2 hover:text-slate-100"
+        >
+          full benchmark survey
+        </a>
+        {"? It takes about 15 minutes."}
+      </p>
+    )
+
+    if (stepperOpen && !ctaHidden) {
+      return (
+        <section className="rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 mb-8 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-100 mb-4">Get your score</h2>
+          <BenchmarkStepper
+            onCancel={() => setStepperOpen(false)}
+            onSubmitted={onSubmitted}
+            onVendorBlocked={() => {
+              setCtaHidden(true)
+              setStepperOpen(false)
+            }}
+          />
+          <div className="mt-6 pt-4 border-t border-slate-700/50">{surveyLine}</div>
+        </section>
+      )
+    }
+
     return (
       <section className="rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 mb-8 shadow-sm">
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-          <ScoreRing value={ringValue} label={ringLabel} />
+          <ScoreRing key="reference" value={ringValue} label={ringLabel} />
           <div className="flex-1 text-center md:text-left">
             <h2 className="text-xl font-bold text-slate-100 mb-2">Your Score</h2>
             <p className="text-slate-400 max-w-xl mb-5">
               Complete the benchmark to unlock your gap analysis across every dimension.
             </p>
-            <a
-              href="https://www.cbiq.ai/survey"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90"
-            >
-              Complete the benchmark
-            </a>
-            <p className="text-slate-500 text-sm max-w-xl mt-3">
-              Around 15 minutes. Unlocks your full gap analysis across every dimension of the benchmark.
-            </p>
+            {!ctaHidden && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setStepperOpen(true)}
+                  className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90"
+                >
+                  Get your score in 2 minutes
+                </button>
+                {surveyLine}
+              </>
+            )}
             <p className="text-slate-600 text-xs max-w-xl mt-4">
               Attended a GME event this year? Sign in with your registration email and your access may already be linked.
             </p>
@@ -139,7 +208,7 @@ function HeroCard({ s }: { s: MySummary }) {
   return (
     <section className="rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 mb-8 shadow-sm">
       <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-        <ScoreRing value={myScore} label="Your program" />
+        <ScoreRing key="mine" value={myScore} label="Your program" animate={justScored} />
         <div className="flex-1 min-w-0 text-center md:text-left">
           <div className="flex flex-col items-center md:items-start gap-1.5 mb-4">
             <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/25">
@@ -150,6 +219,11 @@ function HeroCard({ s }: { s: MySummary }) {
           <p className="text-lg text-slate-100 leading-relaxed text-pretty mb-4">
             {`Your program scores ${myScore}. ${peerLabel} scores ${show(s.peer_score)}. The market scores ${show(s.market_score)}.`}
           </p>
+          {justScored && (
+            <p className="text-sm text-slate-300 mb-4" role="status">
+              {"You’re on the benchmark. Your answers are aggregated and never identified."}
+            </p>
+          )}
           {(topShare != null || (nextBand && pointsToNext != null)) && (
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
               {topShare != null && (
@@ -222,7 +296,23 @@ function ComponentTiles({ s }: { s: MySummary }) {
   )
 }
 
-export function YourScorePanel({ summary, loading }: { summary: MySummary | null; loading: boolean }) {
+export function YourScorePanel({
+  summary,
+  loading,
+  onRefresh,
+}: {
+  summary: MySummary | null
+  loading: boolean
+  onRefresh: () => Promise<unknown>
+}) {
+  const [justScored, setJustScored] = useState(false)
+
+  async function handleSubmitted() {
+    // Set before the re-fetch so the first render with the new score already animates from 0.
+    setJustScored(true)
+    await onRefresh()
+  }
+
   if (loading || !summary) {
     return (
       <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-10 mb-8 flex items-center justify-center gap-2 text-slate-400">
@@ -234,7 +324,7 @@ export function YourScorePanel({ summary, loading }: { summary: MySummary | null
 
   return (
     <>
-      <HeroCard s={summary} />
+      <HeroCard s={summary} justScored={justScored} onSubmitted={handleSubmitted} />
       <GapAnalysisPanel suppressEmptyState={!summary.has_data || summary.my_score == null} />
       <ComponentTiles s={summary} />
     </>
