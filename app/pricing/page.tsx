@@ -23,27 +23,40 @@ const COMPARE_HASH = "whats-the-difference"
 const GME_EVENTS_URL = "https://globalmobilityexecutive.co/"
 
 type CompareValue = boolean | string
-type CompareRow = { label: string; shared?: boolean; access: CompareValue; member: CompareValue; advisory: CompareValue }
+type CompareRow = {
+  label: string
+  shared?: boolean
+  free: CompareValue
+  access: CompareValue
+  member: CompareValue
+  advisory: CompareValue
+}
+
+const FREE_SCORE_SIGNUP_PATH = "/login?mode=signup"
 
 const COMPARE_ROWS: CompareRow[] = [
-  { label: "All 7 intelligence pillars (60+ question-level datasets)", shared: true, access: true, member: true, advisory: true },
-  { label: "Year-on-Year trends across every metric", shared: true, access: true, member: true, advisory: true },
-  { label: "Benchmarking filters (region, industry, company size, assignee population)", shared: true, access: true, member: true, advisory: true },
-  { label: "Full Premium dashboard", shared: true, access: true, member: true, advisory: true },
-  { label: "Full report library", shared: true, access: true, member: true, advisory: true },
-  { label: "Your score and market view, kept after access ends", shared: true, access: true, member: true, advisory: true },
-  { label: "New data waves and members-only reports all year", access: false, member: true, advisory: true },
-  { label: "Custom benchmarking requests", access: false, member: true, advisory: true },
-  { label: "Annual analyst benchmarking briefing", access: false, member: true, advisory: true },
-  { label: "Branded PDF exports", access: false, member: true, advisory: true },
-  { label: "Dedicated, named CBIQ analyst", access: false, member: false, advisory: true },
-  { label: "Quarterly benchmark reviews", access: false, member: false, advisory: true },
-  { label: "Two private virtual team sessions per year", access: false, member: false, advisory: true },
-  { label: "Written annual benchmark briefing", access: false, member: false, advisory: true },
-  { label: "Analyst access between sessions", access: false, member: false, advisory: true },
-  { label: "Seats", access: "1", member: "1", advisory: "Up to 5" },
-  { label: "Access duration", access: "30 days", member: "Continuous while subscribed", advisory: "Continuous while subscribed" },
-  { label: "How to get it", access: "Every GME event, or the survey once per 12 months", member: "£995 / $1,295 per person per year", advisory: "£5,000 / $6,500 per year, limited to 10 organizations" },
+  { label: "Your own score and market comparison", shared: true, free: true, access: true, member: true, advisory: true },
+  { label: "In-app score starter", shared: true, free: true, access: true, member: true, advisory: true },
+  { label: "Answering community questions", shared: true, free: true, access: true, member: true, advisory: true },
+  { label: "Sharing your MMI badge", shared: true, free: true, access: true, member: true, advisory: true },
+  { label: "All 7 intelligence pillars (60+ question-level datasets)", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "Year-on-Year trends across every metric", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "Benchmarking filters (region, industry, company size, assignee population)", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "Full Premium dashboard", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "Full report library", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "Your score and market view, kept after access ends", shared: true, free: false, access: true, member: true, advisory: true },
+  { label: "New data waves and members-only reports all year", free: false, access: false, member: true, advisory: true },
+  { label: "Custom benchmarking requests", free: false, access: false, member: true, advisory: true },
+  { label: "Annual analyst benchmarking briefing", free: false, access: false, member: true, advisory: true },
+  { label: "Branded PDF exports", free: false, access: false, member: true, advisory: true },
+  { label: "Dedicated, named CBIQ analyst", free: false, access: false, member: false, advisory: true },
+  { label: "Quarterly benchmark reviews", free: false, access: false, member: false, advisory: true },
+  { label: "Two private virtual team sessions per year", free: false, access: false, member: false, advisory: true },
+  { label: "Written annual benchmark briefing", free: false, access: false, member: false, advisory: true },
+  { label: "Analyst access between sessions", free: false, access: false, member: false, advisory: true },
+  { label: "Seats", free: false, access: "1", member: "1", advisory: "Up to 5" },
+  { label: "Access duration", free: false, access: "30 days", member: "Continuous while subscribed", advisory: "Continuous while subscribed" },
+  { label: "How to get it", free: false, access: "Every GME event, or the survey once per 12 months", member: "£995 / $1,295 per person per year", advisory: "£5,000 / $6,500 per year, limited to 10 organizations" },
 ]
 
 const PRICING_FAQS = [
@@ -290,6 +303,20 @@ export default function PricingPage() {
               </div>
             </div>
 
+            <div className="max-w-6xl mx-auto mb-10">
+              <div className="flex flex-col gap-4 rounded-2xl border border-primary/20 bg-brand-navy-2/60 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-base font-semibold text-slate-100">{"See your program's score. Free, forever."}</p>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Answer 8 questions and get your Mobility Maturity Index against the whole market in about 2 minutes.
+                  </p>
+                </div>
+                <Button asChild variant="outline" className="shrink-0 border-primary/40 text-slate-100 hover:bg-primary/10">
+                  <Link href={user ? "/premium-dashboard" : FREE_SCORE_SIGNUP_PATH}>Get my free score</Link>
+                </Button>
+              </div>
+            </div>
+
             {/* On phones the highlighted membership card renders first (order-1); md+ restores source order. */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch max-w-6xl mx-auto">
               {/* Card 1: 30-Day Premium Access, earned via the survey or a GME event */}
@@ -512,12 +539,15 @@ export default function PricingPage() {
                 {/* Relative wrapper so the mobile scroll-fade stays put while the table scrolls. */}
                 <div className="relative">
                   <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-                    <table className="w-full min-w-[640px]">
-                      <caption className="sr-only">Feature comparison of 30-Day Access, Member and Advisory plans</caption>
+                    <table className="w-full min-w-[760px]">
+                      <caption className="sr-only">Feature comparison of Free, 30-Day Access, Member and Advisory plans</caption>
                       <thead>
                         <tr className="border-b border-primary/20">
                           <th scope="col" className="text-left p-4 text-sm font-medium text-slate-100">
                             Feature
+                          </th>
+                          <th scope="col" className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
+                            Free
                           </th>
                           <th scope="col" className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
                             30-Day Access
@@ -546,6 +576,7 @@ export default function PricingPage() {
                             >
                               {row.label}
                             </th>
+                            <CompareCell value={row.free} />
                             <CompareCell value={row.access} />
                             <CompareCell value={row.member} highlight />
                             <CompareCell value={row.advisory} />

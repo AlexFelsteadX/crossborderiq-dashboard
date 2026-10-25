@@ -54,8 +54,7 @@ export async function checkTierAccess(
 /** Landing page for a tier after sign-in: dashboards for paid tiers, home otherwise. */
 export function dashboardPathForTier(tier: Tier): string {
   if (tier === "vendor") return "/vendor-premium-dashboard"
-  if (tier === "premium") return "/premium-dashboard"
-  return "/"
+  return "/premium-dashboard"
 }
 
 /** Accepts only same-origin relative paths ("/x"), rejecting protocol-relative "//host". */
@@ -78,7 +77,7 @@ export async function resolvePostAuthPath(
     const { data } = await supabase.rpc("current_tier")
     return dashboardPathForTier((data as Tier) || "free")
   } catch {
-    return "/"
+    return "/premium-dashboard"
   }
 }
 
