@@ -20,8 +20,7 @@ const TIER_ORDER = ["free", "contributor", "premium", "vendor"] as const
 const VENDOR_HASHES = ["vendor-access", "strategic-intelligence-partner"]
 const COMPARE_HASH = "whats-the-difference"
 
-// GEM Events has no dedicated listings page yet, so this points at the home page.
-const GME_EVENTS_URL = "https://gemevents.co/"
+const GME_EVENTS_URL = "https://globalmobilityexecutive.co/"
 
 type CompareValue = boolean | string
 type CompareRow = { label: string; shared?: boolean; access: CompareValue; member: CompareValue; advisory: CompareValue }
