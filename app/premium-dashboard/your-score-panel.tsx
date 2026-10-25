@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowUp, Loader2 } from "lucide-react"
+import { ArrowUp, ChevronDown, Loader2 } from "lucide-react"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { MMI_BANDS, mmiBand } from "@/lib/scoring"
 import { PREMIUM_EXPLAINERS } from "@/lib/premium-explainers"
@@ -51,6 +51,15 @@ const COMPONENTS: { key: ComponentKey; label: string; explainer: string }[] = [
     explainer: "Half for running AI in production or piloting; half for a dedicated or partial technology platform.",
   },
 ]
+
+const SHORT_LABELS: Record<ComponentKey, string> = {
+  strategy: "Defined strategy",
+  alignment: "Aligned",
+  future: "Future",
+  techai: "Tech & AI",
+}
+
+const COMPONENTS_OPEN_KEY = "premium:score-components-open"
 
 const POINTS_PER_COMPONENT = 25
 
@@ -331,16 +340,100 @@ function SourceLine({ s }: { s: MySummary }) {
   )
 }
 
-function ComponentTiles({ s }: { s: MySummary }) {
-  const peerLabel = s.peer_label ?? "Your peer group"
+function componentRows(s: MySummary) {
   const hasMine = s.has_data && s.my_score != null
-
   const rows = COMPONENTS.map(({ key, label, explainer }) => {
     const peer = s[`peer_${key}` as const]
     const mine = s[`my_${key}` as const]
     const gap = hasMine && peer != null && mine != null ? peer - mine : null
     return { key, label, explainer, peer, mine, gap }
   })
+  const maxGap = rows.reduce((m, r) => (r.gap != null && r.gap > m ? r.gap : m), 0)
+  const amberKey = maxGap > 0 ? rows.find((r) => r.gap === maxGap)?.key : undefined
+  return { hasMine, rows, amberKey }
+}
+
+function ScoreComponentsSection({ s }: { s: MySummary }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(COMPONENTS_OPEN_KEY) === "1") setOpen(true)
+    } catch {}
+  }, [])
+
+  function toggle() {
+    setOpen((prev) => {
+      const next = !prev
+      try {
+        sessionStorage.setItem(COMPONENTS_OPEN_KEY, next ? "1" : "0")
+      } catch {}
+      return next
+    })
+  }
+
+  const { hasMine, rows, amberKey } = componentRows(s)
+  const amberLabel = amberKey ? COMPONENTS.find((c) => c.key === amberKey)?.label : undefined
+  const peerLabel = s.peer_label ?? "Your peer group"
+
+  return (
+    <section aria-labelledby="your-score-components" className="mb-16">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-controls="your-score-components-body"
+        className="w-full flex items-start justify-between gap-4 text-left pb-3 border-b border-slate-700/60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+      >
+        <div className="min-w-0 flex flex-col gap-2">
+          <h2 id="your-score-components" className="text-xl font-bold text-slate-100">
+            What builds your score
+          </h2>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {rows.map((r) => {
+              const pts = toPoints(r.mine)
+              const full = pts != null && pts >= POINTS_PER_COMPONENT
+              return (
+                <span
+                  key={r.key}
+                  className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${
+                    !hasMine || pts == null
+                      ? "text-slate-400 bg-slate-700/30 border-slate-600/50"
+                      : full
+                        ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/30"
+                        : "text-amber-300 bg-amber-400/10 border-amber-400/30"
+                  }`}
+                >
+                  {SHORT_LABELS[r.key]}
+                  <span className="font-semibold tabular-nums">{hasMine && pts != null ? pts : "—"}</span>
+                </span>
+              )
+            })}
+            {amberLabel && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300 ml-1">
+                <ArrowUp className="w-3 h-3" aria-hidden="true" />
+                {`Your biggest opportunity: ${amberLabel}`}
+              </span>
+            )}
+          </div>
+        </div>
+        <ChevronDown
+          className={`w-5 h-5 mt-1 shrink-0 text-slate-400 motion-safe:transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
+        <span className="sr-only">{open ? "Collapse" : "Expand"}</span>
+      </button>
+      {open && (
+        <div id="your-score-components-body" className="pt-4">
+          <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>
+          <ComponentTiles s={s} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ComponentTiles({ s }: { s: MySummary }) {
+  const { hasMine, rows, amberKey } = componentRows(s)
 
   const [barsReady, setBarsReady] = useState(false)
   useEffect(() => {
@@ -348,15 +441,7 @@ function ComponentTiles({ s }: { s: MySummary }) {
     return () => cancelAnimationFrame(id)
   }, [])
 
-  const maxGap = rows.reduce((m, r) => (r.gap != null && r.gap > m ? r.gap : m), 0)
-  const amberKey = maxGap > 0 ? rows.find((r) => r.gap === maxGap)?.key : undefined
-
   return (
-    <section aria-labelledby="your-score-components" className="mb-16">
-      <h2 id="your-score-components" className="text-xl font-bold text-slate-100 mb-4 pb-3 border-b border-slate-700/60">
-        Score components
-      </h2>
-      <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
         {rows.map((r) => {
           const amber = r.key === amberKey
@@ -400,7 +485,6 @@ function ComponentTiles({ s }: { s: MySummary }) {
                   }`}
                 >
                   {hasMine ? `${myPoints}/${POINTS_PER_COMPONENT}` : `—/${POINTS_PER_COMPONENT}`}
-                  {badgeTitle && <span className="sr-only">{` (${badgeTitle})`}</span>}
                 </span>
               </div>
               <div className="mt-auto">
@@ -435,15 +519,12 @@ function ComponentTiles({ s }: { s: MySummary }) {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  {`${hasMine ? `You: ${myPoints} of ${POINTS_PER_COMPONENT}` : "You: not on file yet"} · Peers average ${peerPoints ?? "—"}`}
-                </p>
+                <p className="text-xs text-slate-400 mt-2">{`Peers average ${peerPoints ?? "—"}`}</p>
               </div>
             </div>
           )
         })}
       </div>
-    </section>
   )
 }
 
@@ -477,7 +558,7 @@ export function YourScorePanel({
     <>
       <HeroCard s={summary} justScored={justScored} onSubmitted={handleSubmitted} />
       <GapAnalysisPanel suppressEmptyState={!summary.has_data || summary.my_score == null} />
-      <ComponentTiles s={summary} />
+        <ScoreComponentsSection s={summary} />
     </>
   )
 }
