@@ -1,6 +1,8 @@
 import { checkTierAccess } from "@/lib/tier-access"
 import { redirect } from "next/navigation"
 import { TierLockedScreen } from "@/components/tier-locked-screen"
+import { createClient } from "@/lib/supabase/server"
+import type { PublicFlagshipStat } from "@/lib/flagship-stats"
 import { PremiumDashboardClient } from "./client"
 
 export const metadata = {
@@ -27,5 +29,19 @@ export default async function PremiumDashboardPage() {
   }
 
   const isFreeTier = access.tier === "free" || access.tier === "contributor"
-  return <PremiumDashboardClient isFreeTier={isFreeTier} />
+
+  // Free tier never loads question-level breakdowns; the Explore theme cards use
+  // the same public, market-only headline figures as /workforce-intelligence.
+  const flagshipStats: Record<string, PublicFlagshipStat> = {}
+  if (isFreeTier) {
+    const supabase = await createClient()
+    const { data } = await supabase.rpc("get_public_flagship_stats")
+    if (Array.isArray(data)) {
+      for (const row of data as PublicFlagshipStat[]) {
+        if (row?.theme_key) flagshipStats[row.theme_key] = row
+      }
+    }
+  }
+
+  return <PremiumDashboardClient isFreeTier={isFreeTier} flagshipStats={flagshipStats} />
 }
