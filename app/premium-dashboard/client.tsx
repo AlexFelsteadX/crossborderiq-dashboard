@@ -1189,6 +1189,50 @@ function YoYTrendCard({ row, note }: { row: YoYRow; note?: string }) {
   )
 }
 
+// Free-tier rows past the first two arrive with labels but null figures.
+function isLockedYoYRow(row: YoYRow): boolean {
+  return row.pct_2025 == null && row.pct_2026 == null && row.delta_pts == null
+}
+
+function LockedYoYTrendCard({ row, onSelect }: { row: YoYRow; onSelect: () => void }) {
+  const title = expandYoYLabel(row.concept)
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-controls="trends-unlock-strip"
+      aria-label={`${title}: figures are part of Premium. Show unlock options.`}
+      className="rounded-xl border border-slate-700/50 border-l-4 border-l-slate-600/50 bg-brand-navy-2/40 p-5 text-left transition-colors duration-200 hover:border-slate-600/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 pr-3">
+          <p className="text-sm font-medium text-slate-200 leading-tight">{title}</p>
+          {row.metric_label && (
+            <p className="text-xs text-slate-400 mt-0.5">{expandYoYLabel(row.metric_label)}</p>
+          )}
+        </div>
+        <span className="inline-flex items-center gap-1 text-slate-400">
+          <Lock aria-hidden="true" className="h-3.5 w-3.5" />
+          <span aria-hidden="true" className="h-5 w-10 rounded bg-slate-500/40 blur-[3px]" />
+        </span>
+      </div>
+
+      <div aria-hidden="true" className="flex items-end justify-between">
+        <div className="flex items-end gap-3 blur-[3px]">
+          <span className="h-6 w-12 rounded bg-slate-500/40" />
+          <span className="h-6 w-12 rounded bg-primary/30" />
+        </div>
+        <div className="flex items-end gap-1 h-10 blur-[2px]">
+          <span className="w-3 h-6 rounded-t bg-slate-600/50" />
+          <span className="w-3 h-9 rounded-t bg-primary/40" />
+        </div>
+      </div>
+
+      <div aria-hidden="true" className="mt-3 h-3 w-40 rounded bg-slate-600/40 blur-[2px]" />
+    </button>
+  )
+}
+
 // =============================================================================
 // MAIN CLIENT
 // =============================================================================
@@ -1327,6 +1371,13 @@ export function PremiumDashboardClient({
   // null = overview grid; a section name = focused single-pillar view.
   const [focusedSection, setFocusedSection] = useState<string | null>(null)
   const breakdownTopRef = useRef<HTMLDivElement | null>(null)
+  const trendsUnlockRef = useRef<HTMLDivElement | null>(null)
+  const focusTrendsUnlock = useCallback(() => {
+    const strip = trendsUnlockRef.current
+    if (!strip) return
+    strip.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    strip.focus({ preventScroll: true })
+  }, [])
 
   // Peer-segment filters are collapsed by default so the market summary reads
   // first; expanding reveals the same controls (RPC flow is unchanged either way).
@@ -2192,16 +2243,38 @@ export function PremiumDashboardClient({
             const rows = isMarket ? yoyMarket : yoy
             const loading = isMarket ? loadingYoYMarket : loadingYoY
             if (isFree) {
+              const realRows = yoyMarket.filter((row) => !isLockedYoYRow(row)).slice(0, 2)
+              const lockedRows = yoyMarket.filter(isLockedYoYRow)
               return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {yoyMarket.slice(0, 2).map((row, idx) => (
-                    <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
-                  ))}
-                  <LockedPanel
-                    title="Every year-on-year trend"
-                    description="Year-on-year movement across every benchmark metric, cut to your industry, region, and size."
-                    className="col-span-full mb-0!"
-                  />
+                <div className="flex flex-col gap-4">
+                  {realRows.length + lockedRows.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {realRows.map((row, idx) => (
+                        <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
+                      ))}
+                      {lockedRows.map((row, idx) => (
+                        <LockedYoYTrendCard
+                          key={`locked-${row.concept}-${row.metric_label}-${idx}`}
+                          row={row}
+                          onSelect={focusTrendsUnlock}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div
+                    ref={trendsUnlockRef}
+                    id="trends-unlock-strip"
+                    tabIndex={-1}
+                    className="flex flex-col gap-3 rounded-xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 outline-none transition-shadow focus:ring-2 focus:ring-primary/60 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <p className="flex items-center gap-2 text-sm text-slate-300 leading-relaxed text-pretty">
+                      <Lock aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+                      {UNLOCK_LINE}
+                    </p>
+                    <Button asChild size="sm" className="shrink-0">
+                      <Link href={UNLOCK_HREF}>Unlock full access</Link>
+                    </Button>
+                  </div>
                 </div>
               )
             }
