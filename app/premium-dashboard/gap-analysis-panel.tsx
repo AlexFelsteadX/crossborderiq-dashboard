@@ -7,6 +7,7 @@ import { track } from "@vercel/analytics"
 import { jsPDF } from "jspdf"
 import type { Gap, Severity } from "@/lib/gap-engine"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
+import { LockedPanel } from "@/components/dashboard/locked-panel"
 
 interface GapBriefResponse {
   hasResponse: boolean
@@ -189,7 +190,19 @@ function Skeleton() {
   )
 }
 
-export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmptyState?: boolean } = {}) {
+export const LOCKED_GAPS_DESCRIPTION =
+  "Your own answers compared with leaders like you, question by question, with severity ratings and an AI-written brief."
+
+export function GapAnalysisPanel({
+  suppressEmptyState = false,
+  locked = false,
+}: { suppressEmptyState?: boolean; locked?: boolean } = {}) {
+  // Free tier never mounts the fetching panel, so the gap APIs are not called.
+  if (locked) return <LockedPanel title="Your Gaps, Explained" description={LOCKED_GAPS_DESCRIPTION} />
+  return <GapAnalysisPanelContent suppressEmptyState={suppressEmptyState} />
+}
+
+function GapAnalysisPanelContent({ suppressEmptyState }: { suppressEmptyState: boolean }) {
   const { data, error, isLoading, isValidating, mutate } = useSWR<GapBriefResponse>("/api/gap-brief", fetcher, {
     revalidateOnFocus: false,
   })

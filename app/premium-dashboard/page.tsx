@@ -8,24 +8,24 @@ export const metadata = {
 }
 
 export default async function PremiumDashboardPage() {
-  const access = await checkTierAccess("premium", "/premium-dashboard")
-  
+  // Every signed-in tier gets in; free and contributor corporates see the locked free experience.
+  const access = await checkTierAccess("free", "/premium-dashboard")
+
   if (!access.allowed) {
     if (access.reason === "not_logged_in") {
       redirect("/login?next=/premium-dashboard")
     }
-    
-    // User is logged in but doesn't have premium tier
+
     return (
       <TierLockedScreen
-        heading="Global Workforce Intelligence — members only"
+        heading="Global Workforce Intelligence: members only"
         message="This dashboard is part of the Global Workforce Intelligence membership."
         buttonText="Upgrade to Premium"
         buttonHref="/pricing"
       />
     )
   }
-  
-  // User has premium or vendor tier - render the dashboard
-  return <PremiumDashboardClient />
+
+  const isFreeTier = access.tier === "free" || access.tier === "contributor"
+  return <PremiumDashboardClient isFreeTier={isFreeTier} />
 }

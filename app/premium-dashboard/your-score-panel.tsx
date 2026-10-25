@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowUp, ChevronDown, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { ArrowUp, ChevronDown, Loader2, Lock } from "lucide-react"
+import { LockedPanel, UNLOCK_HREF } from "@/components/dashboard/locked-panel"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { MMI_BANDS, mmiBand } from "@/lib/scoring"
 import { PREMIUM_EXPLAINERS } from "@/lib/premium-explainers"
@@ -153,10 +155,12 @@ function HeroCard({
   s,
   justScored,
   onSubmitted,
+  isFree,
 }: {
   s: MySummary
   justScored: boolean
   onSubmitted: () => Promise<void>
+  isFree: boolean
 }) {
   const [stepperOpen, setStepperOpen] = useState(false)
   const [ctaHidden, setCtaHidden] = useState(false)
@@ -224,7 +228,7 @@ function HeroCard({
             </p>
           </div>
         </div>
-        <SourceLine s={s} />
+        <SourceLine s={s} isFree={isFree} />
       </section>
     )
   }
@@ -255,21 +259,39 @@ function HeroCard({
               <dt className="text-xs text-slate-400">You</dt>
               <dd className="text-3xl font-bold text-primary tabular-nums">{myScore}</dd>
             </div>
-            <div className="min-w-0">
-              <dt className="text-xs text-slate-400">Peers</dt>
-              <dd className="text-2xl font-semibold text-slate-200 tabular-nums">{show(s.peer_score)}</dd>
-              <dd className="text-[11px] text-slate-500 truncate" title={peerLabel}>
-                {peerLabel}
-              </dd>
-            </div>
+            {isFree ? (
+              <div className="min-w-0">
+                <dt className="sr-only">Peers</dt>
+                <dd>
+                  <LockedPanel variant="compact" title="Peers · locked" />
+                </dd>
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-400">Peers</dt>
+                <dd className="text-2xl font-semibold text-slate-200 tabular-nums">{show(s.peer_score)}</dd>
+                <dd className="text-[11px] text-slate-500 truncate" title={peerLabel}>
+                  {peerLabel}
+                </dd>
+              </div>
+            )}
             <div className="min-w-0">
               <dt className="text-xs text-slate-400">Market</dt>
               <dd className="text-2xl font-semibold text-slate-200 tabular-nums">{show(s.market_score)}</dd>
             </div>
           </dl>
-          {(topShare != null || (nextBand && pointsToNext != null)) && (
+          {(isFree || topShare != null || (nextBand && pointsToNext != null)) && (
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
-              {topShare != null && (
+              {isFree ? (
+                <Link
+                  href={UNLOCK_HREF}
+                  aria-label="Top ?% of peers, locked. Unlock full access"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-200 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/60 transition-colors hover:border-primary/50 hover:text-slate-100"
+                >
+                  {"Top ?% of peers"}
+                  <Lock className="h-3 w-3 text-slate-400" aria-hidden="true" />
+                </Link>
+              ) : topShare != null && (
                 <span className="inline-flex items-center text-xs font-medium text-slate-200 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/60">
                   {`Top ${topShare}% of peers`}
                 </span>
@@ -289,7 +311,7 @@ function HeroCard({
           )}
         </div>
       </div>
-      <SourceLine s={s} />
+      <SourceLine s={s} isFree={isFree} />
     </section>
   )
 }
@@ -332,10 +354,12 @@ function BandLadder({ score, animate }: { score: number; animate: boolean }) {
   )
 }
 
-function SourceLine({ s }: { s: MySummary }) {
+function SourceLine({ s, isFree = false }: { s: MySummary; isFree?: boolean }) {
   return (
     <p className="text-[11px] text-slate-500 mt-6 pt-4 border-t border-slate-700/50">
-      {`${s.peer_base ?? "—"} organizations in your peer group · ${s.market_base ?? "—"} in the benchmark`}
+      {isFree
+        ? `${s.market_base ?? "—"} organizations in the benchmark`
+        : `${s.peer_base ?? "—"} organizations in your peer group · ${s.market_base ?? "—"} in the benchmark`}
     </p>
   )
 }
@@ -353,7 +377,7 @@ function componentRows(s: MySummary) {
   return { hasMine, rows, amberKey }
 }
 
-function ScoreComponentsSection({ s }: { s: MySummary }) {
+function ScoreComponentsSection({ s, isFree }: { s: MySummary; isFree: boolean }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     try {
@@ -424,15 +448,15 @@ function ScoreComponentsSection({ s }: { s: MySummary }) {
       </button>
       {open && (
         <div id="your-score-components-body" className="pt-4">
-          <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>
-          <ComponentTiles s={s} />
+          {!isFree && <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>}
+          <ComponentTiles s={s} isFree={isFree} />
         </div>
       )}
     </section>
   )
 }
 
-function ComponentTiles({ s }: { s: MySummary }) {
+function ComponentTiles({ s, isFree }: { s: MySummary; isFree: boolean }) {
   const { hasMine, rows, amberKey } = componentRows(s)
 
   const [barsReady, setBarsReady] = useState(false)
@@ -446,7 +470,7 @@ function ComponentTiles({ s }: { s: MySummary }) {
         {rows.map((r) => {
           const amber = r.key === amberKey
           const myPoints = toPoints(r.mine) ?? 0
-          const peerPoints = toPoints(r.peer)
+          const peerPoints = isFree ? null : toPoints(r.peer)
           const full = myPoints >= POINTS_PER_COMPONENT
           const pct = (v: number) => `${Math.min(100, Math.max(0, (v / POINTS_PER_COMPONENT) * 100))}%`
           const badgeTitle = !hasMine
@@ -491,7 +515,9 @@ function ComponentTiles({ s }: { s: MySummary }) {
                 <div
                   className="relative h-2.5 rounded-full bg-slate-700/60"
                   role="img"
-                  aria-label={`${hasMine ? `You: ${myPoints}` : "You: not on file"} of ${POINTS_PER_COMPONENT}; peers average ${peerPoints ?? "—"}`}
+                  aria-label={`${hasMine ? `You: ${myPoints}` : "You: not on file"} of ${POINTS_PER_COMPONENT}${
+                    isFree ? "" : `; peers average ${peerPoints ?? "—"}`
+                  }`}
                 >
                   {hasMine && (
                     <div
@@ -509,17 +535,26 @@ function ComponentTiles({ s }: { s: MySummary }) {
                     />
                   )}
                 </div>
-                <div className="relative h-4 mt-1" aria-hidden="true">
-                  {peerPoints != null && (
-                    <span
-                      className="absolute top-0 text-[10px] text-slate-400 whitespace-nowrap -translate-x-1/2"
-                      style={{ left: `clamp(1.5rem, ${pct(peerPoints)}, calc(100% - 1.5rem))` }}
-                    >
-                      {`Peers: ${peerPoints}`}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-400 mt-2">{`Peers average ${peerPoints ?? "—"}`}</p>
+                {isFree ? (
+                  <p className="inline-flex items-center gap-1 text-xs text-slate-500 mt-3">
+                    <Lock className="h-3 w-3" aria-hidden="true" />
+                    Peer comparison locked
+                  </p>
+                ) : (
+                  <>
+                    <div className="relative h-4 mt-1" aria-hidden="true">
+                      {peerPoints != null && (
+                        <span
+                          className="absolute top-0 text-[10px] text-slate-400 whitespace-nowrap -translate-x-1/2"
+                          style={{ left: `clamp(1.5rem, ${pct(peerPoints)}, calc(100% - 1.5rem))` }}
+                        >
+                          {`Peers: ${peerPoints}`}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">{`Peers average ${peerPoints ?? "—"}`}</p>
+                  </>
+                )}
               </div>
             </div>
           )
@@ -532,10 +567,12 @@ export function YourScorePanel({
   summary,
   loading,
   onRefresh,
+  isFree = false,
 }: {
   summary: MySummary | null
   loading: boolean
   onRefresh: () => Promise<unknown>
+  isFree?: boolean
 }) {
   const [justScored, setJustScored] = useState(false)
 
@@ -556,9 +593,9 @@ export function YourScorePanel({
 
   return (
     <>
-      <HeroCard s={summary} justScored={justScored} onSubmitted={handleSubmitted} />
-      <GapAnalysisPanel suppressEmptyState={!summary.has_data || summary.my_score == null} />
-        <ScoreComponentsSection s={summary} />
+      <HeroCard s={summary} justScored={justScored} onSubmitted={handleSubmitted} isFree={isFree} />
+      <GapAnalysisPanel suppressEmptyState={!summary.has_data || summary.my_score == null} locked={isFree} />
+      <ScoreComponentsSection s={summary} isFree={isFree} />
     </>
   )
 }
