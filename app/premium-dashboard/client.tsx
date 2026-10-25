@@ -2081,13 +2081,6 @@ export function PremiumDashboardClient() {
         </div>
         )}
 
-        {showTabs && activeTab === "trends" && (
-          <section className="mb-16 rounded-xl border border-dashed border-primary/30 bg-brand-navy-2/40 p-6">
-            <h2 className="text-base font-semibold text-slate-100 mb-1">Coming here</h2>
-            <p className="text-sm text-slate-400">{"Your score’s movement month by month as the benchmark grows."}</p>
-          </section>
-        )}
-
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         {showExplore && (
         <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
