@@ -1,9 +1,14 @@
 "use client"
 
-import { useEffect, useState, type FormEvent } from "react"
+import { useState, type FormEvent, type ReactNode } from "react"
 import { Loader2, Plus, X } from "lucide-react"
 import type { KeyedMutator } from "swr"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { Button } from "@/components/ui/button"
+import { PremiumInfo } from "@/components/dashboard/premium-info"
+import { PremiumBar, PremiumChip, premiumOptionClass } from "@/components/dashboard/premium-ui"
+import type { PremiumExplainerId } from "@/lib/premium-explainers"
+import { cn } from "@/lib/utils"
 
 export interface PulseLive {
   id: string
@@ -32,12 +37,10 @@ export interface PulseBoard {
   can_submit: boolean
 }
 
-const CARD_BASE = "rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 shadow-sm"
-const CARD = `${CARD_BASE} mb-8`
-const CHIP_LIVE =
-  "inline-flex items-center text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/25"
-const CHIP_MINE =
-  "inline-flex items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-300"
+const HERO_CARD = "rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 shadow-sm"
+const LIST_CARD = "rounded-xl border border-slate-700/50 bg-brand-navy-2/40"
+const FIELD =
+  "rounded-lg border border-slate-700/60 bg-brand-navy/40 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
 
 const MIN_LEN = 10
 const MAX_LEN = 300
@@ -109,47 +112,56 @@ function rpcErrorCode(data: unknown, error: { message?: string } | null): string
   return null
 }
 
-function StepsStrip() {
+function CommunitySection({
+  id,
+  title,
+  info,
+  children,
+}: {
+  id: string
+  title: string
+  info: PremiumExplainerId
+  children: ReactNode
+}) {
   return (
-    <section aria-label="How Community questions work" className={CARD}>
-      <ol className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-4 lg:gap-x-0">
-        {STEPS.map((step, i) => (
-          <li key={step.title} className="flex flex-col">
-            <div className="flex items-center">
-              <span
-                aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-sm font-semibold text-primary"
-              >
-                {i + 1}
-              </span>
-              {i < STEPS.length - 1 && (
-                <span aria-hidden="true" className="mx-3 hidden h-px flex-1 bg-primary/30 lg:block" />
-              )}
-            </div>
-            <p className="mt-3 text-sm font-semibold text-slate-100 lg:pr-6">
-              <span className="sr-only">Step {i + 1}: </span>
-              {step.title}
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-slate-300 lg:pr-6">{step.caption}</p>
-          </li>
-        ))}
-      </ol>
+    <section aria-labelledby={id}>
+      <div className="mb-4 flex items-center gap-2">
+        <h2 id={id} className="text-xl font-bold text-slate-100">
+          {title}
+        </h2>
+        <PremiumInfo id={info} />
+      </div>
+      {children}
     </section>
+  )
+}
+
+function StepsBand() {
+  return (
+    <ol
+      aria-label="How Community questions work"
+      className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-slate-800/30 px-4 py-3 lg:grid-cols-4"
+    >
+      {STEPS.map((step, i) => (
+        <li key={step.title} className="flex gap-2">
+          <span
+            aria-hidden="true"
+            className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-teal/15 text-[11px] font-semibold text-brand-teal"
+          >
+            {i + 1}
+          </span>
+          <p className="text-xs leading-relaxed text-slate-400">
+            <span className="sr-only">Step {i + 1}: </span>
+            <span className="font-semibold text-slate-200">{step.title}.</span> {step.caption}
+          </p>
+        </li>
+      ))}
+    </ol>
   )
 }
 
 function ResultBars({ live, myAnswer }: { live: PulseLive; myAnswer: string }) {
   const rows = normalizeResults(live)
-  const [revealed, setRevealed] = useState(false)
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setRevealed(true)
-      return
-    }
-    const frame = requestAnimationFrame(() => setRevealed(true))
-    return () => cancelAnimationFrame(frame)
-  }, [])
 
   return (
     <ul className="flex flex-col gap-3">
@@ -160,18 +172,13 @@ function ResultBars({ live, myAnswer }: { live: PulseLive; myAnswer: string }) {
             <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span className={mine ? "font-semibold text-slate-100" : "text-slate-300"}>
                 {option}
-                {mine && <span className="text-primary"> (you)</span>}
+                {mine && <span className="text-brand-teal"> (you)</span>}
               </span>
-              <span className={`tabular-nums ${mine ? "font-semibold text-primary" : "text-slate-400"}`}>{pct}%</span>
+              <span className={cn("tabular-nums", mine ? "font-semibold text-brand-teal" : "text-slate-400")}>
+                {pct}%
+              </span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-slate-700/60">
-              <div
-                className={`h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none ${
-                  mine ? "bg-primary" : "bg-slate-400/60"
-                }`}
-                style={{ width: revealed ? `${pct}%` : "0%" }}
-              />
-            </div>
+            <PremiumBar pct={pct} highlight={mine} />
           </li>
         )
       })}
@@ -204,19 +211,19 @@ function LivePulseCard({
   }
 
   return (
-    <article aria-labelledby={titleId} className={CARD_BASE}>
+    <article aria-labelledby={titleId} className={cn(LIST_CARD, "p-5")}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className={CHIP_LIVE}>Live</span>
-        {live.mine && <span className={CHIP_MINE}>Your question</span>}
+        <PremiumChip>Live</PremiumChip>
+        {live.mine && <PremiumChip tone="amber">Your question</PremiumChip>}
+        <span className="text-xs text-slate-400">
+          {live.asked_by_industry ? `Asked by a member · ${live.asked_by_industry}` : "Asked by the CBIQ team"}
+        </span>
       </div>
-      <p className="mt-2 text-xs text-slate-400">
-        {live.asked_by_industry ? `Asked by a member · ${live.asked_by_industry}` : "Asked by the CBIQ team"}
-      </p>
-      <h3 id={titleId} className="mt-4 text-lg font-semibold leading-snug text-slate-100 text-balance">
+      <h3 id={titleId} className="mt-3 text-base font-semibold leading-snug text-slate-100 text-balance">
         {live.question}
       </h3>
 
-      <div className="mt-5">
+      <div className="mt-4">
         {!answered ? (
           <div className="flex flex-col gap-2">
             {live.options.map((option) => (
@@ -225,10 +232,13 @@ function LivePulseCard({
                 type="button"
                 disabled={pending !== null}
                 onClick={() => answer(option)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/25 bg-brand-navy/60 px-4 py-3 text-left text-sm text-slate-100 transition-colors hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
+                className={cn(
+                  premiumOptionClass(false),
+                  "flex items-center justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal disabled:opacity-60",
+                )}
               >
                 <span>{option}</span>
-                {pending === option && <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />}
+                {pending === option && <Loader2 className="h-4 w-4 animate-spin text-brand-teal" aria-hidden="true" />}
               </button>
             ))}
             {failed && (
@@ -249,7 +259,7 @@ function LivePulseCard({
         )}
       </div>
 
-      <p className="mt-5 text-xs text-slate-400">
+      <p className="mt-4 text-xs text-slate-400">
         {live.answer_count} leaders have answered · closes {formatDate(live.closes_at)} · answer to see the live results
       </p>
     </article>
@@ -264,17 +274,14 @@ function LiveFeed({
   onAnswer: (id: string, option: string) => Promise<void>
 }) {
   return (
-    <section aria-labelledby="pulse-feed-title" className="mb-8">
-      <h2 id="pulse-feed-title" className="sr-only">
-        Live questions
-      </h2>
+    <CommunitySection id="pulse-feed-title" title="Live questions" info="communityFeed">
       {items.length === 0 ? (
-        <div className={CARD_BASE}>
-          <span className={CHIP_LIVE}>Live</span>
-          <p className="mt-4 text-slate-200">No live questions right now. Yours could be first.</p>
+        <div className={cn(LIST_CARD, "p-5")}>
+          <PremiumChip>Live</PremiumChip>
+          <p className="mt-3 text-slate-200">No live questions right now. Yours could be first.</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-3">
           {items.map((live) => (
             <li key={live.id}>
               <LivePulseCard live={live} onAnswer={onAnswer} />
@@ -282,7 +289,7 @@ function LiveFeed({
           ))}
         </ul>
       )}
-    </section>
+    </CommunitySection>
   )
 }
 
@@ -346,11 +353,8 @@ function AskCard({
   const blocked = !canSubmit || error === "one_live_question"
 
   return (
-    <section aria-labelledby="pulse-ask-title" className={CARD}>
-      <h2 id="pulse-ask-title" className="text-lg font-semibold text-slate-100">
-        Ask your peers
-      </h2>
-      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+    <div className={HERO_CARD}>
+      <p className="text-sm leading-relaxed text-slate-300">
         Post the question you wish you could ask the room. It goes live to members straight away, credited only as
         &lsquo;a member&rsquo;.
       </p>
@@ -358,14 +362,14 @@ function AskCard({
       {submitted && (
         <p
           role="status"
-          className="mt-5 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-medium text-slate-100"
+          className="mt-5 rounded-lg border border-brand-teal/30 bg-brand-teal/10 px-4 py-3 text-sm font-medium text-slate-100"
         >
           {SUBMITTED}
         </p>
       )}
 
       {blocked ? (
-        <p className="mt-5 rounded-lg border border-primary/20 bg-brand-navy/60 px-4 py-3 text-sm text-slate-200">
+        <p className="mt-5 rounded-lg border border-slate-700/60 bg-brand-navy/40 px-4 py-3 text-sm text-slate-200">
           {ONE_LIVE}
         </p>
       ) : (
@@ -387,12 +391,12 @@ function AskCard({
               aria-describedby="pulse-question-counter"
               aria-invalid={error === "length"}
               placeholder="What would you ask every Global Mobility leader in the room?"
-              className="w-full resize-y rounded-lg border border-primary/25 bg-brand-navy/60 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className={cn(FIELD, "w-full resize-y px-4 py-3")}
             />
             <p
               id="pulse-question-counter"
               aria-live="polite"
-              className={`text-xs tabular-nums ${error === "length" ? "text-amber-300" : "text-slate-400"}`}
+              className={cn("text-xs tabular-nums", error === "length" ? "text-amber-300" : "text-slate-400")}
             >
               {len}/{MAX_LEN}
               {error === "length" && ` · Questions need ${MIN_LEN} to ${MAX_LEN} characters.`}
@@ -412,11 +416,10 @@ function AskCard({
                 return (
                   <label
                     key={choice.value}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary ${
-                      active
-                        ? "border-primary bg-primary/10 text-slate-100"
-                        : "border-primary/25 bg-brand-navy/60 text-slate-300 hover:border-primary/50"
-                    }`}
+                    className={cn(
+                      premiumOptionClass(active),
+                      "flex cursor-pointer items-center gap-3 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand-teal",
+                    )}
                   >
                     <input
                       type="radio"
@@ -427,7 +430,7 @@ function AskCard({
                         setFormat(choice.value)
                         clearError("options")
                       }}
-                      className="h-4 w-4 accent-primary"
+                      className="h-4 w-4 accent-brand-teal"
                     />
                     <span className="font-medium">{choice.label}</span>
                   </label>
@@ -438,11 +441,10 @@ function AskCard({
             {format === "quick" ? (
               <ul className="flex flex-wrap gap-2" aria-label="Answers members will see">
                 {QUICK_OPTIONS.map((o) => (
-                  <li
-                    key={o}
-                    className="rounded-full border border-slate-600/60 bg-slate-700/40 px-3 py-1 text-xs text-slate-200"
-                  >
-                    {o}
+                  <li key={o}>
+                    <PremiumChip tone="neutral" className="font-normal">
+                      {o}
+                    </PremiumChip>
                   </li>
                 ))}
               </ul>
@@ -461,34 +463,38 @@ function AskCard({
                       onChange={(e) => updateOption(i, e.target.value)}
                       placeholder={`Answer ${i + 1}`}
                       aria-invalid={error === "options"}
-                      className="min-w-0 flex-1 rounded-lg border border-primary/25 bg-brand-navy/60 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className={cn(FIELD, "min-w-0 flex-1 px-4 py-2.5")}
                     />
                     <span className="w-12 shrink-0 text-right text-xs tabular-nums text-slate-500">
                       {value.length}/{OPTION_MAX}
                     </span>
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon"
                       onClick={() => {
                         setCustom((rows) => rows.filter((_, idx) => idx !== i))
                         clearError("options")
                       }}
                       disabled={custom.length <= MIN_OPTIONS}
                       aria-label={`Remove answer ${i + 1}`}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 text-slate-300 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+                      className="shrink-0 border-slate-700/60 bg-transparent text-slate-300 hover:bg-brand-teal/10 hover:text-slate-100"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
                 {custom.length < MAX_OPTIONS && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setCustom((rows) => [...rows, ""])}
-                    className="inline-flex w-fit items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="w-fit text-brand-teal hover:bg-brand-teal/10 hover:text-brand-teal"
                   >
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     Add an answer
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -506,35 +512,32 @@ function AskCard({
                 Your question didn&apos;t go through. Please try again.
               </p>
             )}
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-brand-navy transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="gap-2 bg-brand-teal px-5 font-semibold text-brand-navy hover:bg-brand-teal/90"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               Post question
-            </button>
+            </Button>
           </div>
         </form>
       )}
 
       <p className="mt-4 text-xs text-slate-400">{HOUSE_RULES}</p>
-    </section>
+    </div>
   )
 }
 
-function ArchiveCard({ items }: { items: PulseArchiveItem[] }) {
+function Archive({ items }: { items: PulseArchiveItem[] }) {
   return (
-    <section aria-labelledby="pulse-archive-title" className={CARD}>
-      <h2 id="pulse-archive-title" className="text-lg font-semibold text-slate-100">
-        Previous pulses
-      </h2>
+    <CommunitySection id="pulse-archive-title" title="Previous pulses" info="communityArchive">
       {items.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-400">No closed pulses yet.</p>
+        <p className={cn(LIST_CARD, "px-5 py-4 text-sm text-slate-400")}>No closed pulses yet.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-primary/10">
+        <ul className={cn(LIST_CARD, "divide-y divide-slate-700/50 px-5")}>
           {items.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+            <li key={item.id} className="flex items-start justify-between gap-4 py-3.5">
               <div className="min-w-0">
                 <p className="text-sm leading-relaxed text-slate-100">{item.question}</p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -544,7 +547,7 @@ function ArchiveCard({ items }: { items: PulseArchiveItem[] }) {
                 </p>
               </div>
               {item.headline ? (
-                <p className="max-w-[45%] shrink-0 text-right text-sm font-semibold text-primary">{item.headline}</p>
+                <p className="max-w-[45%] shrink-0 text-right text-sm font-semibold text-brand-teal">{item.headline}</p>
               ) : (
                 <p className="shrink-0 text-right text-sm tabular-nums text-slate-300">{item.answers} answers</p>
               )}
@@ -552,10 +555,10 @@ function ArchiveCard({ items }: { items: PulseArchiveItem[] }) {
           ))}
         </ul>
       )}
-      <p className="mt-5 text-xs text-slate-400">
+      <p className="mt-3 text-xs text-slate-400">
         Every pulse result is aggregated and only published at 10 or more answers.
       </p>
-    </section>
+    </CommunitySection>
   )
 }
 
@@ -587,11 +590,13 @@ export function CommunityPanel({
   }
 
   return (
-    <div>
-      <AskCard canSubmit={board.can_submit} onSubmit={submit} />
-      <StepsStrip />
+    <div className="flex flex-col gap-14">
+      <CommunitySection id="pulse-ask-title" title="Ask your peers" info="communityAsk">
+        <StepsBand />
+        <AskCard canSubmit={board.can_submit} onSubmit={submit} />
+      </CommunitySection>
       <LiveFeed items={live} onAnswer={answer} />
-      <ArchiveCard items={board.archive ?? []} />
+      <Archive items={board.archive ?? []} />
     </div>
   )
 }
