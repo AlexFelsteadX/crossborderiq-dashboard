@@ -61,6 +61,6 @@ export const PREMIUM_EXPLAINERS: Record<PremiumExplainerId, PremiumExplainer> = 
   },
   communityArchive: {
     title: "What happened to closed questions",
-    body: "Questions close 30 days after posting and their final results live here. Each month the strongest member question is also put to the whole benchmark at event registration, reaching hundreds of leaders.",
+    body: "Questions close 30 days after posting and their final results live here.",
   },
 }

@@ -56,10 +56,6 @@ const STEPS = [
     caption: "Verified mobility leaders answer with one tap. Nobody’s answer is ever identified.",
   },
   { title: "Results reveal", caption: "Live results appear once 10 leaders have answered. Answer to see them." },
-  {
-    title: "The best go wider",
-    caption: "Each month we put one member question to the whole benchmark of hundreds.",
-  },
 ]
 
 const HOUSE_RULES =
@@ -138,12 +134,13 @@ function CommunitySection({
 
 function StepsBand() {
   return (
-    <ol
+    <div
+      role="group"
       aria-label="How Community questions work"
-      className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-slate-800/30 px-4 py-3 lg:grid-cols-4"
+      className="mb-4 grid grid-cols-1 gap-x-4 gap-y-3 rounded-lg bg-slate-800/30 px-4 py-3 sm:grid-cols-3"
     >
       {STEPS.map((step, i) => (
-        <li key={step.title} className="flex gap-2">
+        <div key={step.title} className="flex gap-2">
           <span
             aria-hidden="true"
             className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-teal/15 text-[11px] font-semibold text-brand-teal"
@@ -151,12 +148,11 @@ function StepsBand() {
             {i + 1}
           </span>
           <p className="text-xs leading-relaxed text-slate-400">
-            <span className="sr-only">Step {i + 1}: </span>
             <span className="font-semibold text-slate-200">{step.title}.</span> {step.caption}
           </p>
-        </li>
+        </div>
       ))}
-    </ol>
+    </div>
   )
 }
 
