@@ -147,7 +147,7 @@ export default function ClaimPage() {
                 <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-green-500">
-                    Check your inbox. We&apos;ve sent a secure link to start your 14 days of Premium.
+                    Check your inbox. We&apos;ve sent a secure link to start your 30-Day Premium Access.
                     {eventName ? ` Welcome, ${eventName} attendee.` : ""}
                   </p>
                   <p className="mt-1 text-xs text-slate-400">

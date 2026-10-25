@@ -13,18 +13,18 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "CBIQ — See how your Global Mobility program compares",
     description:
-      "Complete a short benchmark and unlock 14 days of CBIQ Premium, free.",
+      "Complete a short benchmark and earn 30-Day Premium Access, free.",
     openGraph: {
       title: "CBIQ — See how your Global Mobility program compares",
       description:
-        "Complete a short benchmark and unlock 14 days of CBIQ Premium, free.",
+        "Complete a short benchmark and earn 30-Day Premium Access, free.",
       images: [{ url: "/og-image.png?v=2", width: 1200, height: 630, alt: "CBIQ" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "CBIQ — See how your Global Mobility program compares",
       description:
-        "Complete a short benchmark and unlock 14 days of CBIQ Premium, free.",
+        "Complete a short benchmark and earn 30-Day Premium Access, free.",
       images: ["/og-image.png?v=2"],
     },
   }

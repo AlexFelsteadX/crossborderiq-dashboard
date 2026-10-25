@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Check, Star, Users, Building2, Sparkles, Loader2, AlertCircle, ArrowDown } from "lucide-react"
+import { Check, Star, Users, Building2, Loader2, AlertCircle, ArrowDown, ChevronDown, Minus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
 import { useAuth } from "@/hooks/use-auth"
@@ -17,11 +18,95 @@ type PlanTier = "premium" | "vendor"
 const TIER_ORDER = ["free", "contributor", "premium", "vendor"] as const
 
 const VENDOR_HASHES = ["vendor-access", "strategic-intelligence-partner"]
+const COMPARE_HASH = "whats-the-difference"
+
+// GEM Events has no dedicated listings page yet, so this points at the home page.
+const GME_EVENTS_URL = "https://gemevents.co/"
+
+type CompareValue = boolean | string
+type CompareRow = { label: string; shared?: boolean; access: CompareValue; member: CompareValue; advisory: CompareValue }
+
+const COMPARE_ROWS: CompareRow[] = [
+  { label: "All 7 intelligence pillars (60+ question-level datasets)", shared: true, access: true, member: true, advisory: true },
+  { label: "Year-on-Year trends across every metric", shared: true, access: true, member: true, advisory: true },
+  { label: "Benchmarking filters (region, industry, company size, assignee population)", shared: true, access: true, member: true, advisory: true },
+  { label: "Full Premium dashboard", shared: true, access: true, member: true, advisory: true },
+  { label: "Full report library", shared: true, access: true, member: true, advisory: true },
+  { label: "Your score and market view, kept after access ends", shared: true, access: true, member: true, advisory: true },
+  { label: "New data waves and members-only reports all year", access: false, member: true, advisory: true },
+  { label: "Custom benchmarking requests", access: false, member: true, advisory: true },
+  { label: "Annual analyst benchmarking briefing", access: false, member: true, advisory: true },
+  { label: "Branded PDF exports", access: false, member: true, advisory: true },
+  { label: "Dedicated, named CBIQ analyst", access: false, member: false, advisory: true },
+  { label: "Quarterly benchmark reviews", access: false, member: false, advisory: true },
+  { label: "Two private virtual team sessions per year", access: false, member: false, advisory: true },
+  { label: "Written annual benchmark briefing", access: false, member: false, advisory: true },
+  { label: "Analyst access between sessions", access: false, member: false, advisory: true },
+  { label: "Seats", access: "1", member: "1", advisory: "Up to 5" },
+  { label: "Access duration", access: "30 days", member: "Continuous while subscribed", advisory: "Continuous while subscribed" },
+  { label: "How to get it", access: "Every GME event, or the survey once per 12 months", member: "£995 / $1,295 per person per year", advisory: "£5,000 / $6,500 per year, limited to 10 organizations" },
+]
+
+const PRICING_FAQS = [
+  {
+    question: "How do I get the 30-day access?",
+    answer:
+      "Complete the Global Workforce Deployment survey, or register for any GME event. Either one unlocks the full Premium dashboard free for 30 days, with no card required.",
+  },
+  {
+    question: "What happens when my 30 days end?",
+    answer:
+      "You keep your score and market view. Peer comparisons re-lock until you become a member or earn another 30 days.",
+  },
+  {
+    question: "Can I get it again?",
+    answer:
+      "Yes. Every GME event you register for earns a fresh 30 days, and the survey unlocks access once every 12 months.",
+  },
+  {
+    question: "We’re a team. Do we each need a membership?",
+    answer:
+      "A Global Workforce Intelligence membership covers one person. If several people on your team need access, CBIQ Advisory includes up to 5 team seats.",
+  },
+  {
+    question: "Can I pay by invoice?",
+    answer:
+      "Yes. Email crossborderiq@gemevents.co and we will arrange an annual invoice for your membership or Advisory plan.",
+  },
+  {
+    question: "Is my data identifiable?",
+    answer:
+      "Never. Results are only ever shown in aggregate, and no figure is shown for any group of fewer than 10 respondents.",
+  },
+]
+
+function CompareCell({ value, highlight = false }: { value: CompareValue; highlight?: boolean }) {
+  if (value === true) {
+    return (
+      <td className="p-4 text-center">
+        <Check className="h-5 w-5 text-primary mx-auto" aria-hidden="true" />
+        <span className="sr-only">Included</span>
+      </td>
+    )
+  }
+  if (value === false) {
+    return (
+      <td className="p-4 text-center">
+        <Minus className="h-4 w-4 text-slate-600 mx-auto" aria-hidden="true" />
+        <span className="sr-only">Not included</span>
+      </td>
+    )
+  }
+  return (
+    <td className={`p-4 text-center text-xs font-medium ${highlight ? "text-primary" : "text-slate-400"}`}>{value}</td>
+  )
+}
 
 export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [view, setView] = useState<PathView>("corporate")
   const [actionError, setActionError] = useState<string | null>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
 
   const { user, tier, loading: authLoading } = useAuth()
 
@@ -32,6 +117,7 @@ export default function PricingPage() {
       setView("vendor")
     } else {
       setView("corporate")
+      if (hash === COMPARE_HASH) setCompareOpen(true)
     }
   }, [])
 
@@ -39,13 +125,14 @@ export default function PricingPage() {
   // logged-in user's tier. Returns the label and the action to perform.
   type CtaAction = "signup" | "checkout" | "current" | "portal"
   const getCtaState = (planTier: PlanTier): { label: string; action: CtaAction } => {
-    if (!user) return { label: "Get Started", action: "signup" }
+    const joinLabel = planTier === "premium" ? "Become a member" : null
+    if (!user) return { label: joinLabel ?? "Get Started", action: "signup" }
     const userTier = tier ?? "free"
     if (userTier === planTier) return { label: "Current plan", action: "current" }
     const userIdx = TIER_ORDER.indexOf(userTier as (typeof TIER_ORDER)[number])
     const planIdx = TIER_ORDER.indexOf(planTier)
     // Lower tier than the plan on offer → upgrade via Checkout.
-    if (userIdx < planIdx) return { label: "Upgrade", action: "checkout" }
+    if (userIdx < planIdx) return { label: joinLabel ?? "Upgrade", action: "checkout" }
     // Already on a different (higher) paid tier → manage via Customer Portal.
     return { label: "Manage subscription", action: "portal" }
   }
@@ -200,142 +287,113 @@ export default function PricingPage() {
             <div className="max-w-3xl mx-auto mb-12">
               <div className="rounded-2xl border border-primary/40 bg-gradient-to-b from-[#10384a] to-[#0c2230] p-8 text-center shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.45)]">
                 <p className="text-2xl sm:text-3xl font-bold text-slate-100 mb-4">Strategic intelligence, made accessible</p>
-                <p className="text-sm text-slate-300">CBIQ Founding Membership puts executive-grade strategic workforce intelligence within reach of every mobility team — not just the largest enterprises.</p>
+                <p className="text-sm text-slate-300">CBIQ Founding Membership puts executive-grade strategic workforce intelligence within reach of every Global Mobility team, not just the largest enterprises.</p>
               </div>
             </div>
 
+            {/* On phones the highlighted membership card renders first (order-1); md+ restores source order. */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch max-w-6xl mx-auto">
-              {/* Card 1: Premium - 14 Days Free via Survey */}
-              <div id="free-access" className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
+              {/* Card 1: 30-Day Premium Access, earned via the survey or a GME event */}
+              <div id="free-access" className="order-2 md:order-none flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
-                    Survey Reward
+                    Contributor Reward
                   </span>
                 </div>
                 <div className="mb-6 pt-3">
-                  <h3 className="text-lg font-medium text-slate-100 mb-1">Premium — 14 Days Free</h3>
-                  <p className="text-xs text-slate-400 mb-4">
-                    Complete the Global Workforce Deployment survey and unlock the full Premium dashboard, free for 14
-                    days.
+                  <h3 className="text-lg font-medium text-slate-100 mb-1">30-Day Premium Access</h3>
+                  <p className="text-xs text-slate-400 mb-4 text-pretty">
+                    Complete the Global Workforce Deployment survey, or register for any GME event, and get the full
+                    Premium dashboard free for 30 days.
                   </p>
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-3xl font-bold text-slate-100">FREE</span>
-                    <span className="text-sm text-slate-400">for 14 days</span>
+                    <span className="text-sm text-slate-400">{"earned by contributing"}</span>
                   </div>
                 </div>
                 <ul className="space-y-3 mb-6">
                   {[
-                    "Every intelligence pillar — 60+ question-level datasets, not just headline statistics",
-                    "Year-on-Year trends across every metric",
-                    "Benchmarking filters by region, industry, company size & assignee population size (long & short-term)",
-                    "Branded PDF export — board-ready benchmarks",
-                    "Full Premium dashboard, continuously updated",
-                    "Full report library — including members-only reports",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                    "Everything in Global Workforce Intelligence, for 30 days",
+                    "Survey access renews once every 12 months; every GME event earns a fresh 30 days",
+                    "When it ends, you keep your score and market view",
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-300">
                       <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs font-medium text-primary mb-6">Access duration: 14 days (once every 12 months)</p>
                 <a
                   href="#whats-the-difference"
+                  onClick={() => setCompareOpen(true)}
                   className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
                 >
                   See full comparison
                   <ArrowDown className="h-3 w-3" />
                 </a>
-                <div className="mt-auto">
+                <div className="mt-auto flex flex-col gap-3">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
-                    <Link href="/survey">Contribute to the Survey</Link>
+                    <Link href="/survey">Contribute to the survey</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-primary/40 bg-transparent text-slate-100 hover:bg-primary/10 hover:text-slate-100"
+                    asChild
+                  >
+                    <a href={GME_EVENTS_URL} target="_blank" rel="noopener noreferrer">
+                      See upcoming events
+                    </a>
                   </Button>
                 </div>
               </div>
 
-              {/* Card 3: Global Workforce Intelligence - HERO / FOUNDING MEMBER */}
+              {/* Card 2: Global Workforce Intelligence, highlighted */}
               <div
                 id="global-workforce-intelligence"
-                className="flex flex-col rounded-2xl border-2 border-primary bg-gradient-to-b from-[#13455a] to-[#0c2433] p-6 pt-8 relative shadow-[0_0_80px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] scroll-mt-24 overflow-hidden lg:scale-[1.04] lg:-my-2 z-10"
+                className="order-1 md:order-none flex flex-col rounded-2xl border-2 border-primary bg-gradient-to-b from-[#13455a] to-[#0c2433] p-6 pt-8 relative shadow-[0_0_80px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] scroll-mt-24 overflow-hidden lg:scale-[1.04] lg:-my-2 z-10"
               >
                 {/* Teal ribbon across the top */}
                 <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
 
-                {/* Founding Member Badge */}
                 <div className="absolute top-4 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-lg">
-                    <Sparkles className="h-3.5 w-3.5 fill-current" />
-                    FOUNDING MEMBER
-                  </span>
-                </div>
-
-                {/* Most Popular Badge */}
-                <div className="absolute top-4 right-4">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-100 text-brand-navy px-2.5 py-1 rounded-full">
-                    <Star className="h-3 w-3 fill-current" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
+                    <Star className="h-3.5 w-3.5 fill-current" />
                     Most Popular
                   </span>
                 </div>
 
-                <div className="mb-6 pt-10">
+                <div className="mb-6 pt-8">
                   <h3 className="text-xl font-semibold text-slate-100 mb-1">{globalWorkforceIntelligencePlan.name}</h3>
-                  <p className="text-xs text-slate-300 mb-5">
-                    {globalWorkforceIntelligencePlan.description}
-                  </p>
+                  <p className="text-xs text-slate-300 mb-5">{globalWorkforceIntelligencePlan.description}</p>
 
-                  {/* Pricing - Annual Only */}
                   <div className="bg-brand-navy/50 rounded-lg p-4 border border-primary/30">
-                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                    <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-4xl font-bold text-slate-100">£995</span>
                       <span className="text-lg text-slate-400">/</span>
                       <span className="text-4xl font-bold text-slate-100">$1,295</span>
-                      <span className="text-sm text-slate-400">per year</span>
-                    </div>
-                    <div className="mt-3 inline-flex items-center text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                      Founding Member Pricing
+                      <span className="text-sm text-slate-400">per person per year</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <ul className="space-y-3">
-                    {[
-                      "All 7 intelligence pillars — 60+ question-level datasets, not just headline statistics",
-                      "Year-on-Year trends across every metric",
-                      "Benchmarking filters by region, industry, company size & assignee population size (long & short-term)",
-                      "Branded PDF export — board-ready benchmarks",
-                      "Full Premium dashboard, continuously updated",
-                      "Full report library — including members-only reports",
-                    ].map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
-                        <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Paid-only extras beyond the trial */}
-                  <div className="mt-5 pt-5 border-t border-primary/20">
-                    <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-3">Additional benefits:</p>
-                    <ul className="space-y-3">
-                      {[
-                        "Custom benchmarking requests — bespoke peer cuts on demand",
-                        "Live, not frozen — new data waves & members-only reports all year",
-                        "Annual analyst benchmarking briefing — a yearly 1:1 on your segment",
-                      ].map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-100">
-                          <Star className="h-4 w-4 text-primary fill-current shrink-0 mt-0.5" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <p className="text-xs font-medium text-primary mb-6">Access duration: continuous while subscribed</p>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    "Everything in 30-Day Premium Access, permanent",
+                    "New data waves and members-only reports all year: live, not frozen",
+                    "Custom benchmarking requests: bespoke peer cuts on demand",
+                    "Annual analyst benchmarking briefing: a yearly 1:1 on your segment",
+                    "Branded PDF exports: board-ready benchmarks",
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-100">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
                 <a
                   href="#whats-the-difference"
+                  onClick={() => setCompareOpen(true)}
                   className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mb-6"
                 >
                   See full comparison
@@ -370,18 +428,18 @@ export default function PricingPage() {
                     </p>
                   )}
 
-                  {/* Scarcity Statement */}
                   <p className="text-xs text-center text-slate-400 mt-4 italic leading-relaxed">
-                    Founding Member pricing is available for a limited time and will increase as additional intelligence datasets, benchmarking studies and premium reports are released.
+                    Current pricing will increase as additional intelligence datasets, benchmarking studies and
+                    premium reports are released.
                   </p>
                 </div>
               </div>
 
-              {/* Card: CBIQ Advisory - contact-only, corporate advisory upsell above Premium */}
-              <div id="cbiq-advisory" className="flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
+              {/* Card 3: CBIQ Advisory, contact-only */}
+              <div id="cbiq-advisory" className="order-3 md:order-none flex flex-col rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 relative shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.2)] scroll-mt-24">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="inline-flex items-center text-xs font-medium bg-[#1a3344] text-slate-300 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">
-                    Founding Cohort
+                    Limited availability
                   </span>
                 </div>
                 <div className="mb-6 pt-3">
@@ -398,22 +456,22 @@ export default function PricingPage() {
                 </div>
                 <ul className="space-y-3 mb-6">
                   {[
-                    "Everything in Premium, for your whole team - up to 5 seats",
+                    "Everything in Global Workforce Intelligence, for up to 5 team seats",
                     "A dedicated, named CBIQ analyst across the year",
                     "Quarterly benchmark reviews - four 60-minute sessions on your position against peers: what moved, and what it means",
                     "Two exclusive 90-minute virtual team sessions per year - private to your organization, on the topics you choose, built on the CBIQ data behind them",
                     "Your annual benchmark briefing - a written, board-ready report of your segment's signature findings, every figure stated with its base",
                     "Analyst access between sessions - benchmark-interpretation questions answered within two business days",
-                  ].map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-300">
                       <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs font-medium text-primary mb-2">Founding cohort limited to 10 organizations.</p>
+                <p className="text-xs font-medium text-primary mb-2">Limited to 10 organizations.</p>
                 <p className="text-xs text-slate-500 mb-6 text-pretty">
-                    {"Benchmark interpretation only - not implementation consulting or vendor selection. Billed annually."}
+                  {"Benchmark interpretation only - not implementation consulting or vendor selection. Billed annually."}
                 </p>
                 <div className="mt-auto">
                   <Button className="w-full bg-primary hover:bg-primary/90" asChild>
@@ -423,88 +481,111 @@ export default function PricingPage() {
               </div>
             </div>
 
-            {/* What's The Difference? Comparison Table */}
-            <div id="whats-the-difference" className="max-w-3xl mx-auto mt-20 scroll-mt-24">
-              <h3 className="text-xl font-semibold text-slate-100 mb-2 text-center">What&apos;s The Difference?</h3>
+            {/* Plan comparison matrix, collapsed by default. "See full comparison" links open it. */}
+            <section
+              id="whats-the-difference"
+              aria-labelledby="compare-heading"
+              className="max-w-4xl mx-auto mt-20 scroll-mt-24"
+            >
+              <h3 id="compare-heading" className="text-xl font-semibold text-slate-100 mb-2 text-center">
+                Compare plans
+              </h3>
               <p className="text-sm text-slate-400 mb-6 text-center text-pretty">
-                Same core intelligence: see exactly what each access provides
+                Every feature listed once, with what sets each plan apart at the bottom.
               </p>
-              {/* Relative wrapper so the mobile scroll-fade can sit outside the
-                  horizontally scrolling region (and therefore stay put while scrolling). */}
-              <div className="relative">
-                <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-                  <table className="w-full min-w-[520px]">
-                  <thead>
-                    <tr className="border-b border-primary/20">
-                      <th className="text-left p-4 text-sm font-medium text-slate-100">Feature</th>
-                      <th className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
-                        Premium — 14 Days Free
-                      </th>
-                      <th className="text-center p-4 text-sm font-medium text-primary whitespace-nowrap">
-                        Premium — £995 / $1,295 / yr
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary/10">
-                    {/* Shared features: tick in both columns */}
-                    {[
-                      "All 7 intelligence pillars (60+ datasets)",
-                      "Year-on-Year trends",
-                      "Benchmarking filters (region, industry, company size, assignee population)",
-                      "Branded PDF export",
-                      "Full Premium dashboard",
-                      "Full report library",
-                    ].map((feature, i) => (
-                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
-                        <td className="p-4 text-sm text-slate-300">{feature}</td>
-                        <td className="p-4 text-center">
-                          <Check className="h-5 w-5 text-primary mx-auto" />
-                        </td>
-                        <td className="p-4 text-center">
-                          <Check className="h-5 w-5 text-primary mx-auto" />
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Paid-only features: muted dash for trial, teal tick for paid, highlight band */}
-                    {[
-                      "Custom benchmarking requests",
-                      "Live data — new waves & reports all year",
-                      "Annual analyst benchmarking briefing",
-                    ].map((feature, i) => (
-                      <tr key={i} className="bg-primary/[0.07] hover:bg-primary/10 transition-colors">
-                        <td className="p-4 text-sm font-medium text-primary">{feature}</td>
-                        <td className="p-4 text-center text-slate-600" aria-label="Not included">
-                          —
-                        </td>
-                        <td className="p-4 text-center">
-                          <Check className="h-5 w-5 text-primary mx-auto" />
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Text rows (not ticks) */}
-                    {[
-                      { label: "Access duration", trial: "14 days", paid: "Continuous while subscribed" },
-                      { label: "Availability", trial: "Once every 12 months", paid: "Ongoing" },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-brand-navy/40 transition-colors">
-                        <td className="p-4 text-sm text-slate-300">{row.label}</td>
-                        <td className="p-4 text-center text-xs text-slate-400 font-medium">{row.trial}</td>
-                        <td className="p-4 text-center text-xs text-primary font-medium">{row.paid}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-                {/* Mobile-only scroll affordance: a subtle right-edge fade making it
-                    obvious the table scrolls horizontally to reveal the £995/yr column.
-                    Non-interactive so it never blocks touch/scroll; hidden on md+. */}
-                <div
-                  aria-hidden="true"
-                  className="md:hidden pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-2xl bg-gradient-to-l from-brand-navy-3 to-transparent"
-                />
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  aria-expanded={compareOpen}
+                  aria-controls="compare-plans-table"
+                  onClick={() => setCompareOpen((open) => !open)}
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-brand-navy-2/60 px-5 py-2.5 text-sm font-medium text-slate-100 transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Compare plans in detail
+                  <ChevronDown
+                    className={`h-4 w-4 text-primary transition-transform motion-reduce:transition-none ${compareOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
-              <p className="md:hidden mt-2 text-center text-xs text-slate-500">Swipe to compare both columns →</p>
-            </div>
+
+              <div id="compare-plans-table" hidden={!compareOpen} className="mt-6">
+                {/* Relative wrapper so the mobile scroll-fade stays put while the table scrolls. */}
+                <div className="relative">
+                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 overflow-x-auto shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
+                    <table className="w-full min-w-[640px]">
+                      <caption className="sr-only">Feature comparison of 30-Day Access, Member and Advisory plans</caption>
+                      <thead>
+                        <tr className="border-b border-primary/20">
+                          <th scope="col" className="text-left p-4 text-sm font-medium text-slate-100">
+                            Feature
+                          </th>
+                          <th scope="col" className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
+                            30-Day Access
+                          </th>
+                          <th scope="col" className="text-center p-4 text-sm font-semibold text-primary whitespace-nowrap">
+                            Member
+                          </th>
+                          <th scope="col" className="text-center p-4 text-sm font-medium text-slate-100 whitespace-nowrap">
+                            Advisory
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-primary/10">
+                        {COMPARE_ROWS.map((row) => (
+                          <tr
+                            key={row.label}
+                            className={
+                              row.shared
+                                ? "hover:bg-brand-navy/40 transition-colors"
+                                : "bg-primary/[0.07] hover:bg-primary/10 transition-colors"
+                            }
+                          >
+                            <th
+                              scope="row"
+                              className={`p-4 text-left text-sm font-normal ${row.shared ? "text-slate-300" : "text-slate-100"}`}
+                            >
+                              {row.label}
+                            </th>
+                            <CompareCell value={row.access} />
+                            <CompareCell value={row.member} highlight />
+                            <CompareCell value={row.advisory} />
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div
+                    aria-hidden="true"
+                    className="md:hidden pointer-events-none absolute inset-y-0 right-0 w-12 rounded-r-2xl bg-gradient-to-l from-brand-navy-3 to-transparent"
+                  />
+                </div>
+                <p className="md:hidden mt-2 text-center text-xs text-slate-500">Swipe to compare all three plans →</p>
+              </div>
+            </section>
+
+            {/* Pricing FAQ */}
+            <section aria-labelledby="pricing-faq-heading" className="max-w-3xl mx-auto mt-16">
+              <h3 id="pricing-faq-heading" className="text-xl font-semibold text-slate-100 mb-6 text-center">
+                Questions about plans
+              </h3>
+              <Accordion
+                type="single"
+                collapsible
+                className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 px-6"
+              >
+                {PRICING_FAQS.map((faq, i) => (
+                  <AccordionItem key={faq.question} value={`faq-${i}`} className="border-primary/10">
+                    <AccordionTrigger className="text-left text-sm font-medium text-slate-100 hover:no-underline">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm text-slate-300 leading-relaxed text-pretty">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </section>
           </div>
         )}
 

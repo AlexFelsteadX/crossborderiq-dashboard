@@ -131,7 +131,7 @@ export default async function WorkforceIntelligencePage() {
               href="https://www.cbiq.ai/survey"
               className="group mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
-              Complete the survey to unlock 14 days of Premium free
+              Complete the survey to earn 30-Day Premium Access
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </div>
@@ -186,7 +186,7 @@ export default async function WorkforceIntelligencePage() {
             href="#access-full-research"
             className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
           >
-            Complete the survey to unlock 14 days of Premium free
+            Complete the survey to earn 30-Day Premium Access
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </a>
         </section>
@@ -240,7 +240,7 @@ export default async function WorkforceIntelligencePage() {
               <h3 className="text-lg font-semibold text-foreground">Complete the survey</h3>
             </div>
             <p className="text-sm text-slate-300 mb-6">
-              Complete the survey to unlock 14 days of full Premium access.
+              Complete the survey to earn 30-Day Premium Access, free.
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">

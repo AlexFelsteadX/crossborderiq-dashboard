@@ -616,16 +616,16 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 {
-                  title: "Premium — 14 Days Free",
+                  title: "30-Day Premium Access",
                   price: "Free",
-                  description: "Complete the Global Workforce Deployment Survey and unlock 14 days of full Premium access.",
+                  description: "Earned by contributing: complete the Global Workforce Deployment Survey, or register for any GME event, for 30 days of full Premium access.",
                   features: [
                     "All 7 intelligence pillars (60+ datasets)",
                     "Year-on-Year trends across every metric",
                     "Benchmarking filters by region, industry & company size",
                     "Full Premium dashboard + report library",
                   ],
-                  note: "14 days, once every 12 months.",
+                  note: "Survey once every 12 months; every GME event earns a fresh 30 days.",
                   cta: "Contribute to the Survey",
                   href: "/contributor-dashboard",
                   highlight: false
@@ -636,7 +636,7 @@ export default async function HomePage() {
                   priceNote: "Founding Member",
                   description: "The full Premium dashboard, continuously, plus members-only benefits.",
                   features: [
-                    "Everything in the 14-day trial, continuously",
+                    "Everything in 30-Day Premium Access, permanent",
                     "Custom benchmarking requests",
                     "Live, not frozen: new data waves all year",
                     "Annual analyst benchmarking briefing",
