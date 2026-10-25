@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { premiumOptionClass } from "@/components/dashboard/premium-ui"
 
 const INDUSTRY_OPTIONS = [
   "Construction & Engineering",
@@ -198,11 +199,7 @@ export function BenchmarkStepper({
                   type="button"
                   onClick={() => choose(option)}
                   aria-pressed={active}
-                  className={`w-full text-left rounded-lg border px-4 py-3 text-sm transition-colors ${
-                    active
-                      ? "border-primary bg-primary/15 text-slate-100"
-                      : "border-slate-700/60 bg-brand-navy/40 text-slate-200 hover:border-primary/50"
-                  }`}
+                  className={premiumOptionClass(active)}
                 >
                   {option}
                 </button>

@@ -9,6 +9,9 @@ export type PremiumExplainerId =
   | "yoyTrends"
   | "themeOverview"
   | "breakdownSummary"
+  | "communityAsk"
+  | "communityFeed"
+  | "communityArchive"
 
 export interface PremiumExplainer {
   title: string
@@ -47,5 +50,17 @@ export const PREMIUM_EXPLAINERS: Record<PremiumExplainerId, PremiumExplainer> = 
   breakdownSummary: {
     title: "How this verdict is formed",
     body: "This line compares your segment with the market only on questions where a higher figure clearly means more (adoption, capability, support), and only mentions gaps of 10 points or more. Smaller differences are visible on the cards themselves.",
+  },
+  communityAsk: {
+    title: "Your question, live in seconds",
+    body: "Post the question you would ask a room of mobility leaders, with your own answer options. It goes live to members instantly and runs for 30 days. You are credited only as ‘a member’, with your industry. One live question per member at a time.",
+  },
+  communityFeed: {
+    title: "Who’s answering",
+    body: "Each card is a question asked by a verified corporate member. Answer with one tap to see the live results. Results unlock once 10 leaders have answered, and nobody’s answer is ever identified. Vendor accounts cannot see or answer anything here.",
+  },
+  communityArchive: {
+    title: "What happened to closed questions",
+    body: "Questions close 30 days after posting and their final results live here. Each month the strongest member question is also put to the whole benchmark at event registration, reaching hundreds of leaders.",
   },
 }
