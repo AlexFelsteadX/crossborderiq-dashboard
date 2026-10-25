@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { CircularGauge } from "@/components/dashboard-ui"
 import { MMI_BANDS, mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { BenchmarkStepper } from "./benchmark-stepper"
@@ -28,25 +27,35 @@ export interface MySummary {
 
 type ComponentKey = "strategy" | "alignment" | "future" | "techai"
 
-const COMPONENTS: { key: ComponentKey; label: string }[] = [
-  { key: "strategy", label: "Defined strategy" },
-  { key: "alignment", label: "Aligned to business" },
-  { key: "future", label: "Future readiness" },
-  { key: "techai", label: "Technology & AI" },
+const COMPONENTS: { key: ComponentKey; label: string; explainer: string }[] = [
+  {
+    key: "strategy",
+    label: "Defined strategy",
+    explainer: "Full points when you rate ‘we have a defined Global Mobility strategy’ 6 or 7 out of 7.",
+  },
+  {
+    key: "alignment",
+    label: "Aligned to business",
+    explainer: "Full points when you rate alignment to the broader organization 6 or 7 out of 7.",
+  },
+  {
+    key: "future",
+    label: "Future readiness",
+    explainer: "Full points when you rate ‘scope and complexity will grow’ 6 or 7 out of 7.",
+  },
+  {
+    key: "techai",
+    label: "Technology & AI",
+    explainer: "Half for running AI in production or piloting; half for a dedicated or partial technology platform.",
+  },
 ]
+
+const POINTS_PER_COMPONENT = 25
 
 const round = (n: number | null | undefined) => (n == null ? null : Math.round(n))
 const show = (n: number | null | undefined) => (n == null ? "—" : String(Math.round(n)))
-
-function youLabel(key: ComponentKey, value: number | null): string {
-  if (value == null) return "Not yet"
-  if (key === "techai") {
-    if (value >= 100) return "Full"
-    if (value >= 50) return "Partial"
-    return "Not yet"
-  }
-  return value >= 100 ? "Yes" : "Not yet"
-}
+// Each component is a quarter of the 0–100 total, so its 0–100 score maps to 0–25 points.
+const toPoints = (n: number | null | undefined) => (n == null ? null : Math.round(n / 4))
 
 function useCountUp(target: number | null, enabled: boolean, durationMs = 1000) {
   const [current, setCurrent] = useState<number | null>(enabled ? 0 : target)
@@ -257,11 +266,11 @@ function ComponentTiles({ s }: { s: MySummary }) {
   const peerLabel = s.peer_label ?? "Your peer group"
   const hasMine = s.has_data && s.my_score != null
 
-  const rows = COMPONENTS.map(({ key, label }) => {
+  const rows = COMPONENTS.map(({ key, label, explainer }) => {
     const peer = s[`peer_${key}` as const]
     const mine = s[`my_${key}` as const]
     const gap = hasMine && peer != null && mine != null ? peer - mine : null
-    return { key, label, peer, mine, gap }
+    return { key, label, explainer, peer, mine, gap }
   })
 
   const maxGap = rows.reduce((m, r) => (r.gap != null && r.gap > m ? r.gap : m), 0)
@@ -272,9 +281,13 @@ function ComponentTiles({ s }: { s: MySummary }) {
       <h2 id="your-score-components" className="text-xl font-bold text-slate-100 mb-4 pb-3 border-b border-slate-700/60">
         Score components
       </h2>
+      <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {rows.map((r) => {
           const amber = r.key === amberKey
+          const myPoints = toPoints(r.mine) ?? 0
+          const peerPoints = toPoints(r.peer)
+          const full = myPoints >= POINTS_PER_COMPONENT
           return (
             <div
               key={r.key}
@@ -282,11 +295,34 @@ function ComponentTiles({ s }: { s: MySummary }) {
                 amber ? "border-amber-400/60 bg-amber-400/10" : "border-slate-700/50 bg-brand-navy-2/60"
               }`}
             >
-              <h3 className="text-sm font-semibold text-slate-100">{r.label}</h3>
-              <CircularGauge value={r.peer ?? 0} size={96} stroke={8} label={show(r.peer)} sublabel="peer avg" />
-              <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">{peerLabel}</p>
-              <p className={`text-sm font-semibold ${amber ? "text-amber-300" : "text-slate-200"}`}>
-                {hasMine ? `You: ${youLabel(r.key, r.mine)}` : "You: not on file yet"}
+              {amber && (
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+                  Your biggest points opportunity
+                </span>
+              )}
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-slate-100">{r.label}</h3>
+                <p className="text-xs text-slate-400 leading-snug text-pretty">{r.explainer}</p>
+              </div>
+              {hasMine ? (
+                <span
+                  className={`inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full border ${
+                    full
+                      ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/30"
+                      : "text-amber-300 bg-amber-400/10 border-amber-400/30"
+                  }`}
+                >
+                  {full
+                    ? `You: ${POINTS_PER_COMPONENT} of ${POINTS_PER_COMPONENT} points`
+                    : myPoints === 0
+                      ? `You: 0 of ${POINTS_PER_COMPONENT} — points available here`
+                      : `You: ${myPoints} of ${POINTS_PER_COMPONENT}`}
+                </span>
+              ) : (
+                <p className="text-sm font-semibold text-slate-200">You: not on file yet</p>
+              )}
+              <p className="text-sm text-slate-300">
+                {`Peers average ${peerPoints ?? "—"} of ${POINTS_PER_COMPONENT} here.`}
               </p>
             </div>
           )
