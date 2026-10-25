@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { signupForCheckoutPath } from "@/lib/checkout-intent"
 
 // Reuses the EXACT Premium checkout mechanism from the pricing page
 // (app/pricing/page.tsx handlePrimaryCta("premium")):
@@ -61,7 +62,7 @@ export function PremiumUpgradeButton() {
 
   const handleClick = () => {
     if (!user) {
-      window.location.href = "/login?mode=signup&intent=checkout&tier=premium"
+      window.location.href = signupForCheckoutPath("premium")
       return
     }
     const userTier = tier ?? "free"
