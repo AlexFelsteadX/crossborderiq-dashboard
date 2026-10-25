@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   TrendingUp,
+  Lock,
   TrendingDown,
   Minus,
   Filter,
@@ -27,11 +28,13 @@ import { CircularGauge, formatPct } from "@/components/dashboard-ui"
 import { mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { THEME_ORDER, themeForPillar, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
 import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
-import { FLAGSHIP_STATS } from "@/lib/flagship-stats"
+import { FLAGSHIP_STATS, publicFlagshipParts, type PublicFlagshipStat } from "@/lib/flagship-stats"
+import Link from "next/link"
 import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
+import { LockedPanel } from "@/components/dashboard/locked-panel"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
 import { CommunityPanel, type PulseBoard } from "./community-panel"
@@ -1214,7 +1217,10 @@ function matchOption(options: string[], value: string | null | undefined): strin
   return options.find((o) => norm(o) === norm(value)) ?? null
 }
 
-export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } = {}) {
+export function PremiumDashboardClient({
+  isFreeTier,
+  flagshipStats = {},
+}: { isFreeTier?: boolean; flagshipStats?: Record<string, PublicFlagshipStat> } = {}) {
   const supabase = useMemo(() => createClient(), [])
   const { tier } = useAuth()
 
@@ -1293,7 +1299,7 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
       size: matchOption(SIZE_OPTIONS, seg?.size_band),
     }
     const untouched = filters.industry === null && filters.region === null && filters.size === null
-    if (untouched && (own.industry || own.region || own.size)) {
+    if (!isFree && untouched && (own.industry || own.region || own.size)) {
       setOwnSegment(own)
       setFilters((prev) => ({ ...prev, ...own }))
     }
@@ -1357,7 +1363,9 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
         supabase.rpc("get_premium_segment_size", segmentParams),
         supabase.rpc("get_premium_mmi", segmentParams),
         supabase.rpc("get_premium_pillars", segmentParams),
-        supabase.rpc("get_premium_breakdown", segmentParams),
+        isFree
+          ? Promise.resolve({ data: [] as BreakdownRow[], error: null })
+          : supabase.rpc("get_premium_breakdown", segmentParams),
       ])
       if (cancelled) return
 
@@ -1377,7 +1385,7 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
     return () => {
       cancelled = true
     }
-  }, [supabase, segmentParams])
+  }, [supabase, segmentParams, isFree])
 
   // Trends respond ONLY to industry / region / size.
   useEffect(() => {
@@ -1757,16 +1765,26 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
               <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
               <PremiumInfo id="filtersBar" />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {isFree && (
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-600/60 bg-slate-800/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/40 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                >
+                  <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  Filters are part of Premium
+                </Link>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setFiltersOpen((o) => !o)}
-                aria-expanded={filtersOpen}
+                aria-expanded={isFree ? false : filtersOpen}
+                disabled={isFree}
                 className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
               >
-                {filtersOpen ? "Hide filters" : "Compare my segment"}
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+                {filtersOpen && !isFree ? "Hide filters" : "Compare my segment"}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen && !isFree ? "rotate-180" : ""}`} />
               </Button>
               <span className="text-sm text-slate-300 inline-flex items-center gap-2">
                 {loadingMain ? (
@@ -1800,6 +1818,7 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
                   if (filters.traveller) params.set("traveller", filters.traveller)
                   window.open(`/premium-report?${params.toString()}`, "_blank", "noopener,noreferrer")
                 }}
+                disabled={isFree}
                 className="gap-2 bg-primary text-brand-navy hover:bg-primary/90"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -1822,7 +1841,7 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
             </p>
           )}
 
-          {filtersOpen && (
+          {filtersOpen && !isFree && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <FilterSelect
               label="Industry"
@@ -2125,40 +2144,66 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
                   ["segment", "My segment"],
                 ] as const
               ).map(([value, label]) => {
-                const active = trendScope === value
+                const active = (isFree ? "market" : trendScope) === value
+                const lockedOption = isFree && value === "segment"
                 return (
                   <button
                     key={value}
                     type="button"
                     role="radio"
                     aria-checked={active}
+                    disabled={isFree}
                     onClick={() => setTrendScope(value)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
                       active
-                        ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
-                        : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                        ? `bg-primary text-brand-navy ${isFree ? "opacity-70" : "shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"}`
+                        : isFree
+                          ? "text-slate-500"
+                          : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
                     }`}
                   >
                     {label}
+                    {lockedOption && (
+                      <>
+                        <Lock className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">(locked)</span>
+                      </>
+                    )}
                   </button>
                 )
               })}
             </div>
             <p className="text-xs text-slate-500">
-              {trendScope === "market"
+              {isFree || trendScope === "market"
                 ? "Showing the whole market; dashboard filters are not applied."
                 : "Trends reflect Industry, Region and Company size filters only."}
             </p>
           </div>
 
           {(() => {
-            const isMarket = trendScope === "market"
+            const isMarket = isFree || trendScope === "market"
             const rows = isMarket ? yoyMarket : yoy
             const loading = isMarket ? loadingYoYMarket : loadingYoY
             if (rows.length === 0) {
               return (
                 <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
                   {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
+                </div>
+              )
+            }
+            if (isFree) {
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {yoyMarket.slice(0, 2).map((row, idx) => (
+                    <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
+                  ))}
+                  {yoyMarket.length > 2 && (
+                    <LockedPanel
+                      title="Every year-on-year trend"
+                      description="Year-on-year movement across every benchmark metric, cut to your industry, region, and size."
+                      className="col-span-full mb-0!"
+                    />
+                  )}
                 </div>
               )
             }
@@ -2199,9 +2244,16 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
             {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           {(() => {
-            const nonEmpty = sections.filter((s) => s.questions.length > 0)
+            // Free tier holds no breakdown rows; its cards are driven by the themes
+            // that have a public headline figure.
+            const nonEmpty = isFree
+              ? THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => ({
+                  sectionName: theme,
+                  questions: [] as GroupedQuestion[],
+                }))
+              : sections.filter((s) => s.questions.length > 0)
 
-            if (!loadingMain && nonEmpty.length === 0) {
+            if (!isFree && !loadingMain && nonEmpty.length === 0) {
               return (
                 <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
                   No breakdown data for this selection.
@@ -2251,11 +2303,19 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
                             <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
                             {sectionName === NEW_SECTION_NAME && <NewPill />}
                           </div>
-                          <p className="text-sm text-slate-400">
-                            {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
-                          </p>
+                          {!isFree && (
+                            <p className="text-sm text-slate-400">
+                              {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
+                            </p>
+                          )}
                           {(() => {
-                            const stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
+                            let stat: string | null
+                            if (isFree) {
+                              const parts = publicFlagshipParts(flagshipStats[sectionName])
+                              stat = parts ? `${parts.pct}% ${parts.phrase}` : null
+                            } else {
+                              stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
+                            }
                             return stat ? (
                               <p className="text-xs text-slate-400 leading-relaxed text-pretty">{stat}</p>
                             ) : null
@@ -2317,7 +2377,12 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
                     })}
                   </div>
                 </div>
-                {focused ? (
+                {isFree ? (
+                  <LockedPanel
+                    title="Question-level benchmarks"
+                    description="All 60+ question-level datasets behind this theme, filterable by region, industry, company size, and assignee population."
+                  />
+                ) : focused ? (
                   <BreakdownSection questions={focused.questions} isFiltered={isFiltered} />
                 ) : (
                   <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
