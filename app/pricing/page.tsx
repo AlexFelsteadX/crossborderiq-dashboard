@@ -287,7 +287,7 @@ export default function PricingPage() {
             <div className="max-w-3xl mx-auto mb-12">
               <div className="rounded-2xl border border-primary/40 bg-gradient-to-b from-[#10384a] to-[#0c2230] p-8 text-center shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.45)]">
                 <p className="text-2xl sm:text-3xl font-bold text-slate-100 mb-4">Strategic intelligence, made accessible</p>
-                <p className="text-sm text-slate-300">CBIQ Founding Membership puts executive-grade strategic workforce intelligence within reach of every Global Mobility team, not just the largest enterprises.</p>
+                <p className="text-sm text-slate-300">CBIQ Membership puts executive-grade strategic workforce intelligence within reach of every Global Mobility team, not just the largest enterprises.</p>
               </div>
             </div>
 
