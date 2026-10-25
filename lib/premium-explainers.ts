@@ -1,3 +1,5 @@
+import { bandScaleLabel } from "@/lib/scoring"
+
 export type PremiumExplainerId =
   | "filtersBar"
   | "gapsPanel"
@@ -28,7 +30,7 @@ export const PREMIUM_EXPLAINERS: Record<PremiumExplainerId, PremiumExplainer> = 
   },
   mmiBlock: {
     title: "How the score works",
-    body: "The Mobility Maturity Index scores every organization 0 to 100 from four things leaders told us directly: whether a Global Mobility strategy is defined, whether it is aligned to the business, whether scope is expected to grow, and technology and AI adoption. Your segment's score is the average across its organizations. It is the single number to take to your leadership: 'we score X, organizations like us score Y, the market scores Z' is a budget conversation starter, not a chart.",
+    body: `The Mobility Maturity Index scores every organization 0 to 100 from four things leaders told us directly: whether a Global Mobility strategy is defined, whether it is aligned to the business, whether scope is expected to grow, and technology and AI adoption. Your segment's score is the average across its organizations. It is the single number to take to your leadership: 'we score X, organizations like us score Y, the market scores Z' is a budget conversation starter, not a chart. ${bandScaleLabel}.`,
   },
   pillarSnapshot: {
     title: "What the tiles measure",
