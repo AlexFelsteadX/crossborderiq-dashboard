@@ -203,7 +203,7 @@ function HeroCard({
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
           <ScoreRing key="reference" value={ringValue} label={ringLabel} />
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-xl font-bold text-slate-100 mb-2">Your Score</h2>
+            <h2 className="text-xl font-bold text-slate-100 mb-2">Your Program Score</h2>
             <p className="text-slate-400 max-w-xl mb-5">
               Complete the benchmark to unlock your gap analysis across every dimension.
             </p>
@@ -246,7 +246,7 @@ function HeroCard({
         </div>
         <div className="flex-1 min-w-0 w-full flex flex-col gap-5">
           <div className="flex items-center justify-center md:justify-start gap-2">
-            <h2 className="text-xl font-bold text-slate-100">Your Score</h2>
+            <h2 className="text-xl font-bold text-slate-100">Your Program Score</h2>
             <InfoExplainer label={PREMIUM_EXPLAINERS.mmiBlock.title}>{PREMIUM_EXPLAINERS.mmiBlock.body}</InfoExplainer>
           </div>
           <BandLadder score={myScore} animate={justScored} />
