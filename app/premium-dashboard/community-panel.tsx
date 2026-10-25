@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, type FormEvent, type ReactNode } from "react"
-import { Loader2, Plus, X } from "lucide-react"
+import Link from "next/link"
+import { Loader2, Lock, Plus, X } from "lucide-react"
 import type { KeyedMutator } from "swr"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
+import { UNLOCK_HREF } from "@/components/dashboard/locked-panel"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { PremiumBar, PremiumChip, premiumOptionClass } from "@/components/dashboard/premium-ui"
 import type { PremiumExplainerId } from "@/lib/premium-explainers"
@@ -35,6 +37,7 @@ export interface PulseBoard {
   live: PulseLive[] | null
   archive: PulseArchiveItem[] | null
   can_submit: boolean
+  tier?: "free" | "premium" | null
 }
 
 const HERO_CARD = "rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 shadow-sm"
@@ -129,6 +132,30 @@ function CommunitySection({
       </div>
       {children}
     </section>
+  )
+}
+
+const ASK_LOCKED =
+  "Asking the room is for members. Answer any question below free; to ask your own, attend a GME event, complete the survey, or become a member."
+
+function AskLocked() {
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border border-primary/30 bg-brand-navy-2/70 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="flex max-w-2xl items-start gap-2 text-sm leading-relaxed text-slate-300">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+        <span>
+          <span className="sr-only">Locked. </span>
+          {ASK_LOCKED}
+        </span>
+      </p>
+      <Link
+        href={UNLOCK_HREF}
+        className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:self-auto"
+      >
+        <Lock className="h-4 w-4" aria-hidden="true" />
+        Unlock full access
+      </Link>
+    </div>
   )
 }
 
@@ -589,7 +616,7 @@ export function CommunityPanel({
     <div className="flex flex-col gap-14">
       <CommunitySection id="pulse-ask-title" title="Ask your peers" info="communityAsk">
         <StepsBand />
-        <AskCard canSubmit={board.can_submit} onSubmit={submit} />
+        {board.tier === "free" ? <AskLocked /> : <AskCard canSubmit={board.can_submit} onSubmit={submit} />}
       </CommunitySection>
       <LiveFeed items={live} onAnswer={answer} />
       <Archive items={board.archive ?? []} />
