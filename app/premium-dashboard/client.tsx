@@ -34,7 +34,7 @@ import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
-import { LockedPanel } from "@/components/dashboard/locked-panel"
+import { LockedPanel, UNLOCK_HREF, UNLOCK_LINE } from "@/components/dashboard/locked-panel"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
 import { CommunityPanel, type PulseBoard } from "./community-panel"
@@ -1225,6 +1225,7 @@ export function PremiumDashboardClient({
   const { tier } = useAuth()
 
   const [activeTab, setActiveTab] = useState<DashboardTab>("score")
+  const [freeUnlockOpen, setFreeUnlockOpen] = useState<string | null>(null)
   const {
     data: mySummary,
     error: mySummaryError,
@@ -2251,36 +2252,82 @@ export function PremiumDashboardClient({
             // Free tier never fetches breakdown rows: theme titles and public headline
             // figures stay visible as static cards, and the breakdowns area is locked.
             if (isFree) {
+              // Free users never fetch breakdowns, so no per-theme question count is
+              // available; the affordance falls back to "Locked" rather than a guess.
+              const freeRows = [
+                ...THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => {
+                  const parts = publicFlagshipParts(flagshipStats[theme])
+                  return {
+                    key: theme,
+                    title: themeLabel(theme),
+                    subtitle: parts ? `${parts.pct}% ${parts.phrase}` : null,
+                    Icon: FLAGSHIP_STATS[theme]?.icon,
+                    isNew: theme === NEW_SECTION_NAME,
+                  }
+                }),
+                {
+                  key: "__question-level-benchmarks",
+                  title: "Question-level benchmarks",
+                  subtitle:
+                    "All 60+ datasets, filterable by region, industry, company size, and assignee population.",
+                  Icon: undefined,
+                  isNew: false,
+                },
+              ]
               return (
-                <div>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
-                    {THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => {
-                      const Icon = FLAGSHIP_STATS[theme]?.icon
-                      const parts = publicFlagshipParts(flagshipStats[theme])
-                      return (
-                        <li
-                          key={theme}
-                          className="flex flex-col gap-2 rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5"
+                <ul className="divide-y divide-slate-700/50 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40">
+                  {freeRows.map(({ key, title, subtitle, Icon, isNew }) => {
+                    const open = freeUnlockOpen === key
+                    const stripId = `free-unlock-${key}`
+                    return (
+                      <li key={key}>
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-controls={stripId}
+                          onClick={() => setFreeUnlockOpen(open ? null : key)}
+                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
                         >
-                          <div className="flex flex-wrap items-center gap-2">
-                            {Icon && <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />}
-                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(theme)}</h3>
-                            {theme === NEW_SECTION_NAME && <NewPill />}
-                          </div>
-                          {parts && (
-                            <p className="text-xs text-slate-400 leading-relaxed text-pretty">
-                              {`${parts.pct}% ${parts.phrase}`}
-                            </p>
+                          {Icon ? (
+                            <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
+                          ) : (
+                            <Lock aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
                           )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  <LockedPanel
-                    title="Question-level benchmarks"
-                    description="All 60+ question-level datasets, filterable by region, industry, company size, and assignee population."
-                  />
-                </div>
+                          <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-base font-semibold text-slate-200 text-pretty">{title}</span>
+                              {isNew && <NewPill />}
+                            </span>
+                            {subtitle && (
+                              <span className="text-xs text-slate-400 leading-relaxed text-pretty">{subtitle}</span>
+                            )}
+                          </span>
+                          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400">
+                            <Lock aria-hidden="true" className="h-3.5 w-3.5" />
+                            Locked
+                            <ChevronDown
+                              aria-hidden="true"
+                              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+                            />
+                          </span>
+                        </button>
+                        {open && (
+                          <div
+                            id={stripId}
+                            className="flex flex-col gap-3 border-t border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <p className="max-w-2xl text-sm text-slate-300 leading-relaxed text-pretty">
+                              {`The question-by-question findings behind this number are part of Premium. ${UNLOCK_LINE}`}
+                            </p>
+                            <Button asChild size="sm" className="shrink-0">
+                              <Link href={UNLOCK_HREF}>Unlock full access</Link>
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
               )
             }
 
