@@ -38,7 +38,7 @@ export const PREMIUM_EXPLAINERS: Record<PremiumExplainerId, PremiumExplainer> = 
   },
   yoyTrends: {
     title: "How the trend is built",
-    body: "Each card compares the 2025 wave with the 2026 wave on the same question, in percentage points. These trends respect the industry, region, and size filters only; assignment-volume filters do not apply here. A fall is not automatically bad: read the direction against what the metric means. Both years' bases are shown because a trend is only as solid as its smaller year.",
+    body: "Each card compares the 2025 wave with the 2026 wave on the same question, in percentage points. These cards open with the whole market; use the control above them to cut the trend to your segment. A fall is not automatically bad: read the direction against what the metric means. Both years' bases are shown because a trend is only as solid as its smaller year.",
   },
   themeOverview: {
     title: "What's inside each topic",

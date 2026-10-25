@@ -1109,7 +1109,9 @@ function expandYoYLabel(label: string): string {
   return out
 }
 
-function YoYTrendCard({ row }: { row: YoYRow }) {
+const YOY_MIN_SEGMENT_BASE = 10
+
+function YoYTrendCard({ row, note }: { row: YoYRow; note?: string }) {
   const suppressed = row.confidence === "suppressed"
   const p2025 = suppressed ? row.ov_pct_2025 : row.pct_2025
   const p2026 = suppressed ? row.ov_pct_2026 : row.pct_2026
@@ -1176,7 +1178,8 @@ function YoYTrendCard({ row }: { row: YoYRow }) {
         </span>
         {row.confidence === "limited" && <LimitedChip base={row.base_2026} />}
       </div>
-      {suppressed && <FallbackNote className="mt-2" />}
+      {suppressed && !note && <FallbackNote className="mt-2" />}
+      {note && <p className="mt-2 text-[11px] leading-snug text-amber-300/90">{note}</p>}
     </div>
   )
 }
@@ -1289,6 +1292,9 @@ export function PremiumDashboardClient() {
   const [pillars, setPillars] = useState<PillarRow[]>([])
   const [breakdown, setBreakdown] = useState<BreakdownRow[]>([])
   const [yoy, setYoy] = useState<YoYRow[]>([])
+  const [yoyMarket, setYoyMarket] = useState<YoYRow[]>([])
+  const [loadingYoYMarket, setLoadingYoYMarket] = useState(true)
+  const [trendScope, setTrendScope] = useState<"market" | "segment">("market")
 
   const [loadingMain, setLoadingMain] = useState(true)
   const [loadingYoY, setLoadingYoY] = useState(true)
@@ -1375,6 +1381,27 @@ export function PremiumDashboardClient() {
       cancelled = true
     }
   }, [supabase, filters.industry, filters.region, filters.size])
+
+  // Market-wide trends (no filters): the Trends tab's default view and the small-base fallback.
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoadingYoYMarket(true)
+      const { data, error } = await supabase.rpc("get_premium_yoy", {
+        p_industry: null,
+        p_region: null,
+        p_size: null,
+      })
+      if (cancelled) return
+      if (error) setError(error.message)
+      setYoyMarket(((data as YoYRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
+      setLoadingYoYMarket(false)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
 
   // Group breakdown rows -> questions -> themed sections.
   // On the 2025 tab, only event-wave questions (q_code starting with "E") exist.
@@ -2061,23 +2088,82 @@ export function PremiumDashboardClient() {
             <TrendingUp className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
             <PremiumInfo id="yoyTrends" />
-            {loadingYoY && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {(trendScope === "market" ? loadingYoYMarket : loadingYoY) && (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            )}
           </div>
-          <p className="text-xs text-slate-500 mb-6">
-            Trends reflect Industry, Region and Company size filters only.
-          </p>
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div
+              role="radiogroup"
+              aria-label="Trend scope"
+              className="inline-flex rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
+            >
+              {(
+                [
+                  ["market", "Whole market"],
+                  ["segment", "My segment"],
+                ] as const
+              ).map(([value, label]) => {
+                const active = trendScope === value
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setTrendScope(value)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
+                        : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-slate-500">
+              {trendScope === "market"
+                ? "Showing the whole market; dashboard filters are not applied."
+                : "Trends reflect Industry, Region and Company size filters only."}
+            </p>
+          </div>
 
-          {yoy.length === 0 ? (
-            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-              {loadingYoY ? "Loading year-on-year trends…" : "No trend data for this selection."}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {yoy.map((row, idx) => (
-                <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
-              ))}
-            </div>
-          )}
+          {(() => {
+            const isMarket = trendScope === "market"
+            const rows = isMarket ? yoyMarket : yoy
+            const loading = isMarket ? loadingYoYMarket : loadingYoY
+            if (rows.length === 0) {
+              return (
+                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+                  {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
+                </div>
+              )
+            }
+            const marketByKey = new Map(yoyMarket.map((r) => [`${r.concept}|${r.metric_label}`, r]))
+            const smallBaseNote =
+              "Shown for the whole market \u2014 your segment is too small in the 2025 wave for a reliable trend."
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {rows.map((row, idx) => {
+                  const key = `${row.concept}-${idx}`
+                  const tooSmall =
+                    !isMarket &&
+                    (row.base_2025 < YOY_MIN_SEGMENT_BASE || row.base_2026 < YOY_MIN_SEGMENT_BASE)
+                  if (!tooSmall) return <YoYTrendCard key={key} row={row} />
+                  const marketRow = marketByKey.get(`${row.concept}|${row.metric_label}`) ?? {
+                    ...row,
+                    pct_2025: row.ov_pct_2025,
+                    pct_2026: row.ov_pct_2026,
+                    delta_pts: Math.round((row.ov_pct_2026 - row.ov_pct_2025) * 10) / 10,
+                    confidence: "robust" as Confidence,
+                  }
+                  return <YoYTrendCard key={key} row={marketRow} note={smallBaseNote} />
+                })}
+              </div>
+            )
+          })()}
         </div>
         )}
 
