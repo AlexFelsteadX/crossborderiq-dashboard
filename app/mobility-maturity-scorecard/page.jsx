@@ -800,14 +800,14 @@ function TrialCTA({ onUnlock }) {
         <div className="text-[20px] font-bold text-white tracking-tight mt-3">See the full picture</div>
         <div className="text-[13.5px] text-[#cdd8de] mt-2 leading-relaxed">
           You&apos;ve just seen four areas. The full benchmark covers all seven pillars, shows exactly
-          how you compare to your peers in depth, and unlocks <span className="font-semibold text-white">14 days of Premium access</span>.
-          It takes a few minutes — and it&apos;s <span className="font-semibold text-white">completely free</span>.
+          how you compare to your peers in depth, and earns you <span className="font-semibold text-white">30-Day Premium Access</span>.
+          It takes a few minutes, and it&apos;s <span className="font-semibold text-white">completely free</span>.
         </div>
         <ul className="mt-3.5 space-y-1.5">
           {[
             "Your full seven-pillar maturity profile",
             "In-depth peer comparison and year-on-year trends",
-            "14-day Premium trial — free, no card required",
+            "30-Day Premium Access, earned by contributing. No card required",
           ].map((item) => (
             <li key={item} className="flex items-start gap-2 text-[13px] text-[#cdd8de]">
               <Check size={15} className="mt-0.5 shrink-0 text-brand-teal" />
@@ -819,7 +819,7 @@ function TrialCTA({ onUnlock }) {
           href="https://www.cbiq.ai/survey"
           className="mt-5 w-full h-[50px] px-5 rounded-lg font-bold text-[15px] inline-flex items-center justify-center gap-1.5 bg-brand-teal text-white transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]"
         >
-          See your full benchmark + 14-day trial <ArrowRight size={16} />
+          See your full benchmark + 30-Day Premium Access <ArrowRight size={16} />
         </a>
       </div>
     )
@@ -828,7 +828,7 @@ function TrialCTA({ onUnlock }) {
     <div className="bg-brand-navy border border-border rounded-2xl px-5 py-5.5">
       <div className="text-[17px] font-bold text-white tracking-tight">Unlock your full report</div>
       <div className="text-[13px] text-[#b8c4cb] mt-1.5 leading-relaxed">
-        Your complete breakdown, your peer cohort in depth, year-on-year trends, and a 14-day Premium trial. Free when you complete the benchmark.
+        Your complete breakdown, your peer cohort in depth, year-on-year trends, and 30-Day Premium Access. Earned free when you complete the benchmark.
       </div>
       <div className="flex gap-2 mt-4 flex-wrap">
         <input

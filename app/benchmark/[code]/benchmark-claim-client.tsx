@@ -142,7 +142,7 @@ export function BenchmarkClaimClient({
                   See how your Global Mobility program compares.
                 </h1>
                 <p className="text-sm text-slate-400 text-pretty">
-                  Complete a short benchmark and unlock 14 days of CBIQ Premium, free.
+                  Complete a short benchmark and earn 30-Day Premium Access, free.
                 </p>
               </>
             ) : (
@@ -151,7 +151,7 @@ export function BenchmarkClaimClient({
                   Thanks for completing the benchmark.
                 </h1>
                 <p className="text-sm text-slate-400 text-pretty">
-                  Enter your email to unlock your 14 days of Premium.
+                  Enter your email to unlock your 30-Day Premium Access.
                 </p>
               </>
             )}
@@ -174,8 +174,8 @@ export function BenchmarkClaimClient({
                   <h2 className="text-sm font-semibold text-slate-100 mb-1">Almost there, check your inbox</h2>
                   <p className="text-sm text-slate-400 text-pretty">
                     We&apos;ve emailed a secure link to{" "}
-                    <span className="font-medium text-slate-200">{email.trim()}</span> to unlock your 14 days of
-                    Premium. Open it and you&apos;re in, it takes about 10 seconds. The email is from CBIQ
+                    <span className="font-medium text-slate-200">{email.trim()}</span> to unlock your 30-Day
+                    Premium Access. Open it and you&apos;re in, it takes about 10 seconds. The email is from CBIQ
                     (crossborderiq@gemevents.co); if it&apos;s not there in a minute, check spam.
                   </p>
                 </div>
@@ -245,7 +245,7 @@ export function BenchmarkClaimClient({
                 className="w-full bg-primary hover:bg-primary/90"
                 disabled={loading}
               >
-                {loading ? "Unlocking..." : "Unlock my 14 days of Premium"}
+                {loading ? "Unlocking..." : "Unlock my 30-Day Premium Access"}
               </Button>
             </div>
           )}

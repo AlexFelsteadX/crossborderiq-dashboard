@@ -27,10 +27,10 @@ function shell(o: { heading: string; body: string; ctaLabel: string; ctaUrl: str
 
 export function trialReminder10dEmail() {
   return {
-    subject: "10 days left of your CBIQ Premium trial",
+    subject: "10 days left of your 30-Day Premium Access",
     html: shell({
       heading: "You've still got full Premium access",
-      body: "Your 14-day Premium trial is in full swing, with 10 days to go. If you haven't dug in yet, now is the time: benchmark your program against peers in your industry, region, and company size, check your Mobility Maturity Index, and export your segment report whenever you need it.",
+      body: "Your 30-Day Premium Access is in full swing, with 10 days to go. If you haven't dug in yet, now is the time: benchmark your program against peers in your industry, region, and company size, check your Mobility Maturity Index, and export your segment report whenever you need it.",
       ctaLabel: "Open your Premium dashboard",
       ctaUrl: `${APP}/premium-dashboard`,
     }),
@@ -67,7 +67,7 @@ export function trialStragglerNudgeEmail() {
     subject: "Your CBIQ Premium is still waiting",
     html: shell({
       heading: "You haven't unlocked your Premium yet",
-      body: "You completed the benchmark, so your 14 days of CBIQ Premium is ready and waiting. It takes one click to unlock. Head to the sign-in page, enter your email, and we'll send you a fresh secure link, no password needed.",
+      body: "You completed the benchmark, so your 30-Day Premium Access is ready and waiting. It takes one click to unlock. Head to the sign-in page, enter your email, and we'll send you a fresh secure link, no password needed.",
       ctaLabel: "Unlock my Premium",
       ctaUrl: `${APP}/login`,
     }),

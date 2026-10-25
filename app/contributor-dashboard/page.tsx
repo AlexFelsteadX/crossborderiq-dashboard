@@ -33,7 +33,7 @@ export default async function ContributorDashboardPage() {
   return (
     <TierLockedScreen
       heading="Unlock your Premium dashboard"
-      message="Complete the Global Workforce Deployment survey to unlock 14 days of free access to the full Premium dashboard — every breakdown across all seven intelligence pillars, plus year-on-year trends and peer-segment comparisons."
+      message="Complete the Global Workforce Deployment survey to earn 30-Day Premium Access to the full Premium dashboard: every breakdown across all seven intelligence pillars, plus year-on-year trends and peer-segment comparisons."
       buttonText="Complete the survey"
       buttonHref={typeformUrl}
       buttonNewTab

@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const hasManualGrant = isPremiumTier && membership.stripe_subscription_id == null
     const hasPremiumOrHigher = hasActivePaidAccess || hasManualGrant
 
-    // Eligibility for a new 14-day grant: only when NOT already premium-or-higher,
+    // Eligibility for a new 30-day grant: only when NOT already premium-or-higher,
     // and capped to once per 12 months via last_survey_grant_at.
     const lastGrant = membership.last_survey_grant_at ? new Date(membership.last_survey_grant_at) : null
     const twelveMonthsAgo = new Date(now)
@@ -112,9 +112,9 @@ export async function POST(request: NextRequest) {
 
     let grantApplied = false
     if (!hasPremiumOrHigher && !withinCapWindow) {
-      // Grant 14 days of premium access and stamp the grant time.
+      // Grant 30-Day Premium Access and stamp the grant time.
       const premiumExpiry = new Date(now)
-      premiumExpiry.setDate(premiumExpiry.getDate() + 14)
+      premiumExpiry.setDate(premiumExpiry.getDate() + 30)
       updateData.premium_expires_at = premiumExpiry.toISOString()
       updateData.last_survey_grant_at = now.toISOString()
       grantApplied = true
@@ -135,10 +135,10 @@ export async function POST(request: NextRequest) {
       "[Typeform Webhook] Successfully updated membership for user:",
       membership.user_id,
       "grant:",
-      grantApplied ? "14-day premium granted" : hasPremiumOrHigher ? "skipped (already premium+)" : "skipped (within 12mo cap)"
+      grantApplied ? "30-day premium granted" : hasPremiumOrHigher ? "skipped (already premium+)" : "skipped (within 12mo cap)"
     )
 
-    // Send the Premium-unlocked email ONLY when a new 14-day grant was just applied.
+    // Send the Premium-unlocked email ONLY when a new 30-day grant was just applied.
     // Email failures can never break the webhook response (helper returns instead of throwing).
     if (grantApplied) {
       const recipientEmail = email ?? (membership.email as string | undefined)
@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
         try {
           await sendEmail({
             to: recipientEmail,
-            subject: "You've unlocked 14 days of Premium access",
-            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background-color:#ffffff;"><div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;"><img src="https://www.cbiq.ai/cbiq-lockup.png" alt="CBIQ" height="32" style="display:block;height:32px;width:auto;border:0;" /></div><div style="padding:32px;color:#0a1628;"><h1 style="font-size:22px;margin:0 0 16px;">Your Premium access is live</h1><p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Thanks for completing the Global Workforce Deployment survey — your contribution directly strengthens the benchmark. As a thank-you, your full Global Workforce Intelligence Premium dashboard is now unlocked, free, for the next 14 days. That includes the complete breakdown across all seven intelligence pillars, full question-by-question data, year-on-year trends, peer-segment comparisons, and the regional view. Your access expires in 14 days — after that the free public snapshot remains available any time, and you can subscribe to keep full Premium access running continuously.</p><a href="https://www.cbiq.ai/premium-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your Premium dashboard</a></div><div style="background-color:#0a1628;padding:20px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8;margin:0 0 8px;">Powered by</p><img src="https://www.cbiq.ai/images/GME_White_transparent.png" alt="Global Mobility Executive" height="24" style="display:inline-block;height:24px;width:auto;border:0;" /></div></div>`,
+            subject: "You've earned 30-Day Premium Access",
+            html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;background-color:#ffffff;"><div style="background-color:#0a1628;padding:24px 32px;border-radius:8px 8px 0 0;"><img src="https://www.cbiq.ai/cbiq-lockup.png" alt="CBIQ" height="32" style="display:block;height:32px;width:auto;border:0;" /></div><div style="padding:32px;color:#0a1628;"><h1 style="font-size:22px;margin:0 0 16px;">Your Premium access is live</h1><p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Thanks for completing the Global Workforce Deployment survey — your contribution directly strengthens the benchmark. As a thank-you, your full Global Workforce Intelligence Premium dashboard is now unlocked, free, for the next 30 days. That includes the complete breakdown across all seven intelligence pillars, full question-by-question data, year-on-year trends, peer-segment comparisons, and the regional view. Your access expires in 30 days. After that the free public snapshot remains available any time, and you can subscribe to keep full Premium access running continuously.</p><a href="https://www.cbiq.ai/premium-dashboard" style="display:inline-block;background-color:#16b8a6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:15px;font-weight:bold;">Open your Premium dashboard</a></div><div style="background-color:#0a1628;padding:20px 32px;border-radius:0 0 8px 8px;text-align:center;"><p style="font-size:11px;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8;margin:0 0 8px;">Powered by</p><img src="https://www.cbiq.ai/images/GME_White_transparent.png" alt="Global Mobility Executive" height="24" style="display:inline-block;height:24px;width:auto;border:0;" /></div></div>`,
           })
         } catch (emailError) {
           // Extra safety net — the helper already swallows errors, but never let email break the webhook.

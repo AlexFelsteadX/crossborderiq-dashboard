@@ -722,7 +722,7 @@ export default function ReportsPage() {
                 Help Shape Global Workforce Intelligence™
               </h2>
               <p className="text-slate-300 mb-8 text-base leading-relaxed">
-                Complete CBIQ&apos;s annual Global Workforce Deployment Survey and unlock 14 days of full Premium access to the dashboards, plus complimentary access to flagship intelligence reports and benchmark findings.
+                Complete CBIQ&apos;s annual Global Workforce Deployment Survey to earn 30-Day Premium Access to the dashboards, plus complimentary access to flagship intelligence reports and benchmark findings.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
