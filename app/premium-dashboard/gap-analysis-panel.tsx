@@ -21,6 +21,8 @@ interface GapBriefResponse {
   peerLabel?: string
   segments?: { region_group: string | null; industry_group: string | null; size_band: string | null }
   totalGaps?: number
+  answeredQuestions?: number
+  trackedQuestions?: number
   gaps?: Gap[]
   lockedPreviews?: Array<{ dimension: string; severity: Severity }>
   brief?: string | null
@@ -268,6 +270,35 @@ export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmpty
   const locked = data.lockedPreviews ?? []
   const total = data.totalGaps ?? gaps.length
 
+  const answered = data.answeredQuestions
+  const trackedQs = data.trackedQuestions
+  const isPartial =
+    typeof answered === "number" && typeof trackedQs === "number" && trackedQs > 0 && answered * 2 < trackedQs
+
+  const coverageLine = isPartial ? (
+    <p className="text-sm text-slate-500 mt-1">
+      Based on the {answered} of {trackedQs} benchmark questions you&apos;ve answered so far.
+    </p>
+  ) : null
+
+  const unlockFullCard = isPartial ? (
+    <div className="mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5 text-center">
+      <p className="text-slate-100 font-semibold mb-1">Unlock your full gap analysis</p>
+      <p className="text-sm text-slate-400 max-w-xl mx-auto mb-4">
+        The full benchmark survey covers all {trackedQs} dimensions, takes about 15 minutes, and your complete gap picture
+        appears here.
+      </p>
+      <a
+        href="https://www.cbiq.ai/survey"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90"
+      >
+        Complete the benchmark
+      </a>
+    </div>
+  ) : null
+
   if (!total) {
     return shell(
       <div>
@@ -275,10 +306,18 @@ export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmpty
           Your Gaps, Explained
           <PremiumInfo id="gapsPanel" />
         </h2>
-        <p className="text-slate-400">
-          No material gaps surfaced against {data.peerLabel ?? "your peer set"} on the dimensions we track. Your program is
-          keeping pace with peers.
-        </p>
+        {coverageLine}
+        {isPartial ? (
+          <p className="text-slate-400 mt-2">
+            No gaps surfaced on the questions you&apos;ve answered so far — but this is a partial picture.
+          </p>
+        ) : (
+          <p className="text-slate-400">
+            No material gaps surfaced against {data.peerLabel ?? "your peer set"} on the dimensions we track. Your program
+            is keeping pace with peers.
+          </p>
+        )}
+        {unlockFullCard}
       </div>,
     )
   }
@@ -295,6 +334,7 @@ export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmpty
             {total} {total === 1 ? "gap" : "gaps"} identified against{" "}
             <span className="font-medium text-slate-200">{data.peerLabel}</span>
           </p>
+          {coverageLine}
         </div>
         {data.entitled && (
           <button
@@ -360,6 +400,8 @@ export function GapAnalysisPanel({ suppressEmptyState = false }: { suppressEmpty
           </Link>
         </div>
       )}
+
+      {unlockFullCard}
     </div>,
   )
 }

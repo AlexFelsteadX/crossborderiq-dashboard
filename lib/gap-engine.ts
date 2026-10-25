@@ -384,6 +384,14 @@ export function computeGaps(own: OwnAnswerRow[], peer: PeerRow[]): Gap[] {
     .map(({ g }) => g)
 }
 
+// How many of the engine's tracked questions the caller has an answer for, using
+// the same matching the gap rules use.
+export function benchmarkCoverage(own: OwnAnswerRow[]): { answered: number; tracked: number } {
+  const keys = Object.keys(NEEDLE) as NeedleKey[]
+  const answered = keys.filter((key) => userAnswers(own, key).length > 0).length
+  return { answered, tracked: keys.length }
+}
+
 // Headline peer label: the label used by the most gaps (industry when available).
 export function headlinePeerLabel(gaps: Gap[]): string {
   if (!gaps.length) return "your peer set"

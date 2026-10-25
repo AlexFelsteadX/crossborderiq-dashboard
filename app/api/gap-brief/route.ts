@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { createClient } from "@/lib/supabase/server"
 import {
+  benchmarkCoverage,
   computeGaps,
   headlinePeerLabel,
   type Gap,
@@ -112,6 +113,7 @@ export async function GET() {
   // 3) Deterministic engine.
   const allGaps = computeGaps(own, peer)
   const peerLabel = headlinePeerLabel(allGaps)
+  const coverage = benchmarkCoverage(own)
   const pullDate = new Date().toISOString().slice(0, 10)
 
   // Paywall boundary: unentitled callers never receive locked stats over the wire.
@@ -168,6 +170,8 @@ export async function GET() {
     peerLabel,
     segments,
     totalGaps: allGaps.length,
+    answeredQuestions: coverage.answered,
+    trackedQuestions: coverage.tracked,
     gaps: visibleGaps,
     lockedPreviews,
     brief,
