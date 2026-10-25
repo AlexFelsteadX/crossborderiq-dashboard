@@ -1217,8 +1217,6 @@ function matchOption(options: string[], value: string | null | undefined): strin
 export function PremiumDashboardClient() {
   const supabase = useMemo(() => createClient(), [])
   const { tier } = useAuth()
-  // Reflect the actual tier in the header badge (Vendor members also access this dashboard).
-  const tierLabel = tier === "vendor" ? "Vendor Member Access" : "Premium Member Access"
 
   const [activeTab, setActiveTab] = useState<DashboardTab>("score")
   const {
@@ -1656,17 +1654,9 @@ export function PremiumDashboardClient() {
       <main className="max-w-[1400px] mx-auto px-6 py-10">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <h1 className="text-2xl lg:text-3xl font-bold text-slate-100">
-              Global Workforce Intelligence<span className="text-primary">™</span> Premium Dashboard
-            </h1>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
-              {tierLabel}
-            </span>
-          </div>
-          <p className="text-slate-400">
-            Everything unlocked — slice the benchmark by peer segment and track year-on-year change.
-          </p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-100">
+            Global Workforce Intelligence<span className="text-primary">™</span>
+          </h1>
         </div>
 
         {/* ============================ DASHBOARD TABS ============================ */}
