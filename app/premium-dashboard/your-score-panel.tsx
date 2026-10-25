@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { ArrowUp, Loader2 } from "lucide-react"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
-import { MMI_BANDS, mmiBand, bandScaleLabel } from "@/lib/scoring"
+import { MMI_BANDS, mmiBand } from "@/lib/scoring"
+import { PREMIUM_EXPLAINERS } from "@/lib/premium-explainers"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { BenchmarkStepper } from "./benchmark-stepper"
 
@@ -81,7 +82,17 @@ function useCountUp(target: number | null, enabled: boolean, durationMs = 1000) 
   return current
 }
 
-function ScoreRing({ value, label, animate = false }: { value: number | null; label: string; animate?: boolean }) {
+function ScoreRing({
+  value,
+  label,
+  animate = false,
+  showLabel = true,
+}: {
+  value: number | null
+  label: string
+  animate?: boolean
+  showLabel?: boolean
+}) {
   const displayed = useCountUp(value, animate)
   const size = 168
   const stroke = 12
@@ -123,7 +134,7 @@ function ScoreRing({ value, label, animate = false }: { value: number | null; la
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
         <span className="text-4xl font-bold text-slate-100 tabular-nums">{show(displayed)}</span>
         <span className="text-[11px] text-slate-400 leading-tight mt-0.5">out of 100</span>
-        <span className="text-[11px] text-slate-300 leading-tight mt-1 line-clamp-2">{label}</span>
+        {showLabel && <span className="text-[11px] text-slate-300 leading-tight mt-1 line-clamp-2">{label}</span>}
       </div>
     </div>
   )
@@ -217,41 +228,98 @@ function HeroCard({
 
   return (
     <section className="rounded-xl border border-primary/20 bg-brand-navy-2/70 p-6 md:p-8 mb-8 shadow-sm">
-      <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-        <ScoreRing key="mine" value={myScore} label="Your program" animate={justScored} />
-        <div className="flex-1 min-w-0 text-center md:text-left">
-          <div className="flex flex-col items-center md:items-start gap-1.5 mb-4">
-            <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/25">
-              {band.name}
-            </span>
-            <span className="text-[11px] text-slate-500 leading-snug">{bandScaleLabel}</span>
+      <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6 md:gap-10">
+        <div className="flex flex-col items-center gap-3 shrink-0">
+          <ScoreRing key="mine" value={myScore} label="Your program" animate={justScored} showLabel={false} />
+          <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/25">
+            {band.name}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0 w-full flex flex-col gap-5">
+          <div className="flex items-center justify-center md:justify-start gap-2">
+            <h2 className="text-xl font-bold text-slate-100">Your Score</h2>
+            <InfoExplainer label={PREMIUM_EXPLAINERS.mmiBlock.title}>{PREMIUM_EXPLAINERS.mmiBlock.body}</InfoExplainer>
           </div>
-          <p className="text-lg text-slate-100 leading-relaxed text-pretty mb-4">
-            {`Your program scores ${myScore}. ${peerLabel} scores ${show(s.peer_score)}. The market scores ${show(s.market_score)}.`}
-          </p>
-          {justScored && (
-            <p className="text-sm text-slate-300 mb-4" role="status">
-              {"You’re on the benchmark. Your answers are aggregated and never identified."}
-            </p>
-          )}
+          <BandLadder score={myScore} animate={justScored} />
+          <dl className="grid grid-cols-3 gap-4">
+            <div className="min-w-0">
+              <dt className="text-xs text-slate-400">You</dt>
+              <dd className="text-3xl font-bold text-primary tabular-nums">{myScore}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-slate-400">Peers</dt>
+              <dd className="text-2xl font-semibold text-slate-200 tabular-nums">{show(s.peer_score)}</dd>
+              <dd className="text-[11px] text-slate-500 truncate" title={peerLabel}>
+                {peerLabel}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-xs text-slate-400">Market</dt>
+              <dd className="text-2xl font-semibold text-slate-200 tabular-nums">{show(s.market_score)}</dd>
+            </div>
+          </dl>
           {(topShare != null || (nextBand && pointsToNext != null)) && (
             <div className="flex flex-wrap justify-center md:justify-start gap-2">
               {topShare != null && (
                 <span className="inline-flex items-center text-xs font-medium text-slate-200 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/60">
-                  {`Top ${topShare}% of ${peerLabel}`}
+                  {`Top ${topShare}% of peers`}
                 </span>
               )}
               {nextBand && pointsToNext != null && (
-                <span className="inline-flex items-center text-xs font-medium text-slate-200 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/60">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-200 bg-slate-700/50 px-3 py-1 rounded-full border border-slate-600/60">
+                  <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                   {`${pointsToNext} ${pointsToNext === 1 ? "point" : "points"} to ${nextBand.name}`}
                 </span>
               )}
             </div>
           )}
+          {justScored && (
+            <p className="text-sm text-slate-300" role="status">
+              {"You’re on the benchmark. Your answers are aggregated and never identified."}
+            </p>
+          )}
         </div>
       </div>
       <SourceLine s={s} />
     </section>
+  )
+}
+
+function BandLadder({ score, animate }: { score: number; animate: boolean }) {
+  const displayed = useCountUp(score, animate) ?? score
+  const current = mmiBand(score).name
+  const position = Math.min(Math.max(displayed, 0), 100)
+
+  return (
+    <div className="w-full" role="img" aria-label={`Score ${score} of 100, ${current} band`}>
+      <div className="relative">
+        <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+          {MMI_BANDS.map((b) => (
+            <div
+              key={b.name}
+              style={{ flexGrow: b.max - b.min + 1, flexBasis: 0 }}
+              className={b.name === current ? "bg-primary/80" : "bg-slate-600/50"}
+            />
+          ))}
+        </div>
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-brand-navy-2 bg-slate-100 shadow"
+          style={{ left: `${position}%` }}
+        />
+      </div>
+      <div className="mt-2 flex gap-0.5">
+        {MMI_BANDS.map((b) => (
+          <span
+            key={b.name}
+            style={{ flexGrow: b.max - b.min + 1, flexBasis: 0 }}
+            className={`min-w-0 truncate text-[11px] ${b.name === current ? "font-semibold text-slate-100" : "text-slate-500"}`}
+          >
+            {b.name}
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
 
