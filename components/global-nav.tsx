@@ -40,13 +40,10 @@ export function GlobalNav() {
     }
   }
   
-  // Tier-aware dashboard destination (uses existing routes only)
+  // Signed-in corporates of every tier (free, trial, premium) share one dashboard;
+  // /workforce-intelligence is a marketing overview, not a dashboard destination.
   const dashboardHref =
-    tier === "vendor"
-      ? "/vendor-premium-dashboard"
-      : tier === "premium"
-        ? "/premium-dashboard"
-        : "/workforce-intelligence" // free
+    tier === "vendor" ? "/vendor-premium-dashboard" : "/premium-dashboard"
 
   type NavItem = { href: string; label: string; highlight?: boolean }
 
