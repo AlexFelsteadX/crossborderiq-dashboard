@@ -34,13 +34,15 @@ import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
+import { CommunityPanel, type PulseBoard } from "./community-panel"
 
-type DashboardTab = "score" | "trends" | "explore"
+type DashboardTab = "score" | "trends" | "explore" | "community"
 
 const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
   { id: "score", label: "Your Score" },
   { id: "trends", label: "Trends" },
   { id: "explore", label: "Explore the Benchmark" },
+  { id: "community", label: "Community" },
 ]
 
 // Temporary master switch: hide every respondent-count / base-size display across
@@ -1241,6 +1243,21 @@ export function PremiumDashboardClient() {
   const showTrends = !showTabs || activeTab === "trends"
   const showExplore = !showTabs || activeTab === "explore"
 
+  // Community is Corporate Premium only: vendor members never fetch or see it.
+  const isCorporate = tier != null && tier !== "vendor"
+  const { data: pulseBoard, mutate: mutatePulseBoard } = useSWR<PulseBoard | null>(
+    isCorporate ? "rpc:get_pulse_board" : null,
+    async () => {
+      const { data, error } = await supabase.rpc("get_pulse_board")
+      if (error) throw error
+      return (data as PulseBoard | null) ?? null
+    },
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  const communityAvailable = isCorporate && pulseBoard?.ok === true
+  const visibleTabs = DASHBOARD_TABS.filter((t) => t.id !== "community" || communityAvailable)
+  const showCommunity = showTabs && communityAvailable && activeTab === "community"
+
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
   // One-time welcome strip for ?welcome=trial, read on first render only and
@@ -1659,7 +1676,7 @@ export function PremiumDashboardClient() {
             aria-label="Dashboard view"
             className="mb-8 flex w-full rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
           >
-            {DASHBOARD_TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const active = activeTab === t.id
               return (
                 <button
@@ -1686,6 +1703,12 @@ export function PremiumDashboardClient() {
         {showScore && (
           <div role="tabpanel" aria-labelledby="dashboard-tab-score">
             <YourScorePanel summary={mySummary ?? null} loading={loadingMySummary} onRefresh={() => refreshMySummary()} />
+          </div>
+        )}
+
+        {showCommunity && pulseBoard && (
+          <div role="tabpanel" aria-labelledby="dashboard-tab-community">
+            <CommunityPanel board={pulseBoard} supabase={supabase} mutate={mutatePulseBoard} />
           </div>
         )}
 
@@ -1837,7 +1860,7 @@ export function PremiumDashboardClient() {
           )}
         </div>
 
-        {/* ===================== START HERE — plain-language market summary ===================== */}
+        {/* ===================== START HERE ��� plain-language market summary ===================== */}
         {!is2025 && marketRead && <WhatThisMeans eyebrow="Start here" eyebrowAside={<PremiumInfo id="startHere" />}>{marketRead}</WhatThisMeans>}
 
         {/* 2025 event-wave explainer banner */}
