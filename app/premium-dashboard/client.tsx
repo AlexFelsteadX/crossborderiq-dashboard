@@ -1214,7 +1214,7 @@ function matchOption(options: string[], value: string | null | undefined): strin
   return options.find((o) => norm(o) === norm(value)) ?? null
 }
 
-export function PremiumDashboardClient() {
+export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } = {}) {
   const supabase = useMemo(() => createClient(), [])
   const { tier } = useAuth()
 
@@ -1235,6 +1235,9 @@ export function PremiumDashboardClient() {
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
   // Without a summary row the page falls back to the original single-view layout.
+  // Server tier is authoritative; the summary shape (no peer group, market present) is the fallback signal.
+  const isFree =
+    isFreeTier ?? (mySummary != null && mySummary.peer_label == null && mySummary.market_score != null)
   const summaryUnavailable = !loadingMySummary && (Boolean(mySummaryError) || !mySummary)
   const showTabs = !summaryUnavailable
   const showScore = showTabs && activeTab === "score"
@@ -1692,7 +1695,12 @@ export function PremiumDashboardClient() {
         {/* ============================ YOUR SCORE ============================ */}
         {showScore && (
           <div role="tabpanel" aria-labelledby="dashboard-tab-score">
-            <YourScorePanel summary={mySummary ?? null} loading={loadingMySummary} onRefresh={() => refreshMySummary()} />
+            <YourScorePanel
+              summary={mySummary ?? null}
+              loading={loadingMySummary}
+              onRefresh={() => refreshMySummary()}
+              isFree={isFree}
+            />
           </div>
         )}
 
@@ -1703,7 +1711,7 @@ export function PremiumDashboardClient() {
         )}
 
         {/* ================= CBIQ INSIGHTS: YOUR GAPS, EXPLAINED (fallback layout) ================= */}
-        {!showTabs && <GapAnalysisPanel />}
+        {!showTabs && <GapAnalysisPanel locked={isFree} />}
 
         {showExplore && (
         <>
