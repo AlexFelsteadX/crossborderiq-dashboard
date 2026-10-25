@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolvePostAuthPath } from '@/lib/tier-access'
+import { checkoutStartPath, parseCheckoutIntent } from '@/lib/checkout-intent'
 import { type EmailOtpType } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
@@ -20,6 +21,13 @@ export async function GET(request: Request) {
         // never block auth on trial activation
       }
 
+      const checkoutPlan = parseCheckoutIntent(searchParams.get('intent'), searchParams.get('tier'))
+      if (checkoutPlan) {
+        return NextResponse.redirect(`${origin}${checkoutStartPath(checkoutPlan)}`)
+      }
+
+      // `next` is usually the emailRedirectTo (/auth/callback?intent=…&tier=…),
+      // so a checkout intent set at login survives this hop too.
       if (next) {
         // Resolve `next` against the request origin and only allow same-origin
         // redirects to avoid open-redirect vulnerabilities.
@@ -35,6 +43,9 @@ export async function GET(request: Request) {
     }
   }
 
-  // Missing params or verification error — send the user to login.
-  return NextResponse.redirect(`${origin}/login`)
+  // Missing params or verification error — send the user to login, keeping a
+  // checkout intent so the retry still ends at Stripe.
+  const retryPlan = parseCheckoutIntent(searchParams.get('intent'), searchParams.get('tier'))
+  const retryQuery = retryPlan ? `?mode=signup&intent=checkout&tier=${retryPlan}` : ''
+  return NextResponse.redirect(`${origin}/login${retryQuery}`)
 }

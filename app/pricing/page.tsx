@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { globalWorkforceIntelligencePlan } from "@/lib/plans"
 import { useAuth } from "@/hooks/use-auth"
+import { signupForCheckoutPath } from "@/lib/checkout-intent"
 
 type PathView = "corporate" | "vendor"
 type PlanTier = "premium" | "vendor"
@@ -74,7 +75,7 @@ export default function PricingPage() {
       // Logged-out self-serve visitors (premium and vendor) carry a checkout intent
       // through signup so they can be sent straight to checkout once authenticated.
       // The tier value reuses the PlanTier/STRIPE_PLANS key exactly.
-      window.location.href = `/login?mode=signup&intent=checkout&tier=${plan}`
+      window.location.href = signupForCheckoutPath(plan)
       return
     }
     if (action === "checkout") {

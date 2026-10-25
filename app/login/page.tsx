@@ -4,6 +4,7 @@ import { useState, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { parseCheckoutIntent } from "@/lib/checkout-intent"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,11 +25,21 @@ function LoginForm() {
 
   const supabase = createClient()
 
-  // Carry ?next through the flow; when absent, /auth/callback routes by tier.
+  // Carry ?intent=checkout&tier and ?next through the flow (magic link, OTP
+  // code, and the email round trip). /auth/callback sends a checkout intent
+  // straight to Stripe; without either it routes by tier.
   const searchParams = useSearchParams()
+  const checkoutPlan = parseCheckoutIntent(searchParams.get("intent"), searchParams.get("tier"))
   const rawNext = searchParams.get("next")
   const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null
-  const callbackPath = next ? `/auth/callback?next=${encodeURIComponent(next)}` : "/auth/callback"
+  const callbackParams = new URLSearchParams()
+  if (checkoutPlan) {
+    callbackParams.set("intent", "checkout")
+    callbackParams.set("tier", checkoutPlan)
+  }
+  if (next) callbackParams.set("next", next)
+  const callbackQuery = callbackParams.toString()
+  const callbackPath = callbackQuery ? `/auth/callback?${callbackQuery}` : "/auth/callback"
 
   // Shared sign-in email send. Sends both the magic link and the 6-digit code
   // (governed by the Supabase email template). Returns true on success.

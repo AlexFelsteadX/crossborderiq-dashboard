@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
+import { signupForCheckoutPath } from "@/lib/checkout-intent"
 
 /**
  * Premium checkout CTA that mirrors the /pricing page's Premium "Get Started"
@@ -50,7 +51,7 @@ export function PremiumCheckoutButton({
     if (!user) {
       // Logged-out self-serve visitors carry a checkout intent through signup so
       // they're sent straight to checkout once authenticated.
-      window.location.href = "/login?mode=signup&intent=checkout&tier=premium"
+      window.location.href = signupForCheckoutPath("premium")
       return
     }
     startCheckout()
