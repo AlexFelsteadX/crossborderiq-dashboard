@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   TrendingUp,
+  Lock,
   TrendingDown,
   Minus,
   Filter,
@@ -32,6 +33,7 @@ import { WhatThisMeans } from "@/components/dashboard/what-this-means"
 import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
+import { LockedPanel } from "@/components/dashboard/locked-panel"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
 import { CommunityPanel, type PulseBoard } from "./community-panel"
@@ -2125,40 +2127,66 @@ export function PremiumDashboardClient({ isFreeTier }: { isFreeTier?: boolean } 
                   ["segment", "My segment"],
                 ] as const
               ).map(([value, label]) => {
-                const active = trendScope === value
+                const active = (isFree ? "market" : trendScope) === value
+                const lockedOption = isFree && value === "segment"
                 return (
                   <button
                     key={value}
                     type="button"
                     role="radio"
                     aria-checked={active}
+                    disabled={isFree}
                     onClick={() => setTrendScope(value)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
                       active
-                        ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
-                        : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                        ? `bg-primary text-brand-navy ${isFree ? "opacity-70" : "shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"}`
+                        : isFree
+                          ? "text-slate-500"
+                          : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
                     }`}
                   >
                     {label}
+                    {lockedOption && (
+                      <>
+                        <Lock className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">(locked)</span>
+                      </>
+                    )}
                   </button>
                 )
               })}
             </div>
             <p className="text-xs text-slate-500">
-              {trendScope === "market"
+              {isFree || trendScope === "market"
                 ? "Showing the whole market; dashboard filters are not applied."
                 : "Trends reflect Industry, Region and Company size filters only."}
             </p>
           </div>
 
           {(() => {
-            const isMarket = trendScope === "market"
+            const isMarket = isFree || trendScope === "market"
             const rows = isMarket ? yoyMarket : yoy
             const loading = isMarket ? loadingYoYMarket : loadingYoY
             if (rows.length === 0) {
               return (
                 <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
                   {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
+                </div>
+              )
+            }
+            if (isFree) {
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {yoyMarket.slice(0, 2).map((row, idx) => (
+                    <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
+                  ))}
+                  {yoyMarket.length > 2 && (
+                    <LockedPanel
+                      title="Every year-on-year trend"
+                      description="Year-on-year movement across every benchmark metric, cut to your industry, region, and size."
+                      className="col-span-full mb-0!"
+                    />
+                  )}
                 </div>
               )
             }
