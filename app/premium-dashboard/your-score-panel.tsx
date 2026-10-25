@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { ArrowUp, Loader2 } from "lucide-react"
+import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { MMI_BANDS, mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { BenchmarkStepper } from "./benchmark-stepper"
@@ -273,6 +274,12 @@ function ComponentTiles({ s }: { s: MySummary }) {
     return { key, label, explainer, peer, mine, gap }
   })
 
+  const [barsReady, setBarsReady] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setBarsReady(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
   const maxGap = rows.reduce((m, r) => (r.gap != null && r.gap > m ? r.gap : m), 0)
   const amberKey = maxGap > 0 ? rows.find((r) => r.gap === maxGap)?.key : undefined
 
@@ -282,48 +289,88 @@ function ComponentTiles({ s }: { s: MySummary }) {
         Score components
       </h2>
       <p className="text-[11px] text-slate-500 leading-snug mb-3">{peerLabel}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr">
         {rows.map((r) => {
           const amber = r.key === amberKey
           const myPoints = toPoints(r.mine) ?? 0
           const peerPoints = toPoints(r.peer)
           const full = myPoints >= POINTS_PER_COMPONENT
+          const pct = (v: number) => `${Math.min(100, Math.max(0, (v / POINTS_PER_COMPONENT) * 100))}%`
+          const badgeTitle = !hasMine
+            ? undefined
+            : full
+              ? `You: ${POINTS_PER_COMPONENT} of ${POINTS_PER_COMPONENT} points`
+              : myPoints === 0
+                ? `You: 0 of ${POINTS_PER_COMPONENT} — points available here`
+                : `You: ${myPoints} of ${POINTS_PER_COMPONENT}`
           return (
             <div
               key={r.key}
-              className={`rounded-xl border p-5 flex flex-col items-center text-center gap-3 ${
+              className={`h-full rounded-xl border p-5 flex flex-col gap-4 ${
                 amber ? "border-amber-400/60 bg-amber-400/10" : "border-slate-700/50 bg-brand-navy-2/60"
               }`}
             >
               {amber && (
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
-                  Your biggest points opportunity
+                <span className="self-start inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-amber-400/40 bg-amber-400/15 text-amber-300">
+                  <ArrowUp className="w-3 h-3" aria-hidden="true" />
+                  Biggest points opportunity
                 </span>
               )}
-              <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-semibold text-slate-100">{r.label}</h3>
-                <p className="text-xs text-slate-400 leading-snug text-pretty">{r.explainer}</p>
-              </div>
-              {hasMine ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-100">{r.label}</h3>
+                  <InfoExplainer label={`How ${r.label} is scored`}>{r.explainer}</InfoExplainer>
+                </div>
                 <span
-                  className={`inline-flex items-center text-xs font-semibold px-3 py-1 rounded-full border ${
-                    full
-                      ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/30"
-                      : "text-amber-300 bg-amber-400/10 border-amber-400/30"
+                  title={badgeTitle}
+                  className={`shrink-0 inline-flex items-center text-xs font-semibold tabular-nums px-2.5 py-0.5 rounded-full border ${
+                    !hasMine
+                      ? "text-slate-400 bg-slate-700/30 border-slate-600/50"
+                      : full
+                        ? "text-emerald-300 bg-emerald-400/10 border-emerald-400/30"
+                        : "text-amber-300 bg-amber-400/10 border-amber-400/30"
                   }`}
                 >
-                  {full
-                    ? `You: ${POINTS_PER_COMPONENT} of ${POINTS_PER_COMPONENT} points`
-                    : myPoints === 0
-                      ? `You: 0 of ${POINTS_PER_COMPONENT} — points available here`
-                      : `You: ${myPoints} of ${POINTS_PER_COMPONENT}`}
+                  {hasMine ? `${myPoints}/${POINTS_PER_COMPONENT}` : `—/${POINTS_PER_COMPONENT}`}
+                  {badgeTitle && <span className="sr-only">{` (${badgeTitle})`}</span>}
                 </span>
-              ) : (
-                <p className="text-sm font-semibold text-slate-200">You: not on file yet</p>
-              )}
-              <p className="text-sm text-slate-300">
-                {`Peers average ${peerPoints ?? "—"} of ${POINTS_PER_COMPONENT} here.`}
-              </p>
+              </div>
+              <div className="mt-auto">
+                <div
+                  className="relative h-2.5 rounded-full bg-slate-700/60"
+                  role="img"
+                  aria-label={`${hasMine ? `You: ${myPoints}` : "You: not on file"} of ${POINTS_PER_COMPONENT}; peers average ${peerPoints ?? "—"}`}
+                >
+                  {hasMine && (
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-full motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out ${
+                        full ? "bg-emerald-400" : "bg-amber-400"
+                      }`}
+                      style={{ width: barsReady ? pct(myPoints) : "0%" }}
+                    />
+                  )}
+                  {peerPoints != null && (
+                    <div
+                      className="absolute -top-1 -bottom-1 w-0.5 -translate-x-1/2 rounded-full bg-slate-100"
+                      style={{ left: pct(peerPoints) }}
+                      aria-hidden="true"
+                    />
+                  )}
+                </div>
+                <div className="relative h-4 mt-1" aria-hidden="true">
+                  {peerPoints != null && (
+                    <span
+                      className="absolute top-0 text-[10px] text-slate-400 whitespace-nowrap -translate-x-1/2"
+                      style={{ left: `clamp(1.5rem, ${pct(peerPoints)}, calc(100% - 1.5rem))` }}
+                    >
+                      {`Peers: ${peerPoints}`}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  {`${hasMine ? `You: ${myPoints} of ${POINTS_PER_COMPONENT}` : "You: not on file yet"} · Peers average ${peerPoints ?? "—"}`}
+                </p>
+              </div>
             </div>
           )
         })}
