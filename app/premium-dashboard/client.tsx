@@ -1996,7 +1996,13 @@ export function PremiumDashboardClient({
             <h2 className="text-xl font-bold text-slate-100">Pillar snapshot</h2>
             <PremiumInfo id="pillarSnapshot" />
           </div>
-          {primaryPillars.length === 0 ? (
+          {primaryPillars.length === 0 && isFree ? (
+            <LockedPanel
+              variant="compact"
+              title="Pillar snapshot"
+              description="Pillar-level benchmarks across the market and your segment are part of Premium."
+            />
+          ) : primaryPillars.length === 0 ? (
             <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
               {loadingMain ? "Loading pillars…" : "No pillar data for this selection."}
             </div>
@@ -2184,26 +2190,24 @@ export function PremiumDashboardClient({
             const isMarket = isFree || trendScope === "market"
             const rows = isMarket ? yoyMarket : yoy
             const loading = isMarket ? loadingYoYMarket : loadingYoY
-            if (rows.length === 0) {
-              return (
-                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-                  {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
-                </div>
-              )
-            }
             if (isFree) {
               return (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {yoyMarket.slice(0, 2).map((row, idx) => (
                     <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
                   ))}
-                  {yoyMarket.length > 2 && (
-                    <LockedPanel
-                      title="Every year-on-year trend"
-                      description="Year-on-year movement across every benchmark metric, cut to your industry, region, and size."
-                      className="col-span-full mb-0!"
-                    />
-                  )}
+                  <LockedPanel
+                    title="Every year-on-year trend"
+                    description="Year-on-year movement across every benchmark metric, cut to your industry, region, and size."
+                    className="col-span-full mb-0!"
+                  />
+                </div>
+              )
+            }
+            if (rows.length === 0) {
+              return (
+                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+                  {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
                 </div>
               )
             }
@@ -2244,16 +2248,45 @@ export function PremiumDashboardClient({
             {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
           {(() => {
-            // Free tier holds no breakdown rows; its cards are driven by the themes
-            // that have a public headline figure.
-            const nonEmpty = isFree
-              ? THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => ({
-                  sectionName: theme,
-                  questions: [] as GroupedQuestion[],
-                }))
-              : sections.filter((s) => s.questions.length > 0)
+            // Free tier never fetches breakdown rows: theme titles and public headline
+            // figures stay visible as static cards, and the breakdowns area is locked.
+            if (isFree) {
+              return (
+                <div>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+                    {THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => {
+                      const Icon = FLAGSHIP_STATS[theme]?.icon
+                      const parts = publicFlagshipParts(flagshipStats[theme])
+                      return (
+                        <li
+                          key={theme}
+                          className="flex flex-col gap-2 rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            {Icon && <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />}
+                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(theme)}</h3>
+                            {theme === NEW_SECTION_NAME && <NewPill />}
+                          </div>
+                          {parts && (
+                            <p className="text-xs text-slate-400 leading-relaxed text-pretty">
+                              {`${parts.pct}% ${parts.phrase}`}
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  <LockedPanel
+                    title="Question-level benchmarks"
+                    description="All 60+ question-level datasets, filterable by region, industry, company size, and assignee population."
+                  />
+                </div>
+              )
+            }
 
-            if (!isFree && !loadingMain && nonEmpty.length === 0) {
+            const nonEmpty = sections.filter((s) => s.questions.length > 0)
+
+            if (!loadingMain && nonEmpty.length === 0) {
               return (
                 <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
                   No breakdown data for this selection.
@@ -2303,19 +2336,11 @@ export function PremiumDashboardClient({
                             <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
                             {sectionName === NEW_SECTION_NAME && <NewPill />}
                           </div>
-                          {!isFree && (
-                            <p className="text-sm text-slate-400">
-                              {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
-                            </p>
-                          )}
+                          <p className="text-sm text-slate-400">
+                            {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
+                          </p>
                           {(() => {
-                            let stat: string | null
-                            if (isFree) {
-                              const parts = publicFlagshipParts(flagshipStats[sectionName])
-                              stat = parts ? `${parts.pct}% ${parts.phrase}` : null
-                            } else {
-                              stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
-                            }
+                            const stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
                             return stat ? (
                               <p className="text-xs text-slate-400 leading-relaxed text-pretty">{stat}</p>
                             ) : null
@@ -2377,12 +2402,7 @@ export function PremiumDashboardClient({
                     })}
                   </div>
                 </div>
-                {isFree ? (
-                  <LockedPanel
-                    title="Question-level benchmarks"
-                    description="All 60+ question-level datasets behind this theme, filterable by region, industry, company size, and assignee population."
-                  />
-                ) : focused ? (
+                {focused ? (
                   <BreakdownSection questions={focused.questions} isFiltered={isFiltered} />
                 ) : (
                   <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
