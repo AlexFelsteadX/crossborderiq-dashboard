@@ -27,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { CircularGauge, formatPct } from "@/components/dashboard-ui"
 import { mmiBand, bandScaleLabel } from "@/lib/scoring"
 import { THEME_ORDER, themeForPillar, themeLabel, type WorkforceTheme } from "@/lib/workforce-themes"
+import { exploreTeaser } from "@/lib/explore-teasers"
 import type { Confidence, GroupedQuestion } from "@/lib/premium-breakdown-types"
 import { FLAGSHIP_STATS, publicFlagshipParts, type PublicFlagshipStat } from "@/lib/flagship-stats"
 import Link from "next/link"
@@ -2334,6 +2335,7 @@ export function PremiumDashboardClient({
                     key: theme,
                     title: themeLabel(theme),
                     subtitle: parts ? `${parts.pct}% ${parts.phrase}` : null,
+                    inside: exploreTeaser(theme),
                     Icon: FLAGSHIP_STATS[theme]?.icon,
                     isNew: theme === NEW_SECTION_NAME,
                   }
@@ -2343,13 +2345,14 @@ export function PremiumDashboardClient({
                   title: "Question-level benchmarks",
                   subtitle:
                     "All 60+ datasets, filterable by region, industry, company size, and assignee population.",
+                  inside: null,
                   Icon: undefined,
                   isNew: false,
                 },
               ]
               return (
                 <ul className="divide-y divide-slate-700/50 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40">
-                  {freeRows.map(({ key, title, subtitle, Icon, isNew }) => {
+                  {freeRows.map(({ key, title, subtitle, inside, Icon, isNew }) => {
                     const open = freeUnlockOpen === key
                     const stripId = `free-unlock-${key}`
                     return (
@@ -2373,6 +2376,9 @@ export function PremiumDashboardClient({
                             </span>
                             {subtitle && (
                               <span className="text-xs text-slate-400 leading-relaxed text-pretty">{subtitle}</span>
+                            )}
+                            {inside && (
+                              <span className="text-xs text-slate-500 leading-relaxed text-pretty">{inside}</span>
                             )}
                           </span>
                           <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400">
