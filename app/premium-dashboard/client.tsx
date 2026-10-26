@@ -1262,6 +1262,773 @@ function matchOption(options: string[], value: string | null | undefined): strin
   return options.find((o) => norm(o) === norm(value)) ?? null
 }
 
+// =============================================================================
+// SHARED BENCHMARK BUILDING BLOCKS
+// Exported so the vendor dashboard's "Explore the Benchmark" tab renders the
+// exact same components and data flow as corporate members see.
+// =============================================================================
+
+export type BenchmarkFilters = Filters
+export { DEFAULT_FILTERS as DEFAULT_BENCHMARK_FILTERS }
+
+export function isBenchmarkFiltered(filters: Filters): boolean {
+  return (
+    filters.industry !== null ||
+    filters.region !== null ||
+    filters.size !== null ||
+    filters.assignee !== null ||
+    filters.traveller !== null
+  )
+}
+
+type SupabaseBrowserClient = ReturnType<typeof createClient>
+
+export function useBenchmarkData(
+  supabase: SupabaseBrowserClient,
+  filters: Filters,
+  { skipBreakdown = false, breakdownRpc = "get_premium_breakdown" }: { skipBreakdown?: boolean; breakdownRpc?: string } = {},
+) {
+  const [segmentSize, setSegmentSize] = useState<number | null>(null)
+  const [mmi, setMmi] = useState<MmiRow | null>(null)
+  const [pillars, setPillars] = useState<PillarRow[]>([])
+  const [breakdown, setBreakdown] = useState<BreakdownRow[]>([])
+  const [yoy, setYoy] = useState<YoYRow[]>([])
+  const [yoyMarket, setYoyMarket] = useState<YoYRow[]>([])
+  const [loadingYoYMarket, setLoadingYoYMarket] = useState(true)
+  const [loadingMain, setLoadingMain] = useState(true)
+  const [loadingYoY, setLoadingYoY] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const segmentParams = useMemo(
+    () => ({
+      p_year: filters.year,
+      p_industry: filters.industry,
+      p_region: filters.region,
+      p_size: filters.size,
+      p_assignee: filters.assignee,
+      p_traveller: filters.traveller,
+    }),
+    [filters],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoadingMain(true)
+      setError(null)
+      const [sizeRes, mmiRes, pillarRes, breakdownRes] = await Promise.all([
+        supabase.rpc("get_premium_segment_size", segmentParams),
+        supabase.rpc("get_premium_mmi", segmentParams),
+        supabase.rpc("get_premium_pillars", segmentParams),
+        skipBreakdown
+          ? Promise.resolve({ data: [] as BreakdownRow[], error: null })
+          : supabase.rpc(breakdownRpc, segmentParams),
+      ])
+      if (cancelled) return
+
+      const firstError = sizeRes.error || mmiRes.error || pillarRes.error || breakdownRes.error
+      if (firstError) setError(firstError.message)
+
+      setSegmentSize(typeof sizeRes.data === "number" ? sizeRes.data : (sizeRes.data ?? 0))
+      const mmiData = Array.isArray(mmiRes.data) ? mmiRes.data[0] : mmiRes.data
+      setMmi((mmiData as MmiRow) ?? null)
+      setPillars(((pillarRes.data as PillarRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
+      setBreakdown((breakdownRes.data as BreakdownRow[]) ?? [])
+      setLoadingMain(false)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, segmentParams, skipBreakdown, breakdownRpc])
+
+  // Trends respond ONLY to industry / region / size.
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoadingYoY(true)
+      const { data, error } = await supabase.rpc("get_premium_yoy", {
+        p_industry: filters.industry,
+        p_region: filters.region,
+        p_size: filters.size,
+      })
+      if (cancelled) return
+      if (error) setError(error.message)
+      setYoy(((data as YoYRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
+      setLoadingYoY(false)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase, filters.industry, filters.region, filters.size])
+
+  // Market-wide trends (no filters): the default trend view and the small-base fallback.
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoadingYoYMarket(true)
+      const { data, error } = await supabase.rpc("get_premium_yoy", {
+        p_industry: null,
+        p_region: null,
+        p_size: null,
+      })
+      if (cancelled) return
+      if (error) setError(error.message)
+      setYoyMarket(((data as YoYRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
+      setLoadingYoYMarket(false)
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [supabase])
+
+  // Group breakdown rows -> questions -> themed sections.
+  // On the 2025 tab, only event-wave questions (q_code starting with "E") exist.
+  const sections = useMemo(() => {
+    const is2025 = filters.year === 2025
+    const rows = is2025
+      ? breakdown.filter((row) => (row.q_code ?? "").toUpperCase().startsWith("E"))
+      : breakdown
+    const byQ = new Map<string, GroupedQuestion>()
+    for (const row of rows) {
+      if (!byQ.has(row.q_code)) {
+        byQ.set(row.q_code, {
+          qCode: row.q_code,
+          questionLabel: row.question_label,
+          hrPillar: row.hr_pillar,
+          segBaseN: row.seg_base_n,
+          overallBaseN: row.overall_base_n,
+          confidence: row.confidence,
+          answers: [],
+        })
+      }
+      byQ.get(row.q_code)!.answers.push({
+        option: row.answer_option,
+        segPct: row.seg_pct,
+        overallPct: row.overall_pct,
+        segN: row.seg_n,
+      })
+    }
+
+    const themed = new Map<WorkforceTheme, GroupedQuestion[]>()
+    for (const theme of THEME_ORDER) themed.set(theme, [])
+    for (const q of byQ.values()) {
+      // Questions whose theme is not a known section (e.g. the "Unclassified"
+      // discard sentinel) are skipped entirely rather than mis-sectioned.
+      const bucket = themed.get(themeForPillar(q.hrPillar) as WorkforceTheme)
+      if (bucket) bucket.push(q)
+    }
+
+    // Assignment-volume questions (E14, E15) also appear in "Who took part" as
+    // participation context, in addition to their pillar-derived section. They
+    // are appended after the four Participation questions, in E14 then E15 order.
+    const whoTookPart = themed.get("Who took part")
+    if (whoTookPart) {
+      for (const code of ["E14", "E15"]) {
+        const q = byQ.get(code) ?? [...byQ.values()].find((x) => (x.qCode ?? "").toUpperCase() === code)
+        if (q && !whoTookPart.includes(q)) whoTookPart.push(q)
+      }
+    }
+
+    return THEME_ORDER.map((theme) => ({ sectionName: theme, questions: themed.get(theme)! }))
+  }, [breakdown, filters.year])
+
+  return {
+    segmentSize,
+    mmi,
+    pillars,
+    sections,
+    yoy,
+    yoyMarket,
+    loadingMain,
+    loadingYoY,
+    loadingYoYMarket,
+    error,
+  }
+}
+
+export function BenchmarkFilterBar({
+  filters,
+  onFilterChange,
+  onReset,
+  segmentSize,
+  loading,
+  isFree = false,
+  filtersOpen,
+  onToggleFilters,
+  onDownload,
+  showingOwnSegment = false,
+  showInfo = true,
+}: {
+  filters: Filters
+  onFilterChange: (key: keyof Filters, raw: string) => void
+  onReset: () => void
+  segmentSize: number | null
+  loading: boolean
+  isFree?: boolean
+  filtersOpen: boolean
+  onToggleFilters: () => void
+  onDownload?: () => void
+  showingOwnSegment?: boolean
+  showInfo?: boolean
+}) {
+  const isFiltered = isBenchmarkFiltered(filters)
+  return (
+    <div className="sticky top-2 z-20 rounded-2xl border border-slate-700/50 bg-brand-navy-2/95 backdrop-blur p-6 mb-12">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Filter className="h-5 w-5 text-primary" />
+          <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
+          {showInfo && <PremiumInfo id="filtersBar" />}
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {isFree && (
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-600/60 bg-slate-800/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/40 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            >
+              <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
+              Filters are part of Premium
+            </Link>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleFilters}
+            aria-expanded={isFree ? false : filtersOpen}
+            disabled={isFree}
+            className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
+          >
+            {filtersOpen && !isFree ? "Hide filters" : "Compare my segment"}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen && !isFree ? "rotate-180" : ""}`} />
+          </Button>
+          <span className="text-sm text-slate-300 inline-flex items-center gap-2">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : null}
+            Based on{" "}
+            <strong className="text-primary">{segmentSize !== null ? segmentSize.toLocaleString() : "—"}</strong>{" "}
+            organizations
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            disabled={!isFiltered}
+            className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset filters
+          </Button>
+          {onDownload && (
+            <Button
+              size="sm"
+              onClick={onDownload}
+              disabled={isFree}
+              className="gap-2 bg-primary text-brand-navy hover:bg-primary/90"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download report
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {showingOwnSegment && (
+        <p className="mb-4 text-xs text-slate-300 flex items-center gap-2 flex-wrap">
+          <span>Showing your segment; reset to view the whole market.</span>
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+          >
+            <RotateCcw className="h-3 w-3" />
+            View whole market
+          </button>
+        </p>
+      )}
+
+      {filtersOpen && !isFree && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <FilterSelect
+            label="Industry"
+            value={filters.industry ?? "All"}
+            options={INDUSTRY_OPTIONS}
+            onChange={(v) => onFilterChange("industry", v)}
+          />
+          <FilterSelect
+            label="Region"
+            value={filters.region ?? "All"}
+            options={REGION_OPTIONS}
+            onChange={(v) => onFilterChange("region", v)}
+          />
+          <FilterSelect
+            label="Company size"
+            value={filters.size ?? "All"}
+            options={SIZE_OPTIONS}
+            onChange={(v) => onFilterChange("size", v)}
+          />
+          <FilterSelect
+            label="Long-term & permanent"
+            value={filters.assignee ?? "All"}
+            options={ASSIGNEE_OPTIONS}
+            onChange={(v) => onFilterChange("assignee", v)}
+          />
+          <FilterSelect
+            label="Short-term & business travel"
+            value={filters.traveller ?? "All"}
+            options={TRAVELLER_OPTIONS}
+            onChange={(v) => onFilterChange("traveller", v)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function MmiBlock({
+  mmi,
+  loading,
+  isFiltered,
+  showInfo = true,
+}: {
+  mmi: MmiRow | null
+  loading: boolean
+  isFiltered: boolean
+  showInfo?: boolean
+}) {
+  const mmiResolved = mmi ? resolve(mmi.confidence, mmi.index_score, mmi.overall_index) : null
+  const band = mmiResolved ? mmiBand(mmiResolved.value).name : ""
+  const scoreComponents = mmi
+    ? [
+        { label: "Defined strategy", pct: mmi.defined_strategy },
+        { label: "Aligned to business", pct: mmi.aligned },
+        { label: "Future readiness", pct: mmi.future },
+        { label: "Technology & AI maturity", pct: mmi.tech_ai_maturity },
+      ]
+    : []
+  return (
+    <div
+      className={`rounded-2xl border-2 border-primary/60 bg-gradient-to-b from-brand-navy-2 to-brand-navy-2/70 px-8 py-10 md:px-10 md:py-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-16 transition-opacity ${
+        loading ? "opacity-60" : "opacity-100"
+      }`}
+    >
+      {mmi && mmiResolved ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_minmax(0,1.1fr)] items-center gap-6 lg:gap-8">
+          <div className="flex justify-center">
+            <CircularGauge
+              value={mmiResolved.value}
+              max={100}
+              size={150}
+              stroke={12}
+              label={`${Math.round(mmiResolved.value)}`}
+              sublabel="/100"
+            />
+          </div>
+
+          <div className="text-center lg:text-left">
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
+                  Mobility Maturity Index
+                </h2>
+                {showInfo && <PremiumInfo id="mmiBlock" />}
+              </div>
+              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                {band}
+              </span>
+              {mmi.confidence === "limited" && <LimitedChip base={mmi.base_n} />}
+            </div>
+            <p className="text-[11px] text-slate-500 mb-2">{bandScaleLabel}</p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
+              Composite of strategy, alignment, future-readiness and technology & AI maturity.
+            </p>
+            <BaseLine base={mmi.base_n} className="mt-3" />
+            {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
+            {/* "You vs market" — only when a segment filter is active and the
+                segment index is shown (not a suppression fallback). Mirrors the
+                pillar snapshot comparison chip. */}
+            {isFiltered &&
+              !mmiResolved.isFallback &&
+              (() => {
+                const marketIndex = Math.round(mmi.overall_index)
+                const diffPts = Math.round(mmi.index_score - mmi.overall_index)
+                const ahead = diffPts >= 2
+                const behind = diffPts <= -2
+                // Direction is carried by the icon; a single teal accent is used for
+                // both above and below (never colour-coded). "In line" is neutral, no icon.
+                const Icon = ahead ? TrendingUp : TrendingDown
+                const tone = ahead || behind ? "text-primary" : "text-slate-400"
+                return (
+                  <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
+                    <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
+                      {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
+                      {ahead ? `${Math.abs(diffPts)} pts above` : behind ? `${Math.abs(diffPts)} pts below` : "In line"}
+                    </span>
+                    <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
+                  </div>
+                )
+              })()}
+          </div>
+
+          <div className="lg:border-l lg:border-primary/15 lg:pl-8">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3">
+              What makes up this score
+            </p>
+            <div className="space-y-2.5">
+              {scoreComponents.map((c) => (
+                <div key={c.label}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate-400">{c.label}</span>
+                    <span className="text-slate-200 font-medium">{Math.round(c.pct)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${Math.min(Math.max(c.pct, 0), 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          Loading index…
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function YoYTrendsSection({
+  trendScope,
+  onScopeChange,
+  yoy,
+  yoyMarket,
+  loadingYoY,
+  loadingYoYMarket,
+  isFree = false,
+  unlockRef,
+  onLockedSelect,
+  className = "mb-8",
+  showInfo = true,
+}: {
+  trendScope: "market" | "segment"
+  onScopeChange: (scope: "market" | "segment") => void
+  yoy: YoYRow[]
+  yoyMarket: YoYRow[]
+  loadingYoY: boolean
+  loadingYoYMarket: boolean
+  isFree?: boolean
+  unlockRef?: React.Ref<HTMLDivElement>
+  onLockedSelect?: () => void
+  className?: string
+  showInfo?: boolean
+}) {
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-700/60">
+        <TrendingUp className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
+        {showInfo && <PremiumInfo id="yoyTrends" />}
+        {(trendScope === "market" ? loadingYoYMarket : loadingYoY) && (
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        )}
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div
+          role="radiogroup"
+          aria-label="Trend scope"
+          className="inline-flex rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
+        >
+          {(
+            [
+              ["market", "Whole market"],
+              ["segment", "My segment"],
+            ] as const
+          ).map(([value, label]) => {
+            const active = (isFree ? "market" : trendScope) === value
+            const lockedOption = isFree && value === "segment"
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                disabled={isFree}
+                onClick={() => onScopeChange(value)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                  active
+                    ? `bg-primary text-brand-navy ${isFree ? "opacity-70" : "shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"}`
+                    : isFree
+                      ? "text-slate-500"
+                      : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
+                }`}
+              >
+                {label}
+                {lockedOption && (
+                  <>
+                    <Lock className="h-3 w-3" aria-hidden="true" />
+                    <span className="sr-only">(locked)</span>
+                  </>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-slate-500">
+          {isFree || trendScope === "market"
+            ? "Showing the whole market; dashboard filters are not applied."
+            : "Trends reflect Industry, Region and Company size filters only."}
+        </p>
+      </div>
+
+      {(() => {
+        const isMarket = isFree || trendScope === "market"
+        const rows = isMarket ? yoyMarket : yoy
+        const loading = isMarket ? loadingYoYMarket : loadingYoY
+        if (isFree) {
+          const realRows = yoyMarket.filter((row) => !isLockedYoYRow(row)).slice(0, 2)
+          const lockedRows = yoyMarket.filter(isLockedYoYRow)
+          return (
+            <div className="flex flex-col gap-4">
+              {realRows.length + lockedRows.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {realRows.map((row, idx) => (
+                    <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
+                  ))}
+                  {lockedRows.map((row, idx) => (
+                    <LockedYoYTrendCard
+                      key={`locked-${row.concept}-${row.metric_label}-${idx}`}
+                      row={row}
+                      onSelect={onLockedSelect ?? (() => {})}
+                    />
+                  ))}
+                </div>
+              )}
+              <div
+                ref={unlockRef}
+                id="trends-unlock-strip"
+                tabIndex={-1}
+                className="flex flex-col gap-3 rounded-xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 outline-none transition-shadow focus:ring-2 focus:ring-primary/60 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="flex items-center gap-2 text-sm text-slate-300 leading-relaxed text-pretty">
+                  <Lock aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+                  {UNLOCK_LINE}
+                </p>
+                <Button asChild size="sm" className="shrink-0">
+                  <Link href={UNLOCK_HREF}>Unlock full access</Link>
+                </Button>
+              </div>
+            </div>
+          )
+        }
+        if (rows.length === 0) {
+          return (
+            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+              {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
+            </div>
+          )
+        }
+        const marketByKey = new Map(yoyMarket.map((r) => [`${r.concept}|${r.metric_label}`, r]))
+        const smallBaseNote =
+          "Shown for the whole market \u2014 your segment is too small in the 2025 wave for a reliable trend."
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {rows.map((row, idx) => {
+              const key = `${row.concept}-${idx}`
+              const tooSmall =
+                !isMarket && (row.base_2025 < YOY_MIN_SEGMENT_BASE || row.base_2026 < YOY_MIN_SEGMENT_BASE)
+              if (!tooSmall) return <YoYTrendCard key={key} row={row} />
+              const marketRow = marketByKey.get(`${row.concept}|${row.metric_label}`) ?? {
+                ...row,
+                pct_2025: row.ov_pct_2025,
+                pct_2026: row.ov_pct_2026,
+                delta_pts: Math.round((row.ov_pct_2026 - row.ov_pct_2025) * 10) / 10,
+                confidence: "robust" as Confidence,
+              }
+              return <YoYTrendCard key={key} row={marketRow} note={smallBaseNote} />
+            })}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+export type BenchmarkSection = { sectionName: WorkforceTheme; questions: GroupedQuestion[] }
+
+export function DetailedBreakdowns({
+  sections,
+  loading,
+  isFiltered,
+  focusedSection,
+  onFocusedSectionChange,
+  lockedContent,
+  showInfo = true,
+}: {
+  sections: BenchmarkSection[]
+  loading: boolean
+  isFiltered: boolean
+  focusedSection: string | null
+  onFocusedSectionChange: (section: string | null) => void
+  lockedContent?: React.ReactNode
+  showInfo?: boolean
+}) {
+  const topRef = useRef<HTMLDivElement | null>(null)
+  // Scroll into view only when the focused pillar changes (entering focus or
+  // switching pills); mounting with an existing focus or filter changes do not scroll.
+  const prevFocused = useRef(focusedSection)
+  useEffect(() => {
+    if (prevFocused.current === focusedSection) return
+    prevFocused.current = focusedSection
+    if (focusedSection !== null) {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [focusedSection])
+
+  return (
+    <div className={`space-y-5 mb-16 transition-opacity ${loading ? "opacity-60" : "opacity-100"}`}>
+      <div
+        ref={topRef}
+        className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/60 scroll-mt-24"
+      >
+        <h2 className="text-xl font-bold text-slate-100">Detailed breakdowns</h2>
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+      </div>
+      {(() => {
+        if (lockedContent) return lockedContent
+
+        const nonEmpty = sections.filter((s) => s.questions.length > 0)
+
+        if (!loading && nonEmpty.length === 0) {
+          return (
+            <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+              No breakdown data for this selection.
+            </div>
+          )
+        }
+
+        // OVERVIEW — responsive grid of pillar cards (3/2/1 columns), read as
+        // a navigable index into each topic's benchmarks.
+        if (focusedSection === null) {
+          return (
+            <div>
+              <div className="mb-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-slate-100">Explore the benchmark</h3>
+                  {showInfo && <PremiumInfo id="themeOverview" />}
+                </div>
+                <p className="text-sm text-slate-400">Select a topic to see how your peers responded.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {nonEmpty.map(({ sectionName, questions }) => {
+                  const findings = countSegmentFindings(questions, isFiltered)
+                  return (
+                    <button
+                      key={sectionName}
+                      type="button"
+                      onClick={() => onFocusedSectionChange(sectionName)}
+                      className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5 pr-10 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-teal)]/50 hover:bg-brand-navy-2/70 hover:shadow-[0_4px_20px_rgb(var(--brand-teal-rgb)_/_0.08)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-teal)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-2"
+                    >
+                      {/* Top accent strip: teal at 40%, full opacity on hover. */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-x-0 top-0 h-0.5 bg-[var(--brand-teal)]/40 transition-opacity duration-200 group-hover:opacity-100 opacity-40"
+                      />
+                      {/* Right-edge chevron affordance. */}
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const Icon = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.icon
+                          return Icon ? <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" /> : null
+                        })()}
+                        <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
+                        {sectionName === NEW_SECTION_NAME && <NewPill />}
+                      </div>
+                      <p className="text-sm text-slate-400">
+                        {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
+                      </p>
+                      {(() => {
+                        const stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
+                        return stat ? <p className="text-xs text-slate-400 leading-relaxed text-pretty">{stat}</p> : null
+                      })()}
+                      {isFiltered && findings > 0 && (
+                        <p className="text-xs font-medium text-primary">
+                          {findings} segment finding{findings === 1 ? "" : "s"}
+                        </p>
+                      )}
+                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
+                        View benchmarks
+                        <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        }
+
+        // FOCUS — single pillar, full width, with back button + pill bar.
+        const focused = nonEmpty.find((s) => s.sectionName === focusedSection)
+        return (
+          <div>
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={() => onFocusedSectionChange(null)}
+                className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200 mb-3 cursor-pointer"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                All sections
+              </button>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <h3 className="text-lg font-semibold text-slate-100 text-pretty">{themeLabel(focusedSection)}</h3>
+                {focusedSection === NEW_SECTION_NAME && <NewPill />}
+              </div>
+              {focusedSection === NEW_SECTION_NAME && <p className="text-sm text-slate-400 mb-3">{NEW_SECTION_CAPTION}</p>}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {nonEmpty.map(({ sectionName }) => {
+                  const active = sectionName === focusedSection
+                  return (
+                    <button
+                      key={sectionName}
+                      type="button"
+                      onClick={() => onFocusedSectionChange(sectionName)}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                        active
+                          ? "border-primary/40 bg-primary/15 text-primary"
+                          : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
+                      }`}
+                    >
+                      {themeLabel(sectionName)}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {focused ? (
+              <BreakdownSection questions={focused.questions} isFiltered={isFiltered} />
+            ) : (
+              <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
+                No data for this section in the current selection.
+              </div>
+            )}
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
 export function PremiumDashboardClient({
   isFreeTier,
   flagshipStats = {},
@@ -1356,22 +2123,22 @@ export function PremiumDashboardClient({
     filters.region === ownSegment.region &&
     filters.size === ownSegment.size
 
-  // Data state
-  const [segmentSize, setSegmentSize] = useState<number | null>(null)
-  const [mmi, setMmi] = useState<MmiRow | null>(null)
-  const [pillars, setPillars] = useState<PillarRow[]>([])
-  const [breakdown, setBreakdown] = useState<BreakdownRow[]>([])
-  const [yoy, setYoy] = useState<YoYRow[]>([])
-  const [yoyMarket, setYoyMarket] = useState<YoYRow[]>([])
-  const [loadingYoYMarket, setLoadingYoYMarket] = useState(true)
+  const {
+    segmentSize,
+    mmi,
+    pillars,
+    sections,
+    yoy,
+    yoyMarket,
+    loadingMain,
+    loadingYoY,
+    loadingYoYMarket,
+    error,
+  } = useBenchmarkData(supabase, filters, { skipBreakdown: isFree })
   const [trendScope, setTrendScope] = useState<"market" | "segment">("market")
 
-  const [loadingMain, setLoadingMain] = useState(true)
-  const [loadingYoY, setLoadingYoY] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   // null = overview grid; a section name = focused single-pillar view.
   const [focusedSection, setFocusedSection] = useState<string | null>(null)
-  const breakdownTopRef = useRef<HTMLDivElement | null>(null)
   const trendsUnlockRef = useRef<HTMLDivElement | null>(null)
   const focusTrendsUnlock = useCallback(() => {
     const strip = trendsUnlockRef.current
@@ -1383,155 +2150,6 @@ export function PremiumDashboardClient({
   // Peer-segment filters are collapsed by default so the market summary reads
   // first; expanding reveals the same controls (RPC flow is unchanged either way).
   const [filtersOpen, setFiltersOpen] = useState(false)
-
-  // Scroll the breakdown block into view whenever the focused pillar changes
-  // (entering focus or switching between pills). Filter changes keep the same
-  // focusedSection value, so they do not trigger a scroll.
-  useEffect(() => {
-    if (focusedSection !== null) {
-      breakdownTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }
-  }, [focusedSection])
-
-  // Params for the first four RPCs (all six dimensions).
-  const segmentParams = useMemo(
-    () => ({
-      p_year: filters.year,
-      p_industry: filters.industry,
-      p_region: filters.region,
-      p_size: filters.size,
-      p_assignee: filters.assignee,
-      p_traveller: filters.traveller,
-    }),
-    [filters],
-  )
-
-  // Fetch the four segment-aware blocks whenever any filter changes.
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      setLoadingMain(true)
-      setError(null)
-      const [sizeRes, mmiRes, pillarRes, breakdownRes] = await Promise.all([
-        supabase.rpc("get_premium_segment_size", segmentParams),
-        supabase.rpc("get_premium_mmi", segmentParams),
-        supabase.rpc("get_premium_pillars", segmentParams),
-        isFree
-          ? Promise.resolve({ data: [] as BreakdownRow[], error: null })
-          : supabase.rpc("get_premium_breakdown", segmentParams),
-      ])
-      if (cancelled) return
-
-      const firstError =
-        sizeRes.error || mmiRes.error || pillarRes.error || breakdownRes.error
-      if (firstError) setError(firstError.message)
-
-      setSegmentSize(typeof sizeRes.data === "number" ? sizeRes.data : (sizeRes.data ?? 0))
-      // mmi RPC may return a single object or a one-row array.
-      const mmiData = Array.isArray(mmiRes.data) ? mmiRes.data[0] : mmiRes.data
-      setMmi((mmiData as MmiRow) ?? null)
-      setPillars(((pillarRes.data as PillarRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
-      setBreakdown((breakdownRes.data as BreakdownRow[]) ?? [])
-      setLoadingMain(false)
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [supabase, segmentParams, isFree])
-
-  // Trends respond ONLY to industry / region / size.
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      setLoadingYoY(true)
-      const { data, error } = await supabase.rpc("get_premium_yoy", {
-        p_industry: filters.industry,
-        p_region: filters.region,
-        p_size: filters.size,
-      })
-      if (cancelled) return
-      if (error) setError(error.message)
-      setYoy(((data as YoYRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
-      setLoadingYoY(false)
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [supabase, filters.industry, filters.region, filters.size])
-
-  // Market-wide trends (no filters): the Trends tab's default view and the small-base fallback.
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      setLoadingYoYMarket(true)
-      const { data, error } = await supabase.rpc("get_premium_yoy", {
-        p_industry: null,
-        p_region: null,
-        p_size: null,
-      })
-      if (cancelled) return
-      if (error) setError(error.message)
-      setYoyMarket(((data as YoYRow[]) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order))
-      setLoadingYoYMarket(false)
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [supabase])
-
-  // Group breakdown rows -> questions -> themed sections.
-  // On the 2025 tab, only event-wave questions (q_code starting with "E") exist.
-  const sections = useMemo(() => {
-    const is2025 = filters.year === 2025
-    const rows = is2025
-      ? breakdown.filter((row) => (row.q_code ?? "").toUpperCase().startsWith("E"))
-      : breakdown
-    const byQ = new Map<string, GroupedQuestion>()
-    for (const row of rows) {
-      if (!byQ.has(row.q_code)) {
-        byQ.set(row.q_code, {
-          qCode: row.q_code,
-          questionLabel: row.question_label,
-          hrPillar: row.hr_pillar,
-          segBaseN: row.seg_base_n,
-          overallBaseN: row.overall_base_n,
-          confidence: row.confidence,
-          answers: [],
-        })
-      }
-      byQ.get(row.q_code)!.answers.push({
-        option: row.answer_option,
-        segPct: row.seg_pct,
-        overallPct: row.overall_pct,
-        segN: row.seg_n,
-      })
-    }
-
-    const themed = new Map<WorkforceTheme, GroupedQuestion[]>()
-    for (const theme of THEME_ORDER) themed.set(theme, [])
-    for (const q of byQ.values()) {
-      // Questions whose theme is not a known section (e.g. the "Unclassified"
-      // discard sentinel) are skipped entirely rather than mis-sectioned.
-      const bucket = themed.get(themeForPillar(q.hrPillar) as WorkforceTheme)
-      if (bucket) bucket.push(q)
-    }
-
-    // Assignment-volume questions (E14, E15) also appear in "Who took part" as
-    // participation context, in addition to their pillar-derived section. They
-    // are appended after the four Participation questions, in E14 then E15 order.
-    const whoTookPart = themed.get("Who took part")
-    if (whoTookPart) {
-      for (const code of ["E14", "E15"]) {
-        const q = byQ.get(code) ?? [...byQ.values()].find((x) => (x.qCode ?? "").toUpperCase() === code)
-        if (q && !whoTookPart.includes(q)) whoTookPart.push(q)
-      }
-    }
-
-    return THEME_ORDER.map((theme) => ({ sectionName: theme, questions: themed.get(theme)! }))
-  }, [breakdown, filters.year])
 
   const handleFilterChange = useCallback((key: keyof Filters, raw: string) => {
     setFilters((prev) => ({
@@ -1548,25 +2166,9 @@ export function PremiumDashboardClient({
 
   const setYear = useCallback((y: number) => setFilters((prev) => ({ ...prev, year: y })), [])
 
-  const isFiltered =
-    filters.industry !== null ||
-    filters.region !== null ||
-    filters.size !== null ||
-    filters.assignee !== null ||
-    filters.traveller !== null
+  const isFiltered = isBenchmarkFiltered(filters)
 
   // BLOCK 1/2 derived values
-  const mmiResolved = mmi ? resolve(mmi.confidence, mmi.index_score, mmi.overall_index) : null
-  const band = mmiResolved ? mmiBand(mmiResolved.value).name : ""
-  const scoreComponents = mmi
-    ? [
-        { label: "Defined strategy", pct: mmi.defined_strategy },
-        { label: "Aligned to business", pct: mmi.aligned },
-        { label: "Future readiness", pct: mmi.future },
-        { label: "Technology & AI maturity", pct: mmi.tech_ai_maturity },
-      ]
-    : []
-
   const remoteRegex = /international remote|remote work/i
   const primaryPillars = pillars.filter((p) => !remoteRegex.test(`${p.pillar} ${p.short_name}`))
   const remotePillar = pillars.find((p) => remoteRegex.test(`${p.pillar} ${p.short_name}`))
@@ -1683,6 +2285,91 @@ export function PremiumDashboardClient({
 
   // 2025 is a lighter event-wave view: no MMI, no remote tile, no YoY.
   const is2025 = filters.year === 2025
+
+  // Free tier never fetches breakdown rows: theme titles and public headline
+  // figures stay visible as static rows, and each row opens an unlock strip.
+  const freeBreakdownRows = () => {
+    const freeRows = [
+        ...THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => {
+          const parts = publicFlagshipParts(flagshipStats[theme])
+          return {
+            key: theme,
+            title: themeLabel(theme),
+            subtitle: parts ? `${parts.pct}% ${parts.phrase}` : null,
+            inside: exploreTeaser(theme),
+            Icon: FLAGSHIP_STATS[theme]?.icon,
+            isNew: theme === NEW_SECTION_NAME,
+          }
+        }),
+        {
+          key: "__question-level-benchmarks",
+          title: "Question-level benchmarks",
+          subtitle:
+            "All 60+ datasets, filterable by region, industry, company size, and assignee population.",
+          inside: null,
+          Icon: undefined,
+          isNew: false,
+        },
+      ]
+      return (
+        <ul className="divide-y divide-slate-700/50 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40">
+          {freeRows.map(({ key, title, subtitle, inside, Icon, isNew }) => {
+            const open = freeUnlockOpen === key
+            const stripId = `free-unlock-${key}`
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-controls={stripId}
+                  onClick={() => setFreeUnlockOpen(open ? null : key)}
+                  className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
+                >
+                  {Icon ? (
+                    <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
+                  ) : (
+                    <Lock aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
+                  )}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-base font-semibold text-slate-200 text-pretty">{title}</span>
+                      {isNew && <NewPill />}
+                    </span>
+                    {subtitle && (
+                      <span className="text-xs text-slate-400 leading-relaxed text-pretty">{subtitle}</span>
+                    )}
+                    {inside && (
+                      <span className="text-xs text-slate-500 leading-relaxed text-pretty">{inside}</span>
+                    )}
+                  </span>
+                  <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400">
+                    <Lock aria-hidden="true" className="h-3.5 w-3.5" />
+                    Locked
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+                    />
+                  </span>
+                </button>
+                {open && (
+                  <div
+                    id={stripId}
+                    className="flex flex-col gap-3 border-t border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <p className="max-w-2xl text-sm text-slate-300 leading-relaxed text-pretty">
+                      {`The question-by-question findings behind this number are part of Premium. ${UNLOCK_LINE}`}
+                    </p>
+                    <Button asChild size="sm" className="shrink-0">
+                      <Link href={UNLOCK_HREF}>Unlock full access</Link>
+                    </Button>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )
+  }
 
   return (
     <div className="min-h-screen bg-brand-navy relative">
@@ -1811,123 +2498,29 @@ export function PremiumDashboardClient({
         )}
 
         {/* ============================ FILTER BAR (sticky) ============================ */}
-        <div className="sticky top-2 z-20 rounded-2xl border border-slate-700/50 bg-brand-navy-2/95 backdrop-blur p-6 mb-12">
-          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-primary" />
-              <h2 className="text-base font-semibold text-slate-100">Peer-segment filters</h2>
-              <PremiumInfo id="filtersBar" />
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              {isFree && (
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-600/60 bg-slate-800/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/40 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                >
-                  <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  Filters are part of Premium
-                </Link>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setFiltersOpen((o) => !o)}
-                aria-expanded={isFree ? false : filtersOpen}
-                disabled={isFree}
-                className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
-              >
-                {filtersOpen && !isFree ? "Hide filters" : "Compare my segment"}
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${filtersOpen && !isFree ? "rotate-180" : ""}`} />
-              </Button>
-              <span className="text-sm text-slate-300 inline-flex items-center gap-2">
-                {loadingMain ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                ) : null}
-                Based on{" "}
-                <strong className="text-primary">
-                  {segmentSize !== null ? segmentSize.toLocaleString() : "—"}
-                </strong>{" "}
-                organizations
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetFilters}
-                disabled={!isFiltered}
-                className="gap-2 border-primary/30 text-slate-200 hover:bg-primary/10"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset filters
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  const params = new URLSearchParams()
-                  params.set("year", String(filters.year))
-                  if (filters.industry) params.set("industry", filters.industry)
-                  if (filters.region) params.set("region", filters.region)
-                  if (filters.size) params.set("size", filters.size)
-                  if (filters.assignee) params.set("assignee", filters.assignee)
-                  if (filters.traveller) params.set("traveller", filters.traveller)
-                  window.open(`/premium-report?${params.toString()}`, "_blank", "noopener,noreferrer")
-                }}
-                disabled={isFree}
-                className="gap-2 bg-primary text-brand-navy hover:bg-primary/90"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download report
-              </Button>
-            </div>
-          </div>
+        <BenchmarkFilterBar
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+          segmentSize={segmentSize}
+          loading={loadingMain}
+          isFree={isFree}
+          filtersOpen={filtersOpen}
+          onToggleFilters={() => setFiltersOpen((o) => !o)}
+          onDownload={() => {
+            const params = new URLSearchParams()
+            params.set("year", String(filters.year))
+            if (filters.industry) params.set("industry", filters.industry)
+            if (filters.region) params.set("region", filters.region)
+            if (filters.size) params.set("size", filters.size)
+            if (filters.assignee) params.set("assignee", filters.assignee)
+            if (filters.traveller) params.set("traveller", filters.traveller)
+            window.open(`/premium-report?${params.toString()}`, "_blank", "noopener,noreferrer")
+          }}
+          showingOwnSegment={showingOwnSegment}
+        />
 
-          {showingOwnSegment && (
-            <p className="mb-4 text-xs text-slate-300 flex items-center gap-2 flex-wrap">
-              <span>Showing your segment; reset to view the whole market.</span>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-              >
-                <RotateCcw className="h-3 w-3" />
-                View whole market
-              </button>
-            </p>
-          )}
-
-          {filtersOpen && !isFree && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <FilterSelect
-              label="Industry"
-              value={filters.industry ?? "All"}
-              options={INDUSTRY_OPTIONS}
-              onChange={(v) => handleFilterChange("industry", v)}
-            />
-            <FilterSelect
-              label="Region"
-              value={filters.region ?? "All"}
-              options={REGION_OPTIONS}
-              onChange={(v) => handleFilterChange("region", v)}
-            />
-            <FilterSelect
-              label="Company size"
-              value={filters.size ?? "All"}
-              options={SIZE_OPTIONS}
-              onChange={(v) => handleFilterChange("size", v)}
-            />
-            <FilterSelect
-              label="Long-term & permanent"
-              value={filters.assignee ?? "All"}
-              options={ASSIGNEE_OPTIONS}
-              onChange={(v) => handleFilterChange("assignee", v)}
-            />
-            <FilterSelect
-              label="Short-term & business travel"
-              value={filters.traveller ?? "All"}
-              options={TRAVELLER_OPTIONS}
-              onChange={(v) => handleFilterChange("traveller", v)}
-            />
-          </div>
-          )}
+        {/* ===================== START HERE          )}
         </div>
 
         {/* ===================== START HERE ��� plain-language market summary ===================== */}
@@ -1944,102 +2537,9 @@ export function PremiumDashboardClient({
         )}
 
         {/* ============================ BLOCK 1 — MMI ============================ */}
-        {!is2025 && (
-        <div
-          className={`rounded-2xl border-2 border-primary/60 bg-gradient-to-b from-brand-navy-2 to-brand-navy-2/70 px-8 py-10 md:px-10 md:py-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] mb-16 transition-opacity ${
-            loadingMain ? "opacity-60" : "opacity-100"
-          }`}
-        >
-          {mmi && mmiResolved ? (
-            <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_minmax(0,1.1fr)] items-center gap-6 lg:gap-8">
-              <div className="flex justify-center">
-                <CircularGauge
-                  value={mmiResolved.value}
-                  max={100}
-                  size={150}
-                  stroke={12}
-                  label={`${Math.round(mmiResolved.value)}`}
-                  sublabel="/100"
-                />
-              </div>
+        {!is2025 && <MmiBlock mmi={mmi} loading={loadingMain} isFiltered={isFiltered} />}
 
-              <div className="text-center lg:text-left">
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-[0.15em]">
-                      Mobility Maturity Index
-                    </h2>
-                    <PremiumInfo id="mmiBlock" />
-                  </div>
-                  <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                    {band}
-                  </span>
-                  {mmi.confidence === "limited" && <LimitedChip base={mmi.base_n} />}
-                </div>
-                <p className="text-[11px] text-slate-500 mb-2">
-                  {bandScaleLabel}
-                </p>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto lg:mx-0">
-                  Composite of strategy, alignment, future-readiness and technology & AI maturity.
-                </p>
-                <BaseLine base={mmi.base_n} className="mt-3" />
-                {mmiResolved.isFallback && <FallbackNote className="mt-1" />}
-                {/* "You vs market" — only when a segment filter is active and the
-                    segment index is shown (not a suppression fallback). Mirrors the
-                    pillar snapshot comparison chip. */}
-                {isFiltered &&
-                  !mmiResolved.isFallback &&
-                  (() => {
-                    const marketIndex = Math.round(mmi.overall_index)
-                    const diffPts = Math.round(mmi.index_score - mmi.overall_index)
-                    const ahead = diffPts >= 2
-                    const behind = diffPts <= -2
-                    // Direction is carried by the icon; a single teal accent is used for
-                    // both above and below (never colour-coded). "In line" is neutral, no icon.
-                    const Icon = ahead ? TrendingUp : TrendingDown
-                    const tone = ahead || behind ? "text-primary" : "text-slate-400"
-                    return (
-                      <div className="mt-3 inline-flex items-center gap-3 rounded-md bg-slate-800/40 px-3 py-1.5">
-                        <span className={`inline-flex items-center gap-1 text-sm font-semibold ${tone}`}>
-                          {(ahead || behind) && <Icon className="h-4 w-4" aria-hidden="true" />}
-                          {ahead ? `${Math.abs(diffPts)} pts above` : behind ? `${Math.abs(diffPts)} pts below` : "In line"}
-                        </span>
-                        <span className="text-xs text-slate-400">Market average: {marketIndex}/100</span>
-                      </div>
-                    )
-                  })()}
-              </div>
-
-              <div className="lg:border-l lg:border-primary/15 lg:pl-8">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3">
-                  What makes up this score
-                </p>
-                <div className="space-y-2.5">
-                  {scoreComponents.map((c) => (
-                    <div key={c.label}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">{c.label}</span>
-                        <span className="text-slate-200 font-medium">{Math.round(c.pct)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${Math.min(Math.max(c.pct, 0), 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-10 text-slate-400 gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              Loading index…
-            </div>
-          )}
-        </div>
+        {/* ============================ BLOCK 2        </div>
         )}
 
         {/* ============================ BLOCK 2 — PILLAR SNAPSHOT ============================ */}
@@ -2182,363 +2682,30 @@ export function PremiumDashboardClient({
         {/* ============================ BLOCK 4 — YEAR-ON-YEAR TRENDS (2026 only) ============================ */}
         {/* In the tabbed view the year selector lives on Explore, so Trends always shows 2025 → 2026. */}
         {showTrends && (showTabs || !is2025) && (
-        <div className={showTabs ? "mb-8" : "mb-16"}>
-          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-700/60">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold text-slate-100">Year-on-year trends (2025 → 2026)</h2>
-            <PremiumInfo id="yoyTrends" />
-            {(trendScope === "market" ? loadingYoYMarket : loadingYoY) && (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            )}
-          </div>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
-            <div
-              role="radiogroup"
-              aria-label="Trend scope"
-              className="inline-flex rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
-            >
-              {(
-                [
-                  ["market", "Whole market"],
-                  ["segment", "My segment"],
-                ] as const
-              ).map(([value, label]) => {
-                const active = (isFree ? "market" : trendScope) === value
-                const lockedOption = isFree && value === "segment"
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    disabled={isFree}
-                    onClick={() => setTrendScope(value)}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
-                      active
-                        ? `bg-primary text-brand-navy ${isFree ? "opacity-70" : "shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"}`
-                        : isFree
-                          ? "text-slate-500"
-                          : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
-                    }`}
-                  >
-                    {label}
-                    {lockedOption && (
-                      <>
-                        <Lock className="h-3 w-3" aria-hidden="true" />
-                        <span className="sr-only">(locked)</span>
-                      </>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            <p className="text-xs text-slate-500">
-              {isFree || trendScope === "market"
-                ? "Showing the whole market; dashboard filters are not applied."
-                : "Trends reflect Industry, Region and Company size filters only."}
-            </p>
-          </div>
-
-          {(() => {
-            const isMarket = isFree || trendScope === "market"
-            const rows = isMarket ? yoyMarket : yoy
-            const loading = isMarket ? loadingYoYMarket : loadingYoY
-            if (isFree) {
-              const realRows = yoyMarket.filter((row) => !isLockedYoYRow(row)).slice(0, 2)
-              const lockedRows = yoyMarket.filter(isLockedYoYRow)
-              return (
-                <div className="flex flex-col gap-4">
-                  {realRows.length + lockedRows.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {realRows.map((row, idx) => (
-                        <YoYTrendCard key={`${row.concept}-${idx}`} row={row} />
-                      ))}
-                      {lockedRows.map((row, idx) => (
-                        <LockedYoYTrendCard
-                          key={`locked-${row.concept}-${row.metric_label}-${idx}`}
-                          row={row}
-                          onSelect={focusTrendsUnlock}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    ref={trendsUnlockRef}
-                    id="trends-unlock-strip"
-                    tabIndex={-1}
-                    className="flex flex-col gap-3 rounded-xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 outline-none transition-shadow focus:ring-2 focus:ring-primary/60 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <p className="flex items-center gap-2 text-sm text-slate-300 leading-relaxed text-pretty">
-                      <Lock aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
-                      {UNLOCK_LINE}
-                    </p>
-                    <Button asChild size="sm" className="shrink-0">
-                      <Link href={UNLOCK_HREF}>Unlock full access</Link>
-                    </Button>
-                  </div>
-                </div>
-              )
-            }
-            if (rows.length === 0) {
-              return (
-                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-                  {loading ? "Loading year-on-year trends…" : "No trend data for this selection."}
-                </div>
-              )
-            }
-            const marketByKey = new Map(yoyMarket.map((r) => [`${r.concept}|${r.metric_label}`, r]))
-            const smallBaseNote =
-              "Shown for the whole market \u2014 your segment is too small in the 2025 wave for a reliable trend."
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {rows.map((row, idx) => {
-                  const key = `${row.concept}-${idx}`
-                  const tooSmall =
-                    !isMarket &&
-                    (row.base_2025 < YOY_MIN_SEGMENT_BASE || row.base_2026 < YOY_MIN_SEGMENT_BASE)
-                  if (!tooSmall) return <YoYTrendCard key={key} row={row} />
-                  const marketRow = marketByKey.get(`${row.concept}|${row.metric_label}`) ?? {
-                    ...row,
-                    pct_2025: row.ov_pct_2025,
-                    pct_2026: row.ov_pct_2026,
-                    delta_pts: Math.round((row.ov_pct_2026 - row.ov_pct_2025) * 10) / 10,
-                    confidence: "robust" as Confidence,
-                  }
-                  return <YoYTrendCard key={key} row={marketRow} note={smallBaseNote} />
-                })}
-              </div>
-            )
-          })()}
-        </div>
+        <YoYTrendsSection
+          className={showTabs ? "mb-8" : "mb-16"}
+          trendScope={trendScope}
+          onScopeChange={setTrendScope}
+          yoy={yoy}
+          yoyMarket={yoyMarket}
+          loadingYoY={loadingYoY}
+          loadingYoYMarket={loadingYoYMarket}
+          isFree={isFree}
+          unlockRef={trendsUnlockRef}
+          onLockedSelect={focusTrendsUnlock}
+        />
         )}
 
         {/* ============================ BLOCK 3 — FULL BREAKDOWNS ============================ */}
         {showExplore && (
-        <div className={`space-y-5 mb-16 transition-opacity ${loadingMain ? "opacity-60" : "opacity-100"}`}>
-          <div
-            ref={breakdownTopRef}
-            className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/60 scroll-mt-24"
-          >
-            <h2 className="text-xl font-bold text-slate-100">Detailed breakdowns</h2>
-            {loadingMain && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          </div>
-          {(() => {
-            // Free tier never fetches breakdown rows: theme titles and public headline
-            // figures stay visible as static cards, and the breakdowns area is locked.
-            if (isFree) {
-              // Free users never fetch breakdowns, so no per-theme question count is
-              // available; the affordance falls back to "Locked" rather than a guess.
-              const freeRows = [
-                ...THEME_ORDER.filter((theme) => FLAGSHIP_STATS[theme]).map((theme) => {
-                  const parts = publicFlagshipParts(flagshipStats[theme])
-                  return {
-                    key: theme,
-                    title: themeLabel(theme),
-                    subtitle: parts ? `${parts.pct}% ${parts.phrase}` : null,
-                    inside: exploreTeaser(theme),
-                    Icon: FLAGSHIP_STATS[theme]?.icon,
-                    isNew: theme === NEW_SECTION_NAME,
-                  }
-                }),
-                {
-                  key: "__question-level-benchmarks",
-                  title: "Question-level benchmarks",
-                  subtitle:
-                    "All 60+ datasets, filterable by region, industry, company size, and assignee population.",
-                  inside: null,
-                  Icon: undefined,
-                  isNew: false,
-                },
-              ]
-              return (
-                <ul className="divide-y divide-slate-700/50 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40">
-                  {freeRows.map(({ key, title, subtitle, inside, Icon, isNew }) => {
-                    const open = freeUnlockOpen === key
-                    const stripId = `free-unlock-${key}`
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          aria-expanded={open}
-                          aria-controls={stripId}
-                          onClick={() => setFreeUnlockOpen(open ? null : key)}
-                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
-                        >
-                          {Icon ? (
-                            <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
-                          ) : (
-                            <Lock aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
-                          )}
-                          <span className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="flex flex-wrap items-center gap-2">
-                              <span className="text-base font-semibold text-slate-200 text-pretty">{title}</span>
-                              {isNew && <NewPill />}
-                            </span>
-                            {subtitle && (
-                              <span className="text-xs text-slate-400 leading-relaxed text-pretty">{subtitle}</span>
-                            )}
-                            {inside && (
-                              <span className="text-xs text-slate-500 leading-relaxed text-pretty">{inside}</span>
-                            )}
-                          </span>
-                          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-slate-400">
-                            <Lock aria-hidden="true" className="h-3.5 w-3.5" />
-                            Locked
-                            <ChevronDown
-                              aria-hidden="true"
-                              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-                            />
-                          </span>
-                        </button>
-                        {open && (
-                          <div
-                            id={stripId}
-                            className="flex flex-col gap-3 border-t border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <p className="max-w-2xl text-sm text-slate-300 leading-relaxed text-pretty">
-                              {`The question-by-question findings behind this number are part of Premium. ${UNLOCK_LINE}`}
-                            </p>
-                            <Button asChild size="sm" className="shrink-0">
-                              <Link href={UNLOCK_HREF}>Unlock full access</Link>
-                            </Button>
-                          </div>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )
-            }
-
-            const nonEmpty = sections.filter((s) => s.questions.length > 0)
-
-            if (!loadingMain && nonEmpty.length === 0) {
-              return (
-                <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-                  No breakdown data for this selection.
-                </div>
-              )
-            }
-
-            // OVERVIEW — responsive grid of pillar cards (3/2/1 columns), read as
-            // a navigable index into each topic's benchmarks.
-            if (focusedSection === null) {
-              return (
-                <div>
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-slate-100">Explore the benchmark</h3>
-                      <PremiumInfo id="themeOverview" />
-                    </div>
-                    <p className="text-sm text-slate-400">Select a topic to see how your peers responded.</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {nonEmpty.map(({ sectionName, questions }) => {
-                      const findings = countSegmentFindings(questions, isFiltered)
-                      return (
-                        <button
-                          key={sectionName}
-                          type="button"
-                          onClick={() => setFocusedSection(sectionName)}
-                          className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-slate-700/50 bg-brand-navy-2/40 p-5 pr-10 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-teal)]/50 hover:bg-brand-navy-2/70 hover:shadow-[0_4px_20px_rgb(var(--brand-teal-rgb)_/_0.08)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-teal)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-2"
-                        >
-                          {/* Top accent strip: teal at 40%, full opacity on hover. */}
-                          <span
-                            aria-hidden="true"
-                            className="absolute inset-x-0 top-0 h-0.5 bg-[var(--brand-teal)]/40 transition-opacity duration-200 group-hover:opacity-100 opacity-40"
-                          />
-                          {/* Right-edge chevron affordance. */}
-                          <ChevronRight
-                            aria-hidden="true"
-                            className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-teal)]"
-                          />
-                          <div className="flex flex-wrap items-center gap-2">
-                            {(() => {
-                              const Icon = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.icon
-                              return Icon ? (
-                                <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
-                              ) : null
-                            })()}
-                            <h3 className="text-base font-semibold text-slate-200 text-pretty">{themeLabel(sectionName)}</h3>
-                            {sectionName === NEW_SECTION_NAME && <NewPill />}
-                          </div>
-                          <p className="text-sm text-slate-400">
-                            {questions.length} benchmark {questions.length === 1 ? "question" : "questions"}
-                          </p>
-                          {(() => {
-                            const stat = FLAGSHIP_STATS[sectionName as WorkforceTheme]?.compute(questions) ?? null
-                            return stat ? (
-                              <p className="text-xs text-slate-400 leading-relaxed text-pretty">{stat}</p>
-                            ) : null
-                          })()}
-                          {isFiltered && findings > 0 && (
-                            <p className="text-xs font-medium text-primary">
-                              {findings} segment finding{findings === 1 ? "" : "s"}
-                            </p>
-                          )}
-                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-teal)]/80 transition-opacity duration-200 group-hover:opacity-100">
-                            View benchmarks
-                            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            }
-
-            // FOCUS — single pillar, full width, with back button + pill bar.
-            const focused = nonEmpty.find((s) => s.sectionName === focusedSection)
-            return (
-              <div>
-                <div className="mb-5">
-                  <button
-                    type="button"
-                    onClick={() => setFocusedSection(null)}
-                    className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200 mb-3 cursor-pointer"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    All sections
-                  </button>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h3 className="text-lg font-semibold text-slate-100 text-pretty">{themeLabel(focusedSection)}</h3>
-                    {focusedSection === NEW_SECTION_NAME && <NewPill />}
-                  </div>
-                  {focusedSection === NEW_SECTION_NAME && (
-                    <p className="text-sm text-slate-400 mb-3">{NEW_SECTION_CAPTION}</p>
-                  )}
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {nonEmpty.map(({ sectionName }) => {
-                      const active = sectionName === focusedSection
-                      return (
-                        <button
-                          key={sectionName}
-                          type="button"
-                          onClick={() => setFocusedSection(sectionName)}
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                            active
-                              ? "border-primary/40 bg-primary/15 text-primary"
-                              : "border-slate-700/50 bg-brand-navy-2/40 text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                          }`}
-                        >
-                          {themeLabel(sectionName)}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-                {focused ? (
-                  <BreakdownSection questions={focused.questions} isFiltered={isFiltered} />
-                ) : (
-                  <div className="rounded-xl border border-primary/15 bg-brand-navy-2/40 p-8 text-center text-slate-400">
-                    No data for this section in the current selection.
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-        </div>
+          <DetailedBreakdowns
+            sections={sections}
+            loading={loadingMain}
+            isFiltered={isFiltered}
+            focusedSection={focusedSection}
+            onFocusedSectionChange={setFocusedSection}
+            lockedContent={isFree ? freeBreakdownRows() : undefined}
+          />
         )}
       </main>
 
