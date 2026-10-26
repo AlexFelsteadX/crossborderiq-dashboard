@@ -1,468 +1,302 @@
+import Link from "next/link"
+import { ArrowDown, ArrowRight, BarChart3, Compass, Cpu, Radar, ShieldCheck, Users, Check } from "lucide-react"
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Lock, TrendingUp, BarChart3, Sparkles, Filter, Building2, Globe, Users, ArrowRight, ArrowDown, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { CONTRIBUTIONS, VERIFIED_LEADERS } from "@/lib/site-stats"
+import { ScoreRing } from "@/app/workforce-intelligence/score-visuals"
+import { Reveal } from "@/app/workforce-intelligence/reveal"
+import { SegmentSnapshotForm } from "./segment-snapshot-form"
 
 export const metadata = {
   title: "Vendor Intelligence",
   description:
-    "Aggregated market intelligence for service providers — see where demand is emerging across the global workforce and mobility market. No lead lists, just strategic insight.",
+    "The demand side of Global Mobility, measured. Aggregated intelligence from verified Global Mobility, HR, and workforce leaders. No lead lists, no named accounts.",
+}
+
+const FORM_ANCHOR = "#segment-snapshot"
+
+const MEMBER_FEATURES = [
+  {
+    icon: Compass,
+    title: "Your Market",
+    body: "Demand for your category: who is outsourcing it, exploring it, and how that is moving",
+  },
+  {
+    icon: BarChart3,
+    title: "Market Research",
+    body: "Whitespace by service, program states, reshaping forces, and 60+ question-level breakdowns",
+  },
+  {
+    icon: Cpu,
+    title: "Technology Buyer Intelligence",
+    body: "Who approves the investment, whose budget it sits in, and what evidence wins the case, from the buyers themselves",
+  },
+  {
+    icon: Radar,
+    title: "Demand Signals",
+    body: "Anonymous in-market activity: know that a segment is actively reviewing, never who. Introductions happen only when an organization chooses to meet, brokered by GME",
+  },
+  {
+    icon: Users,
+    title: "Workshops",
+    body: "Request a facilitated session with an anonymous in-market organization; identities are shared only when both sides accept",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Explore the Benchmark",
+    body: "The exact view your buyers use to judge their own programs, so you walk in knowing what they know",
+  },
+]
+
+const TIERS = [
+  {
+    id: "vendor-intelligence-partner",
+    name: "Vendor Intelligence Partner",
+    gbp: "£9,950",
+    usd: "$12,950",
+    components: [
+      "Market Opportunity Score™",
+      "Established vs Emerging Service Demand",
+      "Demand Pipeline",
+    ],
+  },
+  {
+    id: "strategic-intelligence-partner",
+    name: "Strategic Intelligence Partner",
+    gbp: "£25,000",
+    usd: "$32,500",
+    components: [
+      "Everything in Vendor Intelligence Partner",
+      "Includes 10 sponsored Client Intelligence Passes",
+      "2 Bespoke Virtual Executive Events",
+    ],
+  },
+]
+
+function PrimaryCta() {
+  return (
+    <Button size="lg" className="h-12 gap-2 px-7 text-base bg-primary hover:bg-primary/90" asChild>
+      <a href={FORM_ANCHOR}>
+        Request your segment snapshot
+        <ArrowDown className="h-4 w-4" aria-hidden="true" />
+      </a>
+    </Button>
+  )
 }
 
 export default async function VendorIntelligencePage() {
-  // Fetch the Market Opportunity Score from public view
   const supabase = await createClient()
   const { data: mosData, error: mosError } = await supabase
     .from("v_market_opportunity_public")
     .select("market_opportunity_score")
     .single()
 
-  // Index on a 0–100 scale. On failure render "—" / "temporarily unavailable", never an invented number.
+  // Index on a 0 to 100 scale. On failure render "—", never an invented number.
   const rawScore = mosError ? null : mosData?.market_opportunity_score
   const mosScore = typeof rawScore === "number" && Number.isFinite(rawScore) ? Math.round(rawScore) : null
 
   return (
-    <div className="min-h-screen bg-brand-navy flex flex-col relative">
-      {/* Premium Dark Gradient Mesh Background - Same as homepage hero */}
-      <div className="fixed inset-0 bg-brand-navy -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)] -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)] -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
-      <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30 -z-10" />
-      
+    <div className="min-h-screen bg-brand-navy flex flex-col overflow-x-clip">
       <GlobalNav />
-      
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-12 w-full">
-        {/* Page Header - Matching homepage styling */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
-            <Building2 className="h-3.5 w-3.5" />
-            Vendor Intelligence
-          </div>
-          
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight">
-            Market Intelligence for Global Mobility Providers
-          </h1>
-          
-          <p className="text-lg text-slate-300 max-w-3xl mx-auto mb-2">
-            Understand what HR and mobility leaders need, where demand is growing, and how to position your services. 
-            Vendor Intelligence surfaces demand signals, service demand patterns, and market opportunity scores 
-            across regions, industries, and company sizes.
-          </p>
-          <p className="text-xs text-slate-400">
-            Built on {CONTRIBUTIONS} contributions from {VERIFIED_LEADERS} verified Global Mobility, HR, and workforce leaders.
-          </p>
 
-          <div className="mt-6 flex justify-center">
-            <a
-              href="#access-full-data"
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
+      <main className="flex-1 mx-auto w-full max-w-6xl px-4 md:px-6 py-16 md:py-24 flex flex-col gap-24 md:gap-32">
+        {/* 1. Hero */}
+        <section className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]" aria-labelledby="vi-hero-heading">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand-teal">Vendor Intelligence</p>
+            <h1
+              id="vi-hero-heading"
+              className="mt-4 text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight text-balance"
             >
-              Access Full Data
-              <ArrowDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
-            </a>
-          </div>
-        </div>
-
-        {/* Value Proposition Grid - Matching homepage card style */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
-            <TrendingUp className="h-5 w-5 text-primary mb-3" />
-            <h3 className="font-semibold text-foreground text-sm mb-1">Market Demand</h3>
-            <p className="text-xs text-slate-400">See what services organizations are actively outsourcing and exploring.</p>
-          </div>
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
-            <BarChart3 className="h-5 w-5 text-primary mb-3" />
-            <h3 className="font-semibold text-foreground text-sm mb-1">Demand Signals</h3>
-            <p className="text-xs text-slate-400">Near-term demand and service-review activity across the market.</p>
-          </div>
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
-            <Globe className="h-5 w-5 text-primary mb-3" />
-            <h3 className="font-semibold text-foreground text-sm mb-1">Regional Insights</h3>
-            <p className="text-xs text-slate-400">Segment demand by Europe, Americas, APAC, and Middle East.</p>
-          </div>
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-5">
-            <Users className="h-5 w-5 text-primary mb-3" />
-            <h3 className="font-semibold text-foreground text-sm mb-1">Demand by Segment</h3>
-            <p className="text-xs text-slate-400">Understand how demand varies by industry vertical and company size.</p>
-          </div>
-        </div>
-
-        {/* Anonymity guarantee */}
-        <div
-          role="note"
-          className="-mt-8 mb-12 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-5 py-4"
-        >
-          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-          <p className="text-sm leading-relaxed text-slate-200">
-            All intelligence is aggregated and anonymized: no individual organization is identifiable.
-            Reporting thresholds apply, so small segments are never shown, and no lead lists are provided.
-          </p>
-        </div>
-
-        {/* Market Opportunity Score Panel - Real score in ring, frosted breakdown */}
-        <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* Left: Circular Gauge with real MOS score */}
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="absolute -inset-8 bg-primary/20 rounded-full blur-[60px]" />
-                <div className="relative w-56 h-56">
-                  {/* Outer glow ring */}
-                  <div className="absolute inset-0 rounded-full bg-primary/10" />
-                  
-                  {/* SVG Gauge with real value */}
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                    {/* Background track - muted dark */}
-                    <circle 
-                      cx="100" cy="100" r="85" 
-                      fill="none" 
-                      stroke="#1a3344" 
-                      strokeWidth="14" 
-                    />
-                    {/* Progress arc - bright teal */}
-                    <circle 
-                      cx="100" cy="100" r="85" 
-                      fill="none" 
-                      stroke="url(#mosGradientBright)" 
-                      strokeWidth="14" 
-                      strokeDasharray={534}
-                      strokeDashoffset={534 * (1 - (mosScore ?? 0) / 100)}
-                      strokeLinecap="round"
-                      filter="url(#mosGlow)"
-                    />
-                    {/* Gradient and glow definitions */}
-                    <defs>
-                      <linearGradient id="mosGradientBright" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="var(--brand-teal)" />
-                        <stop offset="100%" stopColor="#2dd4bf" />
-                      </linearGradient>
-                      <filter id="mosGlow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                        <feMerge>
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
-                    </defs>
-                  </svg>
-                  
-                  {/* Center content - index out of 100 */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                      {mosScore === null ? "—" : mosScore}
-                      {mosScore !== null && <span className="ml-1 text-xl font-semibold text-slate-400">/100</span>}
-                    </span>
-                    <span className="text-xs text-slate-400 mt-1">
-                      {mosScore === null ? "Composite Index temporarily unavailable" : "Composite Index"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right: Description and frosted component breakdown */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">Market Opportunity Score™</h2>
-              </div>
-              <p className="text-sm text-slate-300 mb-3">
-                A composite index tracking where operational pressure, transformation activity, 
-                technology demand and investment priorities are converging — signaling where 
-                provider services are most needed.
-              </p>
-              <p className="text-xs text-slate-500 mb-6">
-                A market-wide composite index built from aggregated survey responses — not company-level data.
-              </p>
-              
-              {/* Frosted component breakdown - no real data */}
-              <div className="space-y-3 mb-6">
-                {[
-                  { label: "Operational Pressure", width: "75%" },
-                  { label: "Transformation Activity", width: "82%" },
-                  { label: "Technology Demand", width: "65%" },
-                  { label: "Investment Priorities", width: "70%" }
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-300 w-36">{item.label}</span>
-                    <div className="flex-1 h-2 bg-[#1a3344] rounded-full overflow-hidden">
-                      <div className="h-full bg-primary/40 rounded-full blur-[2px]" style={{ width: item.width }} />
-                    </div>
-                    <span className="text-xs text-slate-500 blur-[3px] w-8">██</span>
-                  </div>
-                ))}
-              </div>
-              
-              <Link 
-                href="/pricing#vendor-access" 
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
-              >
-                <span>Unlock the full breakdown</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Locked Panels Grid - Frosted previews, all clickable */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
-          {/* Established vs Emerging Service Demand */}
-          <Link href="/pricing#vendor-access" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
-            <div className="absolute top-4 right-4 z-20">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700">
-                <Lock className="h-3 w-3" />
-                Premium
-              </span>
-            </div>
-            
-            <div className="relative z-0">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Established vs Emerging Service Demand</h3>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-slate-300 font-medium mb-3">In demand today</p>
-                  <div className="space-y-2">
-                    {["Immigration", "Tax", "Relocation", "Cultural", "Language", "Consulting", "Technology & AI", "Compliance", "Data"].map((service, i) => (
-                      <div key={service} className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 w-24 shrink-0">{service}</span>
-                        <div className="flex-1 h-2 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div className="h-full bg-primary/50 rounded-full blur-[2px]" style={{ width: `${40 + i * 5}%` }} />
-                        </div>
-                        <span className="text-xs text-slate-500 blur-[3px] w-6">██</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-300 font-medium mb-3">Emerging interest</p>
-                  <div className="space-y-2">
-                    {["Immigration", "Tax", "Relocation", "Cultural", "Language", "Consulting", "Technology & AI", "Compliance", "Data"].map((service, i) => (
-                      <div key={service} className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 w-24 shrink-0">{service}</span>
-                        <div className="flex-1 h-2 bg-[#1a3344] rounded-full overflow-hidden">
-                          <div className="h-full bg-[#0d9488]/50 rounded-full blur-[2px]" style={{ width: `${30 + i * 4}%` }} />
-                        </div>
-                        <span className="text-xs text-slate-500 blur-[3px] w-6">██</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* Demand Pipeline */}
-          <Link href="/pricing#vendor-access" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
-            <div className="absolute top-4 right-4 z-20">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700">
-                <Lock className="h-3 w-3" />
-                Premium
-              </span>
-            </div>
-            
-            <div className="relative z-0">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Demand Activity Indicators</h3>
-              </div>
-              <p className="text-xs text-slate-400 mb-4">Market-level activity signals across the benchmark — not named accounts</p>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg border border-slate-700 bg-[#1a3344]/30 p-4">
-                  <p className="text-xs text-slate-300 font-medium mb-2">Service review activity</p>
-                  <div className="text-2xl font-bold text-slate-500/50 blur-[3px]">██%</div>
-                </div>
-                <div className="rounded-lg border border-slate-700 bg-[#1a3344]/30 p-4">
-                  <p className="text-xs text-slate-300 font-medium mb-2">Policy refresh activity</p>
-                  <div className="text-2xl font-bold text-slate-500/50 blur-[3px]">██%</div>
-                </div>
-                <div className="rounded-lg border border-slate-700 bg-[#1a3344]/30 p-4">
-                  <p className="text-xs text-slate-300 font-medium mb-2">Technology evaluation</p>
-                  <div className="text-2xl font-bold text-slate-500/50 blur-[3px]">██%</div>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* Commercial Intelligence by Pillar */}
-          <Link href="/pricing#vendor-access" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
-            <div className="absolute top-4 right-4 z-20">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700">
-                <Lock className="h-3 w-3" />
-                Premium
-              </span>
-            </div>
-            
-            <div className="relative z-0">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Commercial Intelligence by Pillar</h3>
-              </div>
-              <p className="text-xs text-slate-400 mb-4">Deep-dive question breakdowns by vendor pillar</p>
-              
-              <div className="space-y-3">
-                {["Investment Priorities", "Market Demand", "Technology Demand", "Global Expansion Demand", "Transformation Activity", "Sustainable Service Demand"].map((pillar, i) => (
-                  <div key={pillar} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-300 w-40 shrink-0">{pillar}</span>
-                    <div className="flex-1 h-2 bg-[#1a3344] rounded-full overflow-hidden">
-                      <div className="h-full bg-primary/40 rounded-full blur-[2px]" style={{ width: `${50 + i * 5}%` }} />
-                    </div>
-                    <span className="text-xs text-slate-500 blur-[3px] w-6">██</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Link>
-
-          {/* Regional & Industry Filters */}
-          <Link href="/pricing#vendor-access" className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_40px_-10px_rgb(var(--brand-teal-rgb)_/_0.3)] hover:border-primary/40 transition-all duration-150 block">
-            <div className="absolute top-4 right-4 z-20">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700">
-                <Lock className="h-3 w-3" />
-                Premium
-              </span>
-            </div>
-            
-            <div className="relative z-0">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Regional &amp; Industry Filters</h3>
-              </div>
-              <p className="text-xs text-slate-400 mb-4">Segment all data by region, industry and company size</p>
-              
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="h-9 bg-[#1a3344]/50 rounded-md border border-slate-700 flex items-center justify-between px-3 opacity-60">
-                  <span className="text-xs text-slate-300">Region</span>
-                  <Lock className="h-3 w-3 text-slate-500" />
-                </div>
-                <div className="h-9 bg-[#1a3344]/50 rounded-md border border-slate-700 flex items-center justify-between px-3 opacity-60">
-                  <span className="text-xs text-slate-300">Industry</span>
-                  <Lock className="h-3 w-3 text-slate-500" />
-                </div>
-                <div className="h-9 bg-[#1a3344]/50 rounded-md border border-slate-700 flex items-center justify-between px-3 opacity-60">
-                  <span className="text-xs text-slate-300">Company size</span>
-                  <Lock className="h-3 w-3 text-slate-500" />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Regions</p>
-                  {["Europe", "Americas", "Asia-Pacific (APAC)", "Middle East"].map((region, i) => (
-                    <div key={region} className="flex items-center gap-2 opacity-60">
-                      <span className="text-xs text-slate-400 w-32">{region}</span>
-                      <div className="flex-1 h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
-                        <div className="h-full bg-primary/30 rounded-full blur-[2px]" style={{ width: `${40 + i * 10}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wide">Company sizes</p>
-                  {["Under 1,000", "1,000–4,999", "5,000+"].map((size, i) => (
-                    <div key={size} className="flex items-center gap-2 opacity-60">
-                      <span className="text-xs text-slate-400 w-32">{size}</span>
-                      <div className="flex-1 h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
-                        <div className="h-full bg-primary/30 rounded-full blur-[2px]" style={{ width: `${50 + i * 15}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        {/* Client Intelligence Passes - Sponsor intelligence for your clients */}
-        <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-8 md:p-10 mb-12">
-          <div className="flex flex-col items-center text-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shrink-0 mb-4">
-              <Gift className="h-6 w-6 text-primary" />
-            </div>
-            <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 mb-4">
-              <Sparkles className="h-3.5 w-3.5" />
-              Client Intelligence Passes
-            </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-4 text-balance">
-              Sponsor intelligence for your clients
-            </h2>
-            <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-3xl mx-auto">
-              As a Vendor Intelligence partner, you can sponsor complimentary Global Workforce Intelligence
-              Premium access for your corporate clients — extending independent, benchmarked workforce
-              intelligence to the organizations you work with most closely. It&apos;s a natural value-add to your
-              client relationships, a differentiator in competitive processes, and a way to give your clients
-              valuable, independent benchmarking access as a relationship benefit. Every client you bring onto the platform can contribute
-              to the Global Workforce Deployment Survey, so each sponsorship makes the benchmarks you rely on
-              sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
-              opens the door. Sponsoring vendors never see their clients&apos; individual answers.
+              The demand side of <span className="text-primary">Global Mobility</span>, measured.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg md:text-xl text-muted-foreground leading-relaxed text-pretty">
+              Aggregated intelligence from {VERIFIED_LEADERS} verified Global Mobility, HR, and workforce leaders:
+              what they buy, what they are reviewing, and where demand is heading next. No lead lists, no named
+              accounts. The market, quantified.
             </p>
-
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full">
-              <div className="rounded-xl border border-primary/20 bg-[#1a3344]/30 p-4">
-                <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Partner</p>
-                <p className="text-xs text-slate-400">Includes 5 sponsored Client Intelligence Passes</p>
-              </div>
-              <div className="rounded-xl border border-primary/30 bg-[#1a3344]/30 p-4">
-                <p className="text-sm font-semibold text-foreground mb-1">Strategic Intelligence Partner</p>
-                <p className="text-xs text-slate-400">Includes 10 sponsored Client Intelligence Passes</p>
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <a
-                href="mailto:crossborderiq@gemevents.co?subject=Vendor%20Intelligence%20enquiry"
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
+            <p className="mt-3 text-sm text-muted-foreground">
+              Built on {CONTRIBUTIONS} contributions from {VERIFIED_LEADERS} verified Global Mobility, HR, and
+              workforce leaders.
+            </p>
+            <div className="mt-10 flex flex-col sm:flex-row gap-3">
+              <PrimaryCta />
+              <Button
+                size="lg"
+                variant="ghost"
+                className="h-12 px-6 text-base text-foreground hover:bg-foreground/5"
+                asChild
               >
-                <span>Additional passes available — contact us</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </a>
+                <Link href="/pricing">See membership options</Link>
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Unlock CTA - Matching homepage styling */}
-        <div
-          id="access-full-data"
-          className="scroll-mt-24 rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 text-center shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]"
-        >
-          <Lock className="h-10 w-10 text-primary mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-foreground mb-3">
-            Unlock the Full Vendor Intelligence Dashboard
-          </h2>
-          <p className="text-slate-300 mb-6 max-w-2xl mx-auto">
-            Get complete access to market demand data, demand signals, service demand patterns, 
-            and commercial intelligence — segmented by region, industry, and company size.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              asChild
-              size="lg"
-              className="px-8 h-12 font-semibold text-primary-foreground bg-gradient-to-b from-primary to-[#0f8e80] border border-primary/60 shadow-[0_8px_28px_-8px_rgb(var(--brand-teal-rgb)_/_0.6)] transition-all hover:-translate-y-0.5 hover:from-primary hover:to-primary hover:shadow-[0_14px_36px_-8px_rgb(var(--brand-teal-rgb)_/_0.8)]"
-            >
-              <Link href="/pricing">
-                View all membership options
-              </Link>
-            </Button>
+          <div className="teal-halo-frame">
+            <div className="teal-halo flex flex-col items-center rounded-3xl p-8 md:p-10 text-center">
+              <ScoreRing score={mosScore} label="Index out of 100" />
+              <h2 className="mt-6 text-lg font-semibold text-foreground">Market Opportunity Score™</h2>
+              <p className="mt-2 max-w-xs text-sm text-muted-foreground leading-relaxed">
+                {mosScore === null
+                  ? "Market Opportunity Score temporarily unavailable."
+                  : "Where operational pressure, transformation activity, technology demand, and investment priorities converge across the market."}
+              </p>
+            </div>
           </div>
-          <div className="mt-6">
-            <Link href="/methodology" className="text-sm text-slate-400 hover:text-primary underline underline-offset-4">
+        </section>
+
+        {/* 2. Segment snapshot form */}
+        <Reveal>
+          <section
+            id="segment-snapshot"
+            aria-labelledby="vi-form-heading"
+            className="scroll-mt-24 mx-auto w-full max-w-3xl"
+          >
+            <div className="teal-halo-frame">
+              <div className="teal-halo rounded-3xl p-6 md:p-10">
+                <h2 id="vi-form-heading" className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+                  See the demand for what you sell
+                </h2>
+                <p className="mt-3 mb-8 text-muted-foreground leading-relaxed">
+                  Tell us your category and we will send a one-page readout of current demand for it from the live
+                  benchmark. No commitment.
+                </p>
+                <SegmentSnapshotForm />
+              </div>
+            </div>
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Most partners join by invoice after a conversation. Procurement-ready terms, no checkout required.
+            </p>
+          </section>
+        </Reveal>
+
+        {/* 3. What members see */}
+        <Reveal>
+          <section aria-labelledby="vi-members-heading">
+            <h2
+              id="vi-members-heading"
+              className="text-3xl md:text-4xl font-bold text-foreground tracking-tight text-balance"
+            >
+              What members see
+            </h2>
+            <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {MEMBER_FEATURES.map(({ icon: Icon, title, body }) => (
+                <li key={title} className="flex flex-col rounded-2xl border border-border bg-brand-navy-2 p-6">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-brand-teal">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-4 font-semibold text-foreground">{title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{body}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </Reveal>
+
+        {/* 4. Protection block */}
+        <Reveal>
+          <section
+            aria-labelledby="vi-protection-heading"
+            className="rounded-3xl border-2 border-primary/40 bg-primary/10 p-8 md:p-12"
+          >
+            <div className="flex flex-col gap-6 md:flex-row md:items-start">
+              <ShieldCheck className="h-10 w-10 shrink-0 text-brand-teal" aria-hidden="true" />
+              <div>
+                <h2
+                  id="vi-protection-heading"
+                  className="text-2xl md:text-3xl font-bold text-foreground tracking-tight"
+                >
+                  Built so leaders stay anonymous
+                </h2>
+                <p className="mt-4 max-w-3xl text-base md:text-lg text-foreground/85 leading-relaxed">
+                  All intelligence is aggregated and anonymized: no individual organization is identifiable, reporting
+                  thresholds mean small segments are never shown, and no lead lists are provided. This is why the data
+                  exists at all. Leaders answer honestly because their answers can never be traced, and that candor is
+                  what you are buying.
+                </p>
+              </div>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* 5. Membership tiles */}
+        <Reveal>
+          <section aria-labelledby="vi-membership-heading">
+            <h2
+              id="vi-membership-heading"
+              className="text-3xl md:text-4xl font-bold text-foreground tracking-tight text-balance"
+            >
+              Membership
+            </h2>
+            <ul className="mt-10 grid gap-6 md:grid-cols-2">
+              {TIERS.map((tier) => (
+                <li key={tier.id} className="teal-halo-frame flex">
+                  <div className="teal-halo flex w-full flex-col rounded-2xl p-6 md:p-8">
+                    <h3 className="text-xl font-semibold text-foreground">{tier.name}</h3>
+                    <p className="mt-3 text-3xl font-bold text-foreground tabular-nums">
+                      {tier.gbp} <span className="text-muted-foreground font-semibold">/</span> {tier.usd}
+                    </p>
+                    <p className="text-sm text-muted-foreground">per year</p>
+                    <ul className="mt-6 flex flex-col gap-3">
+                      {tier.components.map((c) => (
+                        <li key={c} className="flex items-start gap-2 text-sm text-foreground/85">
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-teal" aria-hidden="true" />
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button className="mt-8 h-11 w-full gap-2 bg-primary hover:bg-primary/90" asChild>
+                      <a href={FORM_ANCHOR}>
+                        Start the conversation
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-8 text-center text-sm">
+              <Link
+                href="/pricing#vendor-access"
+                className="text-muted-foreground underline underline-offset-4 hover:text-brand-teal"
+              >
+                Prefer self-serve? See membership checkout
+              </Link>
+            </p>
+          </section>
+        </Reveal>
+
+        {/* 6. Closing band */}
+        <Reveal>
+          <section
+            aria-labelledby="vi-closing-heading"
+            className="flex flex-col items-center rounded-3xl border border-border bg-brand-navy-2 px-6 py-12 text-center md:py-16"
+          >
+            <h2
+              id="vi-closing-heading"
+              className="text-2xl md:text-3xl font-bold text-foreground tracking-tight text-balance"
+            >
+              See the demand for what you sell
+            </h2>
+            <div className="mt-8">
+              <PrimaryCta />
+            </div>
+            <Link
+              href="/methodology"
+              className="mt-6 text-sm text-muted-foreground underline underline-offset-4 hover:text-brand-teal"
+            >
               View methodology
             </Link>
-          </div>
-        </div>
+          </section>
+        </Reveal>
 
-        {/* Trust strip - data handling reassurance */}
-        <div className="text-center space-y-2 pt-8">
-          <p className="text-xs text-slate-500 max-w-3xl mx-auto leading-relaxed">
+        {/* Trust strip */}
+        <div className="-mt-12 md:-mt-20 text-center">
+          <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             Aggregated market intelligence, just strategic insight. ·{" "}
-            <Link href="/methodology" className="text-primary hover:underline">
+            <Link href="/methodology" className="text-brand-teal hover:underline">
               View methodology
             </Link>
           </p>
