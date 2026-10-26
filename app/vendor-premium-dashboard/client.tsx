@@ -1563,33 +1563,50 @@ function ServiceOpportunityPanel({
   )
 }
 
+type PipelineScope = {
+  filtered: RfpPipelineRow[]
+  relevant: RfpPipelineRow[]
+  narrowed: boolean
+  loading: boolean
+}
+
+function countStages(rows: RfpPipelineRow[]) {
+  const active = rows.filter((r) => r.stage === "RFP active").length
+  return { active, considering: rows.length - active }
+}
+
 function VendorStatBand({
-  rows,
-  loading,
+  scope,
   categories,
   isFiltered,
   onEditServices,
 }: {
-  rows: RfpPipelineRow[]
-  loading: boolean
+  scope: PipelineScope
   categories: string[]
   isFiltered: boolean
   onEditServices: () => void
 }) {
-  const active = rows.filter((r) => r.stage === "RFP active").length
-  const considering = rows.length - active
-  const tiles: { label: string; value: string; sub: string; info: string }[] = [
+  const { narrowed, loading } = scope
+  const market = countStages(scope.filtered)
+  const shown = narrowed ? countStages(scope.relevant) : market
+  const scopeNote = narrowed
+    ? " These counts follow your service selection. Switch to Show all in the RFP Pipeline to count the whole market."
+    : " These counts cover the whole market. Turn off Show all in the RFP Pipeline to count only organizations relevant to your services."
+  const forServices = narrowed ? ", for your services" : ""
+  const tiles: { label: string; value: string; sub: string; marketLine: string | null; info: string }[] = [
     {
-      label: "In market now",
-      value: active.toLocaleString(),
+      label: `In market now${forServices}`,
+      value: shown.active.toLocaleString(),
       sub: "organizations actively in an RFP or review",
-      info: "Organizations that told us directly they are in a Global Mobility RFP.",
+      marketLine: narrowed ? `${market.active.toLocaleString()} across the whole market` : null,
+      info: `Organizations that told us directly they are in a Global Mobility RFP.${scopeNote}`,
     },
     {
-      label: "Considering",
-      value: considering.toLocaleString(),
+      label: `Considering${forServices}`,
+      value: shown.considering.toLocaleString(),
       sub: "organizations weighing a change in the next 12 months",
-      info: "Organizations that told us they are considering an RFP within the next 12 months.",
+      marketLine: narrowed ? `${market.considering.toLocaleString()} across the whole market` : null,
+      info: `Organizations that told us they are considering an RFP within the next 12 months.${scopeNote}`,
     },
   ]
   return (
@@ -1605,7 +1622,9 @@ function VendorStatBand({
               Every figure comes from verified, first-party contributions by corporate Global Mobility and HR leaders
               through GME events and the CBIQ Global Workforce Deployment survey. In market now counts organizations that
               told us they are currently running an RFP. Considering counts organizations that told us they are actively
-              considering one. Each organization is counted once, using its most recent response. Every figure here
+              considering one. The counts follow your service selection: with services saved, they count only
+              organizations relevant to your services, with the whole-market figure beneath. Switch to Show all in the
+              RFP Pipeline to count the whole market. Each organization is counted once, using its most recent response. Every figure here
               comes from the buyer&apos;s own hand, not scraped or inferred from third parties. Scope is learned in the
               room, and the workshop request is how you get there. Organizations are anonymous and are never named.
             </p>
@@ -1641,6 +1660,9 @@ function VendorStatBand({
               </InfoExplainer>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">{t.sub}</p>
+            {t.marketLine && !loading && (
+              <p className="mt-2 text-xs text-slate-500 tabular-nums">{t.marketLine}</p>
+            )}
           </div>
         ))}
       </div>
@@ -1724,7 +1746,7 @@ function RfpPipelinePanel({
   filters: DashboardFilters
   categories: string[]
   isFiltered: boolean
-  onRowsLoaded: (rows: RfpPipelineRow[], loading: boolean) => void
+  onRowsLoaded: (scope: PipelineScope) => void
 }) {
   const [supabase] = useState(() => createClient())
   const [rows, setRows] = useState<RfpPipelineRow[]>([])
@@ -1850,10 +1872,6 @@ function RfpPipelinePanel({
   // priority, most recent first); filters subset without re-sorting.
   const filtered = useMemo(() => rows.filter((r) => pipelineRowMatches(r, filters)), [rows, filters])
 
-  useEffect(() => {
-    onRowsLoaded(filtered, loading)
-  }, [filtered, loading, onRowsLoaded])
-
   const signalsByRef = useMemo(() => {
     const m = new Map<string, RowSignal[]>()
     filtered.forEach((r) => m.set(r.ref, rowSignals(r, categories)))
@@ -1866,7 +1884,14 @@ function RfpPipelinePanel({
   )
   const canNarrow = categories.length > 0
   const narrowed = canNarrow && !showAllRows
-  const relevant = narrowed ? filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0) : filtered
+  const relevant = useMemo(
+    () => (narrowed ? filtered.filter((r) => (signalsByRef.get(r.ref)?.length ?? 0) > 0) : filtered),
+    [narrowed, filtered, signalsByRef],
+  )
+
+  useEffect(() => {
+    onRowsLoaded({ filtered, relevant, narrowed, loading })
+  }, [filtered, relevant, narrowed, loading, onRowsLoaded])
 
   // Stage counts reflect every other active filter, so each label matches what selecting it shows.
   const stageCounts = useMemo(() => {
@@ -1925,6 +1950,22 @@ function RfpPipelinePanel({
           </div>
         ) : (
           <>
+            {narrowed && (
+              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="text-xs text-slate-400">
+                  Showing organizations relevant to your services.{" "}
+                  {(filtered.length - relevant.length).toLocaleString()} more in the wider market.
+                </p>
+                <button
+                  type="button"
+                  aria-pressed={showAllRows}
+                  onClick={() => setShowAllRows(true)}
+                  className="rounded-full border border-slate-600 px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/50 hover:text-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                >
+                  Show all organizations
+                </button>
+              </div>
+            )}
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <PipelineToggleGroup<PipelineStageFilter>
                 label="Filter by stage"
@@ -1962,14 +2003,14 @@ function RfpPipelinePanel({
                   </>
                 )}
               </p>
-              {canNarrow && (
+              {canNarrow && showAllRows && (
                 <button
                   type="button"
                   aria-pressed={showAllRows}
-                  onClick={() => setShowAllRows((v) => !v)}
+                  onClick={() => setShowAllRows(false)}
                   className="rounded-full border border-slate-600 px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:border-primary/50 hover:text-primary focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
                 >
-                  {showAllRows ? "Only my categories" : "Show all organizations"}
+                  Only my categories
                 </button>
               )}
             </div>
@@ -2873,11 +2914,14 @@ export function VendorPremiumDashboardClient() {
   )
 
   // Pipeline rows (after global filters) feed the stat band.
-  const [pipelineRows, setPipelineRows] = useState<RfpPipelineRow[]>([])
-  const [pipelineLoading, setPipelineLoading] = useState(true)
-  const handlePipelineRows = useCallback((rows: RfpPipelineRow[], isLoading: boolean) => {
-    setPipelineRows(rows)
-    setPipelineLoading(isLoading)
+  const [pipelineScope, setPipelineScope] = useState<PipelineScope>({
+    filtered: [],
+    relevant: [],
+    narrowed: false,
+    loading: true,
+  })
+  const handlePipelineRows = useCallback((scope: PipelineScope) => {
+    setPipelineScope(scope)
   }, [])
 
   // True when at least one filter is set to something other than its default ("All").
@@ -3420,8 +3464,7 @@ export function VendorPremiumDashboardClient() {
             </header>
 
             <VendorStatBand
-              rows={pipelineRows}
-              loading={pipelineLoading}
+              scope={pipelineScope}
               categories={vendorCategories}
               isFiltered={isFiltered}
               onEditServices={() => setServicesOpen(true)}
