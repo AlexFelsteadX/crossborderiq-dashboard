@@ -10,7 +10,7 @@ import { PremiumUpgradeButton } from "./premium-cta"
 import { LockedThemeGrid, TOTAL_BENCHMARK_QUESTIONS } from "./locked-theme-grid"
 import { LockedYoyGrid } from "./locked-yoy-grid"
 import type { PublicFlagshipStat } from "@/lib/flagship-stats"
-import { CONTRIBUTION_COUNT } from "@/lib/site-stats"
+import { CONTRIBUTION_PYRAMID } from "@/lib/site-stats"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
@@ -37,13 +37,24 @@ export default async function WorkforceIntelligencePage() {
   const { data: smiData, error } = await supabase.rpc("get_premium_mmi")
   const smiRow = (Array.isArray(smiData) ? smiData[0] : smiData) as StrategicMobilityIndex | null
 
-  const smiScore = smiRow?.index_score ?? 0
+  // Never render a fabricated 0%: a failed or empty score call shows "—" instead.
+  const toPct = (v: unknown): number | null =>
+    v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v)
+  const smiAvailable = !error && toPct(smiRow?.index_score) !== null
+  const smiScore = smiAvailable ? Math.round(Number(smiRow?.index_score)) : null
   const scoreComponents = [
-    { label: "Defined strategy", pct: smiRow?.defined_strategy ?? 0 },
-    { label: "Aligned to business", pct: smiRow?.aligned ?? 0 },
-    { label: "Future readiness", pct: smiRow?.future ?? 0 },
-    { label: "Technology & AI maturity", pct: smiRow?.tech_ai_maturity ?? 0 },
+    { label: "Defined strategy", pct: smiAvailable ? toPct(smiRow?.defined_strategy) : null },
+    { label: "Aligned to business", pct: smiAvailable ? toPct(smiRow?.aligned) : null },
+    { label: "Future readiness", pct: smiAvailable ? toPct(smiRow?.future) : null },
+    { label: "Technology & AI maturity", pct: smiAvailable ? toPct(smiRow?.tech_ai_maturity) : null },
   ]
+
+  // Free score starter lives in-app on /premium-dashboard (which also bounces
+  // vendors to their own dashboard). Signed-out visitors sign up first.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const freeScoreHref = user ? "/premium-dashboard" : "/login?mode=signup&next=/premium-dashboard"
 
   // Public, market-only flagship stats — one hero figure per theme (no answer
   // distributions). Degrades silently: if the RPC is not live yet, or returns
@@ -71,7 +82,7 @@ export default async function WorkforceIntelligencePage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
             <Sparkles className="h-3.5 w-3.5" />
-            Informed by {CONTRIBUTION_COUNT} contributions
+            {CONTRIBUTION_PYRAMID}
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
@@ -84,7 +95,7 @@ export default async function WorkforceIntelligencePage() {
 
           <div className="flex flex-col items-center gap-3">
             <a
-              href="/mobility-maturity-scorecard"
+              href={freeScoreHref}
               className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
               Get your free Mobility Maturity score
@@ -108,8 +119,13 @@ export default async function WorkforceIntelligencePage() {
         )}
 
         {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
-            Region drives the gauge; "All regions" shows the live industry-average (smiScore). */}
-        <MmiCard allRegionsValue={smiScore} scoreComponents={scoreComponents} baseN={smiRow?.base_n ?? 0} />
+            The gauge shows the unfiltered market average (smiScore), or "—" if unavailable. */}
+        <MmiCard
+          allRegionsValue={smiScore}
+          freeScoreHref={freeScoreHref}
+          scoreComponents={scoreComponents}
+          baseN={smiRow?.base_n ?? 0}
+        />
 
         {/* 3. INSIDE THE FULL DASHBOARD — heading, features and survey CTA. */}
         <section className="mb-12">
@@ -128,7 +144,7 @@ export default async function WorkforceIntelligencePage() {
               ))}
             </ul>
             <a
-              href="https://www.cbiq.ai/survey"
+              href="/survey"
               className="group mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
             >
               Complete the survey to earn 30-Day Premium Access
@@ -183,7 +199,7 @@ export default async function WorkforceIntelligencePage() {
           </figure>
 
           <a
-            href="#access-full-research"
+            href="/survey"
             className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
           >
             Complete the survey to earn 30-Day Premium Access
@@ -202,7 +218,7 @@ export default async function WorkforceIntelligencePage() {
 
           {/* Theme overview — locked cards, one live hero figure each */}
           <div className="mb-10">
-            <div className="mb-5 flex items-end justify-between gap-4">
+            <div className="mb-5">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary mb-2">
                   The live benchmark
@@ -212,9 +228,6 @@ export default async function WorkforceIntelligencePage() {
                   Eleven areas. {TOTAL_BENCHMARK_QUESTIONS} benchmark questions. Every figure states its base.
                 </p>
               </div>
-              <span className="shrink-0 inline-flex items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-300">
-                Updated weekly
-              </span>
             </div>
             <LockedThemeGrid stats={flagshipStats} />
             <p className="mt-4 text-xs text-slate-400 text-pretty">
@@ -226,7 +239,7 @@ export default async function WorkforceIntelligencePage() {
           {/* Summary line (the conversion-path cards sit directly below this section) */}
           <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
             <p className="text-sm text-slate-300">
-              11 themes · 100+ benchmark questions · members-only reports · branded PDF export
+              11 themes · {TOTAL_BENCHMARK_QUESTIONS} benchmark questions · every figure states its base
             </p>
           </div>
         </section>
@@ -244,7 +257,7 @@ export default async function WorkforceIntelligencePage() {
             </p>
             <div className="mt-auto">
               <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <a href="https://www.cbiq.ai/survey">Contribute to the Survey. Free Access</a>
+                <a href="/survey">Contribute to the Survey. Free Access</a>
               </Button>
             </div>
           </div>
@@ -261,7 +274,7 @@ export default async function WorkforceIntelligencePage() {
               <h3 className="text-lg font-semibold text-foreground">Premium</h3>
             </div>
             <p className="text-sm text-slate-300 mb-6">
-              £995 / $1,295. Continuous access plus annual analyst briefing.
+              £995 / $1,295. Continuous access, members-only reports and branded PDF export.
             </p>
             <PremiumUpgradeButton />
           </div>
@@ -276,7 +289,7 @@ export default async function WorkforceIntelligencePage() {
         {/* 7. TRUST STRIP */}
         <div className="text-center space-y-2 pt-2">
           <p className="text-xs text-slate-500">
-            Built on {CONTRIBUTION_COUNT} leader contributions · aggregated &amp; anonymized ·{" "}
+            {CONTRIBUTION_PYRAMID} · aggregated &amp; anonymized ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
             </Link>

@@ -4,13 +4,15 @@ import { BaseBadge } from "./base-badge"
 
 interface ScoreComponent {
   label: string
-  /** Whole-number percentage (0–100) for this leg of the index. */
-  pct: number
+  /** Whole-number percentage (0–100) for this leg of the index; null when unavailable. */
+  pct: number | null
 }
 
 interface MmiCardProps {
-  /** Live, all-regions industry-average MMI value (whole-number percentage). */
-  allRegionsValue: number
+  /** Live, unfiltered market-average MMI value; null when the score call failed. */
+  allRegionsValue: number | null
+  /** Free score starter destination (signup → /premium-dashboard, or the dashboard when signed in). */
+  freeScoreHref: string
   /** The four legs that make up the index — shown free, no padlock. */
   scoreComponents: ScoreComponent[]
   /** Live base_n from get_premium_mmi. */
@@ -24,10 +26,11 @@ interface MmiCardProps {
  * scorecard CTA. The peer-segment filters now live in the Premium section below
  * (see PeerSegmentFilters), where they act as the controls for the locked dashboard.
  *
- * This is a server-renderable component; the only live number (industry average)
+ * This is a server-renderable component; the only live number (market average)
  * arrives via props from the server page.
  */
-export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProps) {
+export function MmiCard({ allRegionsValue, freeScoreHref, scoreComponents, baseN }: MmiCardProps) {
+  const unavailable = allRegionsValue === null
   return (
     <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -48,7 +51,8 @@ export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProp
                   stroke="url(#smiGradientBrightWI)"
                   strokeWidth="14"
                   strokeDasharray={534}
-                  strokeDashoffset={534 * (1 - allRegionsValue / 100)}
+                  strokeDashoffset={534 * (1 - (allRegionsValue ?? 0) / 100)}
+                  opacity={unavailable ? 0 : 1}
                   strokeLinecap="round"
                   className="transition-all duration-700"
                   filter="url(#glowWI)"
@@ -70,13 +74,15 @@ export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProp
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-6xl font-bold text-brand-teal tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
-                  {allRegionsValue}%
+                  {unavailable ? "—" : `${allRegionsValue}%`}
                 </span>
-                <span className="text-xs text-slate-400 mt-1">Industry average</span>
+                <span className="text-xs text-slate-400 mt-1">
+                  {unavailable ? "Market average temporarily unavailable" : "Market average"}
+                </span>
               </div>
             </div>
           </div>
-          {baseN >= 10 && <BaseBadge n={baseN} />}
+          {!unavailable && baseN >= 10 && <BaseBadge n={baseN} />}
         </div>
 
         {/* Right: description + free scorecard CTA */}
@@ -91,7 +97,7 @@ export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProp
           </p>
 
           <Link
-            href="/mobility-maturity-scorecard"
+            href={freeScoreHref}
             className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 h-12 text-base font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
           >
             Get your free score
@@ -112,12 +118,12 @@ export function MmiCard({ allRegionsValue, scoreComponents, baseN }: MmiCardProp
             <div key={c.label}>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-slate-400">{c.label}</span>
-                <span className="text-slate-200 font-medium">{Math.round(c.pct)}%</span>
+                <span className="text-slate-200 font-medium">{c.pct === null ? "—" : `${Math.round(c.pct)}%`}</span>
               </div>
               <div className="h-1.5 bg-[#1a3344] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(Math.max(c.pct, 0), 100)}%` }}
+                  style={{ width: `${c.pct === null ? 0 : Math.min(Math.max(c.pct, 0), 100)}%` }}
                 />
               </div>
             </div>
