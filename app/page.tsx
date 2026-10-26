@@ -143,9 +143,8 @@ export default async function HomePage() {
               </div>
 
               {/* Right: Strategic Mobility Index Hero Display */}
-              <div className="relative flex justify-center lg:justify-end">
-                <div className="absolute -inset-12 bg-primary/30 rounded-full blur-[80px]" />
-                <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)] max-w-md w-full">
+              <div className="teal-halo-frame flex justify-center lg:justify-end">
+                <div className="teal-halo rounded-2xl p-8 max-w-md w-full">
                   {/* SMI Badge */}
                   <div className="flex items-center justify-center gap-2 mb-6">
                     <BarChart3 className="h-4 w-4 text-primary" />
