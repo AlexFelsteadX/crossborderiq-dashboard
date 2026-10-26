@@ -1567,34 +1567,19 @@ function VendorStatBand({
 }) {
   const active = rows.filter((r) => r.stage === "RFP active").length
   const considering = rows.length - active
-  const matching = rows.filter((r) => rowSignals(r, categories).length > 0).length
-  const total = rows.length
-  const tiles: { label: string; value: string; accent: boolean; info: string }[] = [
+  const tiles: { label: string; value: string; sub: string; info: string }[] = [
     {
       label: "In market now",
       value: active.toLocaleString(),
-      accent: true,
+      sub: "organizations actively in an RFP or review",
       info: "Organizations that told us directly they are in a Global Mobility RFP.",
     },
     {
       label: "Considering",
       value: considering.toLocaleString(),
-      accent: false,
+      sub: "organizations weighing a change in the next 12 months",
       info: "Organizations that told us they are considering an RFP within the next 12 months.",
     },
-    categories.length > 0
-      ? {
-          label: "Match your services",
-          value: `${matching.toLocaleString()} of ${total.toLocaleString()}`,
-          accent: false,
-          info: `Of the ${total.toLocaleString()} organizations in a buying cycle, ${matching.toLocaleString()} show at least one signal matching your selected services: they outsource one of them today, are investing in that area, or report a matching pressure.`,
-        }
-      : {
-          label: "In a buying cycle",
-          value: total.toLocaleString(),
-          accent: false,
-          info: "Organizations that told us they are in a Global Mobility RFP now or considering one within the next 12 months.",
-        },
   ]
   return (
     <section aria-labelledby="stat-band-heading" className="space-y-2">
@@ -1609,12 +1594,9 @@ function VendorStatBand({
               Every figure comes from verified, first-party contributions by corporate Global Mobility and HR leaders
               through GME events and the CBIQ Global Workforce Deployment survey. In market now counts organizations that
               told us they are currently running an RFP. Considering counts organizations that told us they are actively
-              considering one. Each organization is counted once, using its most recent response. Signals in your
-              category counts pipeline organizations whose own answers suggest relevance to your services: what they
-              outsource today, where they are investing in the next 12 to 18 months, and the pressures they report.
-              Every signal here comes from the buyer&apos;s own hand, not scraped or inferred from third parties. Scope
-              is learned in the room, and the workshop request is how you get there. Organizations are anonymous and are
-              never named.
+              considering one. Each organization is counted once, using its most recent response. Every figure here
+              comes from the buyer&apos;s own hand, not scraped or inferred from third parties. Scope is learned in the
+              room, and the workshop request is how you get there. Organizations are anonymous and are never named.
             </p>
           </InfoExplainer>
           <ScopePill filtered={isFiltered} />
@@ -1628,22 +1610,26 @@ function VendorStatBand({
           {categories.length > 0 && <span className="text-slate-500 no-underline"> ({categories.map(serviceCategoryLabel).join(", ")})</span>}
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-xl border border-slate-700/50 bg-brand-navy-2/60 px-4 py-3">
+          <div
+            key={t.label}
+            className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-5 lg:p-6 shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]"
+          >
             {loading ? (
-              <div className="h-6 w-12 rounded bg-brand-navy-3 animate-pulse" />
+              <div className="h-12 w-24 rounded bg-brand-navy-3 animate-pulse" />
             ) : (
-              <p className={`text-xl font-bold leading-none ${t.accent ? "text-primary" : "text-slate-100"}`}>
+              <p className="bg-gradient-to-b from-[var(--brand-teal)] to-primary bg-clip-text text-5xl font-bold leading-none tracking-tight tabular-nums text-transparent drop-shadow-[0_0_18px_rgb(var(--brand-teal-rgb)_/_0.35)]">
                 {t.value}
               </p>
             )}
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <p className="text-xs text-slate-400">{t.label}</p>
+            <div className="mt-3 flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-slate-100">{t.label}</p>
               <InfoExplainer label={`About ${t.label}`}>
                 <p className="text-xs leading-relaxed text-slate-300">{t.info}</p>
               </InfoExplainer>
             </div>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t.sub}</p>
           </div>
         ))}
       </div>
