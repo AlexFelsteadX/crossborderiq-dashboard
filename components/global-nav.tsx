@@ -323,11 +323,14 @@ export function GlobalNav() {
                   >
                     Contact
                   </a>
-                  <Link href="/login?mode=signin">
-                    <Button className="bg-primary hover:bg-primary/90 text-sm cursor-pointer">
-                      Get Access
+                  <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" className="text-sm cursor-pointer">
+                      <Link href="/login?mode=signin">Login</Link>
                     </Button>
-                  </Link>
+                    <Button asChild className="bg-primary hover:bg-primary/90 text-sm cursor-pointer">
+                      <Link href="/pricing">Get Access</Link>
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
@@ -422,15 +425,18 @@ export function GlobalNav() {
                 
                 </>
               ) : (
-                <Link
-                  href="/login?mode=signin"
-                  onClick={() => setMobileOpen(false)}
-                  className="block w-full"
-                >
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-sm cursor-pointer">
-                    Get Access
+                <>
+                  <Button asChild className="w-full bg-primary hover:bg-primary/90 text-sm cursor-pointer">
+                    <Link href="/pricing" onClick={() => setMobileOpen(false)}>
+                      Get Access
+                    </Link>
                   </Button>
-                </Link>
+                  <Button asChild variant="outline" className="w-full text-sm cursor-pointer">
+                    <Link href="/login?mode=signin" onClick={() => setMobileOpen(false)}>
+                      Login
+                    </Link>
+                  </Button>
+                </>
               )}
             </div>
           </nav>
