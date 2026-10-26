@@ -19,7 +19,8 @@ export function TryTheMechanic({ question, options, ctaHref }: { question: strin
   }, [pick])
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-10">
+    <div className="teal-halo-frame">
+    <div className="teal-halo rounded-3xl p-6 md:p-10">
       <p className="text-xs font-medium uppercase tracking-wider text-brand-teal">Try the mechanic</p>
       <h2 className="mt-3 text-2xl md:text-3xl font-semibold text-slate-50 text-balance">{question}</h2>
 
@@ -70,6 +71,7 @@ export function TryTheMechanic({ question, options, ctaHref }: { question: strin
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

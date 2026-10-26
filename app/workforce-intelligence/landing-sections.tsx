@@ -18,16 +18,18 @@ export function HeroSection({ score, baseN, ctaHref }: { score: number | null; b
           <SecondaryCta />
         </div>
       </div>
-      <div className="flex flex-col items-center rounded-3xl border border-white/10 bg-white/[0.03] p-8 md:p-10">
-        <ScoreRing score={score} label="Market index" />
-        <div className="mt-10 w-full max-w-sm">
-          <BandLadder score={score} markerLabel={score === null ? undefined : `Market ${score}`} />
+      <div className="teal-halo-frame">
+        <div className="teal-halo flex flex-col items-center rounded-3xl p-8 md:p-10">
+          <ScoreRing score={score} label="Market index" />
+          <div className="mt-10 w-full max-w-sm">
+            <BandLadder score={score} markerLabel={score === null ? undefined : `Market ${score}`} />
+          </div>
+          {score !== null && baseN !== null && (
+            <p className="mt-6 text-sm text-slate-400">
+              The market today · base {baseN.toLocaleString("en-US")} organizations
+            </p>
+          )}
         </div>
-        {score !== null && baseN !== null && (
-          <p className="mt-6 text-sm text-slate-400">
-            The market today · base {baseN.toLocaleString("en-US")} organizations
-          </p>
-        )}
       </div>
     </section>
   )
@@ -97,12 +99,14 @@ export function WhatsInside() {
       </h2>
       <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {INSIDE_CARDS.map((card) => (
-          <li key={card.name} className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h3 className="text-lg font-semibold text-slate-50">{card.name}</h3>
-            <p className="mt-3 flex-1 text-sm text-slate-300 leading-relaxed text-pretty">{card.body}</p>
-            <span className="mt-6 self-start rounded-full border border-brand-teal/30 px-3 py-1 text-xs text-brand-teal">
-              {card.tag}
-            </span>
+          <li key={card.name} className="teal-halo-frame flex">
+            <div className="teal-halo flex w-full flex-col rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-slate-50">{card.name}</h3>
+              <p className="mt-3 flex-1 text-sm text-slate-300 leading-relaxed text-pretty">{card.body}</p>
+              <span className="mt-6 self-start rounded-full border border-brand-teal/30 px-3 py-1 text-xs text-brand-teal">
+                {card.tag}
+              </span>
+            </div>
           </li>
         ))}
       </ul>
@@ -146,10 +150,10 @@ export function LadderSection() {
     <section aria-label="Ways to access CBIQ">
       <ul className="grid gap-3 md:grid-cols-3">
         {LADDER_TILES.map((t) => (
-          <li key={t.title}>
+          <li key={t.title} className="teal-halo-frame">
             <Link
               href="/pricing"
-              className="group flex h-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 transition-colors hover:border-brand-teal/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
+              className="teal-halo group flex h-full items-center justify-between gap-4 rounded-2xl px-5 py-4 transition-colors hover:border-brand-teal/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal"
             >
               <span className="text-sm text-slate-300 leading-relaxed">
                 <span className="font-semibold text-slate-50">{t.title}:</span> {t.body}

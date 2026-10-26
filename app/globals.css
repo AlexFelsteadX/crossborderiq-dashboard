@@ -127,6 +127,21 @@
   }
 }
 
+/* Teal halo: originally the home page MMI card. Put .teal-halo-frame on the
+   positioned wrapper (draws the ambient blob behind) and .teal-halo on the card. */
+@layer components {
+  .teal-halo-frame {
+    @apply relative;
+  }
+  .teal-halo-frame::before {
+    content: "";
+    @apply pointer-events-none absolute -inset-12 rounded-full bg-primary/30 blur-[80px];
+  }
+  .teal-halo {
+    @apply relative border-2 border-primary/50 bg-brand-navy-2 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)];
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

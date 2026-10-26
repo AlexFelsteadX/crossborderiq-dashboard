@@ -65,7 +65,7 @@ export default async function WorkforceIntelligencePage() {
   const ctaHref = freeScoreHref(Boolean(authData?.user))
 
   return (
-    <div className="min-h-screen bg-brand-navy flex flex-col">
+    <div className="min-h-screen bg-brand-navy flex flex-col overflow-x-clip">
       <GlobalNav />
 
       <main className="flex-1 mx-auto w-full max-w-6xl px-4 md:px-6 py-16 md:py-24 flex flex-col gap-24 md:gap-32">
