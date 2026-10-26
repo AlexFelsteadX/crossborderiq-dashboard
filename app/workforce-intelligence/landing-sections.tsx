@@ -7,8 +7,8 @@ export function HeroSection({ score, baseN, ctaHref }: { score: number | null; b
   return (
     <section className="grid items-center gap-12 lg:grid-cols-[1.15fr_1fr]">
       <div>
-        <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-slate-50 text-balance leading-[1.05]">
-          Where does your Global Mobility program really stand?
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-50 leading-tight tracking-tight text-balance">
+          Where does your <span className="text-primary">Global Mobility</span> program really stand?
         </h1>
         <p className="mt-6 max-w-xl text-lg md:text-xl text-slate-300 leading-relaxed text-pretty">
           Score your program 0 to 100 against 900+ verified mobility leaders. Free, in about 2 minutes.
