@@ -10,7 +10,7 @@ import { HeroSection, HowScoreWorks, LadderSection, ProofSection, WhatsInside } 
 export const metadata = {
   title: "Global Workforce Intelligence",
   description:
-    "Score your Global Mobility program 0 to 100 against 800+ verified mobility leaders. Free, in about 2 minutes.",
+    "Score your Global Mobility program 0 to 100 against 900+ verified mobility leaders. Free, in about 2 minutes.",
 }
 
 const PROGRAM_STATE_QUESTION = "Which statement best reflects your organization currently?"

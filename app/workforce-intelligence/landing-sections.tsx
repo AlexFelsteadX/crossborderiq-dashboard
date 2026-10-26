@@ -11,7 +11,7 @@ export function HeroSection({ score, baseN, ctaHref }: { score: number | null; b
           Where does your Global Mobility program really stand?
         </h1>
         <p className="mt-6 max-w-xl text-lg md:text-xl text-slate-300 leading-relaxed text-pretty">
-          Score your program 0 to 100 against 800+ verified mobility leaders. Free, in about 2 minutes.
+          Score your program 0 to 100 against 900+ verified mobility leaders. Free, in about 2 minutes.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row gap-3">
           <PrimaryCta href={ctaHref} />
@@ -111,7 +111,7 @@ export function WhatsInside() {
 }
 
 const PROOF_FIGURES = [
-  { value: "800+", label: "organizations" },
+  { value: "900+", label: "verified leaders" },
   { value: "1,500+", label: "contributions" },
   { value: "50,000+", label: "individual data points" },
 ]
