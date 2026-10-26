@@ -2037,7 +2037,19 @@ export function PremiumDashboardClient({
   const supabase = useMemo(() => createClient(), [])
   const { tier } = useAuth()
 
+  // Tabs: client state mirrored to ?tab= so emails and links can open a specific view.
   const [activeTab, setActiveTab] = useState<DashboardTab>("score")
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab")
+    if (t === "trends" || t === "explore" || t === "community") setActiveTab(t)
+  }, [])
+  const selectTab = useCallback((t: DashboardTab) => {
+    setActiveTab(t)
+    const url = new URL(window.location.href)
+    if (t === "score") url.searchParams.delete("tab")
+    else url.searchParams.set("tab", t)
+    window.history.replaceState(null, "", url.toString())
+  }, [])
   const [freeUnlockOpen, setFreeUnlockOpen] = useState<string | null>(null)
   const {
     data: mySummary,
@@ -2078,6 +2090,12 @@ export function PremiumDashboardClient({
   const communityAvailable = isCorporate && pulseBoard?.ok === true
   const visibleTabs = DASHBOARD_TABS.filter((t) => t.id !== "community" || communityAvailable)
   const showCommunity = showTabs && communityAvailable && activeTab === "community"
+  // A ?tab=community link for someone without Community falls back to Your Score
+  // once the board has resolved, instead of an empty view.
+  const communityResolved = !isCorporate || pulseBoard !== undefined
+  useEffect(() => {
+    if (activeTab === "community" && communityResolved && !communityAvailable) selectTab("score")
+  }, [activeTab, communityResolved, communityAvailable, selectTab])
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS)
 
@@ -2416,7 +2434,7 @@ export function PremiumDashboardClient({
           <DashboardTabBar
             tabs={visibleTabs}
             activeTab={activeTab}
-            onSelect={setActiveTab}
+            onSelect={selectTab}
             ariaLabel="Dashboard view"
             tabIdPrefix="dashboard-tab-"
             className="mb-8"

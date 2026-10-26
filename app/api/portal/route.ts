@@ -3,6 +3,31 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { stripe } from "@/lib/stripe"
 
+// Reports whether the signed-in member has a Stripe subscription, so the nav only
+// offers the billing portal to members who can actually open it.
+export async function GET() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ hasStripeSubscription: false })
+
+    const serviceClient = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: membership } = await serviceClient
+      .from("memberships")
+      .select("stripe_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    return NextResponse.json({ hasStripeSubscription: Boolean(membership?.stripe_subscription_id) })
+  } catch (error) {
+    console.error("Billing status error:", error)
+    return NextResponse.json({ hasStripeSubscription: false })
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Get authenticated user via server Supabase client
