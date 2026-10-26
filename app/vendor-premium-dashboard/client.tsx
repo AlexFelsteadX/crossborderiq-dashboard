@@ -1444,7 +1444,7 @@ function ChapterHeading({ title, description }: { title: string; description?: s
 function OpportunitySignalList({
   signals,
 }: {
-  signals: { label: string; value: number | null; note?: string }[]
+  signals: { label: string; value: number | null; note?: string; info: string }[]
 }) {
   const listRef = useRef<HTMLUListElement>(null)
   const [revealed, setRevealed] = useState(false)
@@ -1476,7 +1476,13 @@ function OpportunitySignalList({
         return (
           <li key={s.label} className="flex flex-col gap-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-            <span className="text-sm font-medium leading-snug text-slate-200 sm:w-56 sm:shrink-0">{s.label}</span>
+            <div className="flex items-start gap-1.5 sm:w-56 sm:shrink-0">
+              <span className="text-sm font-medium leading-snug text-slate-200">{s.label}</span>
+              <InfoExplainer label="Who’s counted">
+                <p className="mb-1 text-xs font-semibold text-slate-100">Who’s counted</p>
+                <p className="text-xs leading-relaxed text-slate-300">{s.info}</p>
+              </InfoExplainer>
+            </div>
             <div className="flex flex-1 items-center gap-4">
               <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#1a3344]" aria-hidden="true">
                 <div
@@ -1516,15 +1522,28 @@ function ServiceOpportunityPanel({
   const reportable = !!source?.reportable
   const components = source
     ? [
-        { label: "Buy your services today", value: source.buys_today_pct },
-        { label: "In or considering a buying cycle", value: source.in_market_pct },
         {
-          label: "Name your category a top investment focus, next 12 to 18 months",
+          label: "Buy your services today",
+          value: source.buys_today_pct,
+          info: "The share of organizations currently outsourcing the services you provide, from ‘Which Global Mobility services does your organization currently outsource?’ Multiple answers allowed. For technology providers this also counts organizations currently evaluating or implementing a solution.",
+        },
+        {
+          label: "In or considering a buying cycle",
+          value: source.in_market_pct,
+          info: "The share answering Yes or Considering to ‘Have you recently been through an RFP, or are you planning to in the next 12 months?’ One answer per organization.",
+        },
+        {
+          label: "Name an investment priority linked to your services, next 12 to 18 months",
           value: source.investing_pct,
           hideWhenNull: true,
           note: "A top-3 priority pick, so this reads lower than the buying-cycle measure by design. It is the strongest intent signal here.",
+          info: "The share naming a focus area linked to your services in ‘Where do you anticipate the greatest operational investment or transformation focus over the next 12 to 18 months?’ Leaders pick up to three, so this is a top-priority signal and reads lower than the other measures by design.",
         },
-        { label: "Reviewing or redesigning policy", value: source.policy_review_pct },
+        {
+          label: "Reviewing or redesigning policy",
+          value: source.policy_review_pct,
+          info: "The share of organizations with a policy review underway or under consideration.",
+        },
       ].filter((c) => !(c.hideWhenNull && c.value === null))
     : []
 
@@ -1539,8 +1558,8 @@ function ServiceOpportunityPanel({
         </h2>
         <InfoExplainer label="How these signals are worked out">
           <p className="text-xs leading-relaxed text-slate-300">
-            Four direct measures of demand for your category, each the share of leaders in your selected segment
-            answering the relevant benchmark question. Aggregated and anonymous, with bases stated.
+            Four direct measures of demand for your services, each from a question leaders answered themselves.
+            Aggregated and anonymous; every measure states its base.
           </p>
         </InfoExplainer>
         <ScopePill filtered={isFiltered} />
