@@ -368,7 +368,7 @@ function experienceOutcomesSubgroup(q: { qCode?: string; questionLabel?: string 
 // only; the stored question_text / answer_option values (join keys) are never
 // modified.
 const Q52_SUBTITLE =
-  "Have you recently been through an RFP, or are you planning one in the next 12 months?"
+  "Are you currently in RFP, or are you planning to in the next 12 months?"
 
 const Q52_ANSWER_LABELS: Record<string, string> = {
   yes: "Recently completed or planning within 12 months",
