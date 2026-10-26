@@ -25,8 +25,8 @@ const QUESTION_COUNTS: Record<WorkforceTheme, number> = {
   "Who took part": 6,
 }
 
-// True total across every theme (currently 101), for the section header line.
-export const TOTAL_BENCHMARK_QUESTIONS = Object.values(QUESTION_COUNTS).reduce((sum, n) => sum + n, 0)
+// Public headline count, matching the rest of the app.
+export const TOTAL_BENCHMARK_QUESTIONS = "60+"
 
 /**
  * Locked mirror of the Premium dashboard's Detailed-breakdowns overview.

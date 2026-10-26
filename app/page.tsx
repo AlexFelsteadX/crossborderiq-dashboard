@@ -41,13 +41,14 @@ export default async function HomePage() {
   
   // Live overall Mobility Maturity Index (2026) via RPC. The single rounded
   // value drives the gauge number, the ring fill and the comparison sentence
-  // so they can never disagree. Falls back to 48 if the call fails.
-  const { data: mmiData } = await supabase.rpc('get_premium_mmi')
+  // so they can never disagree. If the call fails it is null and renders "—"
+  // with "temporarily unavailable" — never an invented number.
+  const { data: mmiData, error: mmiError } = await supabase.rpc('get_premium_mmi')
   const mmiRow = Array.isArray(mmiData) ? mmiData[0] : mmiData
   const rawMmi = (mmiRow as { index_score?: number } | null)?.index_score
-  const smiScore =
-    rawMmi === null || rawMmi === undefined || Number.isNaN(Number(rawMmi))
-      ? 48
+  const smiScore: number | null =
+    mmiError || rawMmi === null || rawMmi === undefined || Number.isNaN(Number(rawMmi))
+      ? null
       : Math.round(Number(rawMmi))
 
   // Fetch pillar scores for the component breakdown and hero stats
@@ -173,7 +174,8 @@ export default async function HomePage() {
                           stroke="url(#smiGradientBright)" 
                           strokeWidth="14" 
                           strokeDasharray={534}
-                          strokeDashoffset={534 * (1 - smiScore / 100)}
+                          strokeDashoffset={534 * (1 - (smiScore ?? 0) / 100)}
+                          opacity={smiScore === null ? 0 : 1}
                           strokeLinecap="round"
                           className="transition-all duration-1000"
                           filter="url(#glow)"
@@ -196,8 +198,10 @@ export default async function HomePage() {
                       
                       {/* Center content - bright and prominent */}
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">{smiScore}%</span>
-                        <span className="text-xs text-slate-400 mt-1">Industry Average</span>
+                        <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">{smiScore === null ? "—" : `${smiScore}%`}</span>
+                        <span className="text-xs text-slate-400 mt-1 text-center px-6">
+                          {smiScore === null ? "Market Average temporarily unavailable" : "Market Average"}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -209,7 +213,9 @@ export default async function HomePage() {
                   
                   {/* Scorecard CTA */}
                   <p className="text-sm text-slate-300 text-center mb-4 leading-relaxed">
-                    The industry average is {smiScore}%. Where do you stand?
+                    {smiScore === null
+                      ? "The market average is temporarily unavailable. Where do you stand?"
+                      : `The market average is ${smiScore}%. Where do you stand?`}
                   </p>
                   <Button className="w-full gap-2 bg-primary hover:bg-primary/90 h-11 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
                     <Link href="/mobility-maturity-scorecard">
