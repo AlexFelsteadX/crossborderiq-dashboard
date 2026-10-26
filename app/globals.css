@@ -153,3 +153,35 @@
   fill: #A7B0B8 !important;
   font-size: 11px;
 }
+
+@keyframes ladder-marker-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ladder-marker-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.25);
+  }
+}
+
+@keyframes ladder-marker-halo {
+  0% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}

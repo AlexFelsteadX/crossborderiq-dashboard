@@ -45,9 +45,9 @@ export function HowScoreWorks({ components, ctaHref }: { components: ComponentSc
         One number your leadership will remember
       </h2>
       <ul className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-8 md:grid-cols-4">
-        {components.map((c) => (
+        {components.map((c, i) => (
           <li key={c.label} className="flex flex-col items-center gap-3">
-            <ScoreRing score={c.pct} size={88} stroke={7} valueClassName="text-xl" />
+            <ScoreRing score={c.pct} size={88} stroke={8} valueClassName="text-xl" startOn="view" delayMs={i * 100} />
             <span className="text-sm text-slate-300">{c.label}</span>
           </li>
         ))}
