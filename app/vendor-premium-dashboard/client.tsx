@@ -1530,13 +1530,13 @@ function ServiceOpportunityPanel({
         {
           label: "In or considering a buying cycle",
           value: source.in_market_pct,
-          info: "The share answering Yes or Considering to ‘Have you recently been through an RFP, or are you planning to in the next 12 months?’ One answer per organization.",
+          info: "The share answering Yes or Considering to ‘Are you currently in RFP, or are you planning to in the next 12 months?’ One answer per organization.",
         },
         {
           label: "Name an investment priority linked to your services, next 12 to 18 months",
           value: source.investing_pct,
           hideWhenNull: true,
-          note: "A top-3 priority pick, so this reads lower than the buying-cycle measure by design. It is the strongest intent signal here.",
+
           info: "The share naming a focus area linked to your services in ‘Where do you anticipate the greatest operational investment or transformation focus over the next 12 to 18 months?’ Leaders pick up to three, so this is a top-priority signal and reads lower than the other measures by design.",
         },
         {
