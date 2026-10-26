@@ -21,6 +21,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { createClient } from "@/lib/supabase/client"
 import { TechnologyBuyerIntelligence } from "./technology-buyer-intelligence"
+import { ExploreBenchmarkTab } from "./explore-benchmark-tab"
 import { MARKET_RESEARCH_EXPLAINERS, type MarketResearchExplainerId } from "@/lib/market-research-explainers"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { QuestionInfo } from "@/components/dashboard/question-info"
@@ -2729,10 +2730,11 @@ function ZoneHeader({
 // MAIN CLIENT COMPONENT
 // =============================================================================
 
-type DashboardTab = "market" | "research"
+type DashboardTab = "market" | "research" | "explore"
 const DASHBOARD_TABS: { id: DashboardTab; label: string }[] = [
   { id: "market", label: "Your Market" },
   { id: "research", label: "Market Research" },
+  { id: "explore", label: "Explore the Benchmark" },
 ]
 
 export function VendorPremiumDashboardClient() {
@@ -2809,7 +2811,7 @@ export function VendorPremiumDashboardClient() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("market")
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab")
-    if (t === "research") setActiveTab("research")
+    if (t === "research" || t === "explore") setActiveTab(t)
   }, [])
   const selectTab = (t: DashboardTab) => {
     setActiveTab(t)
@@ -3405,7 +3407,7 @@ export function VendorPremiumDashboardClient() {
         </div>
 
         {/* Loading State */}
-        {loading && (
+        {loading && activeTab !== "explore" && (
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-8 text-center shadow-[0_0_30px_-10px_rgb(var(--brand-teal-rgb)_/_0.15)]">
             <Database className="h-8 w-8 text-slate-500 mx-auto mb-2 animate-pulse" />
             <p className="text-slate-400">Loading vendor intelligence...</p>
@@ -3413,9 +3415,15 @@ export function VendorPremiumDashboardClient() {
         )}
 
         {/* Error State */}
-        {error && (
+        {error && activeTab !== "explore" && (
           <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center">
             <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        {activeTab === "explore" && (
+          <div role="tabpanel" id="panel-explore" aria-labelledby="tab-explore">
+            <ExploreBenchmarkTab />
           </div>
         )}
 
