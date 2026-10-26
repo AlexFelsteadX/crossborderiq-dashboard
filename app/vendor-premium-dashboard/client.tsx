@@ -1441,7 +1441,11 @@ function ChapterHeading({ title, description }: { title: string; description?: s
   )
 }
 
-function OpportunitySignalList({ signals }: { signals: { label: string; value: number | null }[] }) {
+function OpportunitySignalList({
+  signals,
+}: {
+  signals: { label: string; value: number | null; note?: string }[]
+}) {
   const listRef = useRef<HTMLUListElement>(null)
   const [revealed, setRevealed] = useState(false)
 
@@ -1470,7 +1474,8 @@ function OpportunitySignalList({ signals }: { signals: { label: string; value: n
       {signals.map((s) => {
         const width = Math.max(0, Math.min(100, s.value ?? 0))
         return (
-          <li key={s.label} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          <li key={s.label} className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
             <span className="text-sm font-medium leading-snug text-slate-200 sm:w-56 sm:shrink-0">{s.label}</span>
             <div className="flex flex-1 items-center gap-4">
               <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#1a3344]" aria-hidden="true">
@@ -1483,6 +1488,8 @@ function OpportunitySignalList({ signals }: { signals: { label: string; value: n
                 {s.value === null ? "—" : `${s.value}%`}
               </span>
             </div>
+            </div>
+            {s.note ? <p className="text-xs leading-relaxed text-slate-500 sm:pl-[15.5rem]">{s.note}</p> : null}
           </li>
         )
       })}
@@ -1510,8 +1517,13 @@ function ServiceOpportunityPanel({
   const components = source
     ? [
         { label: "Buy your services today", value: source.buys_today_pct },
-        { label: "Investing in your category next 12-18 months", value: source.investing_pct, hideWhenNull: true },
         { label: "In or considering a buying cycle", value: source.in_market_pct },
+        {
+          label: "Name your category a top investment focus, next 12 to 18 months",
+          value: source.investing_pct,
+          hideWhenNull: true,
+          note: "A top-3 priority pick, so this reads lower than the buying-cycle measure by design. It is the strongest intent signal here.",
+        },
         { label: "Reviewing or redesigning policy", value: source.policy_review_pct },
       ].filter((c) => !(c.hideWhenNull && c.value === null))
     : []
