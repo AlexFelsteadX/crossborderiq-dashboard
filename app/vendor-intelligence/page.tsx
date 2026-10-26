@@ -4,6 +4,7 @@ import { Lock, TrendingUp, BarChart3, Sparkles, Filter, Building2, Globe, Users,
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
+import { CONTRIBUTIONS, VERIFIED_LEADERS } from "@/lib/site-stats"
 
 export const metadata = {
   title: "Vendor Intelligence",
@@ -14,13 +15,14 @@ export const metadata = {
 export default async function VendorIntelligencePage() {
   // Fetch the Market Opportunity Score from public view
   const supabase = await createClient()
-  const { data: mosData } = await supabase
+  const { data: mosData, error: mosError } = await supabase
     .from("v_market_opportunity_public")
     .select("market_opportunity_score")
     .single()
-  
-  // Value is already 0-100 scale, show as-is (no multiplication)
-  const mosScore = mosData?.market_opportunity_score ?? 50
+
+  // Index on a 0–100 scale. On failure render "—" / "temporarily unavailable", never an invented number.
+  const rawScore = mosError ? null : mosData?.market_opportunity_score
+  const mosScore = typeof rawScore === "number" && Number.isFinite(rawScore) ? Math.round(rawScore) : null
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col relative">
@@ -51,7 +53,7 @@ export default async function VendorIntelligencePage() {
             across regions, industries, and company sizes.
           </p>
           <p className="text-xs text-slate-400">
-            Based on 2,000+ contributions from global HR, Talent and Mobility leaders across Europe, the Americas, Asia-Pacific and the Middle East.
+            Built on {CONTRIBUTIONS} contributions from {VERIFIED_LEADERS} verified Global Mobility, HR, and workforce leaders.
           </p>
 
           <div className="mt-6 flex justify-center">
@@ -89,6 +91,18 @@ export default async function VendorIntelligencePage() {
           </div>
         </div>
 
+        {/* Anonymity guarantee */}
+        <div
+          role="note"
+          className="-mt-8 mb-12 flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-5 py-4"
+        >
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <p className="text-sm leading-relaxed text-slate-200">
+            All intelligence is aggregated and anonymized: no individual organization is identifiable.
+            Reporting thresholds apply, so small segments are never shown, and no lead lists are provided.
+          </p>
+        </div>
+
         {/* Market Opportunity Score Panel - Real score in ring, frosted breakdown */}
         <div className="relative rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 mb-12 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -116,7 +130,7 @@ export default async function VendorIntelligencePage() {
                       stroke="url(#mosGradientBright)" 
                       strokeWidth="14" 
                       strokeDasharray={534}
-                      strokeDashoffset={534 * (1 - mosScore / 100)}
+                      strokeDashoffset={534 * (1 - (mosScore ?? 0) / 100)}
                       strokeLinecap="round"
                       filter="url(#mosGlow)"
                     />
@@ -136,10 +150,15 @@ export default async function VendorIntelligencePage() {
                     </defs>
                   </svg>
                   
-                  {/* Center content - real score with % */}
+                  {/* Center content - index out of 100 */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">{mosScore}%</span>
-                    <span className="text-xs text-slate-400 mt-1">Composite Score</span>
+                    <span className="text-6xl font-bold text-primary tracking-tight drop-shadow-[0_0_20px_rgb(var(--brand-teal-rgb)_/_0.5)]">
+                      {mosScore === null ? "—" : mosScore}
+                      {mosScore !== null && <span className="ml-1 text-xl font-semibold text-slate-400">/100</span>}
+                    </span>
+                    <span className="text-xs text-slate-400 mt-1">
+                      {mosScore === null ? "Composite Index temporarily unavailable" : "Composite Index"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -382,23 +401,23 @@ export default async function VendorIntelligencePage() {
               valuable, independent benchmarking access as a relationship benefit. Every client you bring onto the platform can contribute
               to the Global Workforce Deployment Survey, so each sponsorship makes the benchmarks you rely on
               sharper. Your clients access CBIQ as an independent intelligence platform; your partnership simply
-              opens the door.
+              opens the door. Sponsoring vendors never see their clients&apos; individual answers.
             </p>
 
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl w-full">
               <div className="rounded-xl border border-primary/20 bg-[#1a3344]/30 p-4">
-                <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Premium</p>
+                <p className="text-sm font-semibold text-foreground mb-1">Vendor Intelligence Partner</p>
                 <p className="text-xs text-slate-400">Includes 5 sponsored Client Intelligence Passes</p>
               </div>
               <div className="rounded-xl border border-primary/30 bg-[#1a3344]/30 p-4">
-                <p className="text-sm font-semibold text-foreground mb-1">Strategic Partner</p>
+                <p className="text-sm font-semibold text-foreground mb-1">Strategic Intelligence Partner</p>
                 <p className="text-xs text-slate-400">Includes 10 sponsored Client Intelligence Passes</p>
               </div>
             </div>
 
             <div className="mt-5">
               <a
-                href="mailto:crossborderiq@gemevents.co"
+                href="mailto:crossborderiq@gemevents.co?subject=Vendor%20Intelligence%20enquiry"
                 className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors group"
               >
                 <span>Additional passes available — contact us</span>
@@ -442,8 +461,6 @@ export default async function VendorIntelligencePage() {
         {/* Trust strip - data handling reassurance */}
         <div className="text-center space-y-2 pt-8">
           <p className="text-xs text-slate-500 max-w-3xl mx-auto leading-relaxed">
-            All intelligence is aggregated and anonymized — no individual organization is identifiable.
-            Reporting thresholds apply, so small segments are never shown, and no lead lists are provided.
             Aggregated market intelligence, just strategic insight. ·{" "}
             <Link href="/methodology" className="text-primary hover:underline">
               View methodology
