@@ -16,6 +16,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { freeScoreHref } from "@/lib/free-signup"
 import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
 import { CONTRIBUTION_COUNT } from "@/lib/site-stats"
 
@@ -125,7 +126,7 @@ export default async function HomePage() {
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                    <Link href="/mobility-maturity-scorecard">
+                    <Link href={freeScoreHref(Boolean(user))}>
                       Get your free score
                       <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -218,7 +219,7 @@ export default async function HomePage() {
                       : `The market average is ${smiScore}%. Where do you stand?`}
                   </p>
                   <Button className="w-full gap-2 bg-primary hover:bg-primary/90 h-11 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                    <Link href="/mobility-maturity-scorecard">
+                    <Link href={freeScoreHref(Boolean(user))}>
                       Get your free score
                       <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -244,7 +245,7 @@ export default async function HomePage() {
                 </div>
                 {/* Hero dashboard — real Premium Dashboard screenshot, linked as a CTA */}
                 <Link
-                  href="/mobility-maturity-scorecard"
+                  href={freeScoreHref(Boolean(user))}
                   aria-label="Get your free Global Mobility maturity score"
                   className="group relative m-4 block overflow-hidden rounded-lg bg-brand-navy/40 shadow-[0_20px_50px_-20px_rgb(0_0_0_/_0.7)] ring-1 ring-primary/10 transition-shadow hover:shadow-[0_24px_60px_-18px_rgb(var(--brand-teal-rgb)_/_0.35)]"
                 >
@@ -456,7 +457,7 @@ export default async function HomePage() {
 
             <div className="text-center mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button className="gap-2 bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
-                <Link href="/mobility-maturity-scorecard">
+                <Link href={freeScoreHref(Boolean(user))}>
                   Get your score
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -756,7 +757,7 @@ export default async function HomePage() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]" asChild>
-                    <Link href="/mobility-maturity-scorecard">
+                    <Link href={freeScoreHref(Boolean(user))}>
                       Get your free score
                       <ArrowRight className="h-4 w-4" />
                     </Link>
