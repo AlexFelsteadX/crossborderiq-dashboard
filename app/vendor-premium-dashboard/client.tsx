@@ -1441,6 +1441,55 @@ function ChapterHeading({ title, description }: { title: string; description?: s
   )
 }
 
+function OpportunitySignalList({ signals }: { signals: { label: string; value: number | null }[] }) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const [revealed, setRevealed] = useState(false)
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+      setRevealed(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRevealed(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.25 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <ul ref={listRef} className="flex flex-col gap-8">
+      {signals.map((s) => {
+        const width = Math.max(0, Math.min(100, s.value ?? 0))
+        return (
+          <li key={s.label} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+            <span className="text-sm font-medium leading-snug text-slate-200 sm:w-56 sm:shrink-0">{s.label}</span>
+            <div className="flex flex-1 items-center gap-4">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[#1a3344]" aria-hidden="true">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-[var(--brand-teal)] shadow-[0_0_14px_rgb(var(--brand-teal-rgb)_/_0.45)] transition-[width] duration-1000 ease-out motion-reduce:transition-none"
+                  style={{ width: revealed ? `${width}%` : "0%" }}
+                />
+              </div>
+              <span className="w-24 shrink-0 bg-gradient-to-b from-[var(--brand-teal)] to-primary bg-clip-text text-right text-4xl font-bold leading-none tracking-tight tabular-nums text-transparent drop-shadow-[0_0_18px_rgb(var(--brand-teal-rgb)_/_0.35)]">
+                {s.value === null ? "—" : `${s.value}%`}
+              </span>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function ServiceOpportunityPanel({
   market,
   segment,
@@ -1458,8 +1507,6 @@ function ServiceOpportunityPanel({
 }) {
   const source = isFiltered ? segment : market
   const reportable = !!source?.reportable
-  const score = Math.max(0, Math.min(100, source?.opportunity_score ?? 0))
-  const circumference = 2 * Math.PI * 40
   const components = source
     ? [
         { label: "Buy your services today", value: source.buys_today_pct },
@@ -1476,13 +1523,12 @@ function ServiceOpportunityPanel({
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 id="service-opportunity-heading" className="text-sm font-semibold text-slate-100">
-          Opportunity Score for your services
+          Opportunity signals for your services
         </h2>
-        <InfoExplainer label="How the Opportunity Score is worked out">
+        <InfoExplainer label="How these signals are worked out">
           <p className="text-xs leading-relaxed text-slate-300">
-            Your score is the average of the components below, computed for your saved service categories from verified
-            leader contributions. Each component is the share of organizations in the current view. Edit your services
-            to change what it measures.
+            Four direct measures of demand for your category, each the share of leaders in your selected segment
+            answering the relevant benchmark question. Aggregated and anonymous, with bases stated.
           </p>
         </InfoExplainer>
         <ScopePill filtered={isFiltered} />
@@ -1490,7 +1536,7 @@ function ServiceOpportunityPanel({
 
       {!hasCategories ? (
         <p className="text-sm text-slate-400">
-          Add your services to see your score.{" "}
+          Add your services to see your signals.{" "}
           <button
             type="button"
             onClick={onEditServices}
@@ -1504,49 +1550,14 @@ function ServiceOpportunityPanel({
       ) : !source || !reportable ? (
         <p className="text-sm text-slate-400">Not enough organizations in this segment to score reliably</p>
       ) : (
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="flex shrink-0 flex-col items-center">
-            <div className="relative h-24 w-24">
-              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="#1a3344" strokeWidth="9" />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke="var(--brand-teal)"
-                  strokeWidth="9"
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={circumference * (1 - score / 100)}
-                  className="transition-all duration-700"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold tabular-nums text-primary">
-                {Math.round(score)}
-              </span>
-            </div>
-            {isFiltered && market?.reportable && market.opportunity_score !== null && (
-              <p className="mt-2 text-xs tabular-nums text-slate-400">Market: {Math.round(market.opportunity_score)}</p>
-            )}
-          </div>
-          <ul className="grid flex-1 grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">
-            {components.map((c) => (
-              <li key={c.label}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-xs text-slate-300">{c.label}</span>
-                  <span className="text-sm font-semibold tabular-nums text-slate-100">{c.value ?? 0}%</span>
-                </div>
-                <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#1a3344]">
-                  <div
-                    className="h-1.5 rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${Math.max(0, Math.min(100, c.value ?? 0))}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <>
+          <OpportunitySignalList signals={components} />
+          <p className="mt-6 text-xs leading-relaxed text-slate-500">
+            {`Base: each measure draws on at least ${source.min_component_base.toLocaleString()} organizations in ${
+              isFiltered ? "your selected segment" : "the whole market"
+            }.`}
+          </p>
+        </>
       )}
     </section>
   )
