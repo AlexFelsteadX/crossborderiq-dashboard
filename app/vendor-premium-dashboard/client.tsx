@@ -1530,7 +1530,7 @@ function ServiceOpportunityPanel({
         {
           label: "In or considering a buying cycle",
           value: source.in_market_pct,
-          info: "The share answering Yes or Considering to ‘Have you recently been through an RFP, or are you planning to in the next 12 months?’ One answer per organization.",
+          info: "The share answering Yes or Considering to ‘Are you currently in RFP, or are you planning to in the next 12 months?’ One answer per organization.",
         },
         {
           label: "Name an investment priority linked to your services, next 12 to 18 months",
