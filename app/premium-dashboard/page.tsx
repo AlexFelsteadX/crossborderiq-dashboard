@@ -1,4 +1,4 @@
-import { checkTierAccess } from "@/lib/tier-access"
+import { checkTierAccess, dashboardPathForTier } from "@/lib/tier-access"
 import { redirect } from "next/navigation"
 import { TierLockedScreen } from "@/components/tier-locked-screen"
 import { createClient } from "@/lib/supabase/server"
@@ -26,6 +26,12 @@ export default async function PremiumDashboardPage() {
         buttonHref="/pricing"
       />
     )
+  }
+
+  // Vendor sits above "free" on the tier ladder, so the gate above admits it;
+  // vendors belong on their own dashboard.
+  if (access.tier === "vendor") {
+    redirect(dashboardPathForTier("vendor"))
   }
 
   const isFreeTier = access.tier === "free" || access.tier === "contributor"
