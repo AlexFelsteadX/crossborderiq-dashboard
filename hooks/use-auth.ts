@@ -77,21 +77,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      // A thrown/failed check must still resolve loading, otherwise consumers
+      // stay in their pending state until a refresh.
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
 
-      let tier: string | null = null
-      if (user) {
-        // Claim an eligible trial grant (once per session) before reading the
-        // tier, so a fresh claim is reflected in the first tier value.
-        await maybeActivateTrial()
-        tier = await fetchTier(user.id)
+        let tier: string | null = null
+        if (user) {
+          // Claim an eligible trial grant (once per session) before reading the
+          // tier, so a fresh claim is reflected in the first tier value.
+          await maybeActivateTrial()
+          tier = await fetchTier(user.id)
+        }
+
+        setState({ user, tier, loading: false })
+      } catch (err) {
+        console.log("[v0] Initial session check failed:", err)
+        setState((prev) => ({ ...prev, loading: false }))
       }
-
-      setState({
-        user,
-        tier,
-        loading: false,
-      })
     }
 
     getInitialSession()

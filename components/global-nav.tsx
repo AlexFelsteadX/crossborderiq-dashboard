@@ -190,10 +190,9 @@ export function GlobalNav() {
             <span className="hidden md:inline text-xs text-muted-foreground">Last updated: {lastUpdated}</span>
           )}
           
-          {/* Auth section */}
-          {!loading && (
-            <>
-              {user ? (
+          {/* Auth section: signed-out set is the default (SSR + while the session
+              check is pending or has failed); swap only once a user is confirmed. */}
+          {user && !loading ? (
                 /* Logged in - show user info */
                 <div className="hidden sm:flex items-center gap-3">
                   <div className="relative">
@@ -281,8 +280,6 @@ export function GlobalNav() {
                   </div>
                 </div>
               )}
-            </>
-          )}
 
           {/* Mobile Menu Button */}
           <button

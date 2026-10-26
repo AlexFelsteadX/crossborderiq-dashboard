@@ -116,7 +116,7 @@ export function WhatsInside() {
 
 const PROOF_FIGURES = [
   { value: "900+", label: "verified leaders" },
-  { value: "1,500+", label: "contributions" },
+  { value: "2,500+", label: "contributions" },
   { value: "50,000+", label: "individual data points" },
 ]
 
