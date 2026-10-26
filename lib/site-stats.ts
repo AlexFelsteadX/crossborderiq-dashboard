@@ -1,6 +1,8 @@
-// Single source of truth for the public contribution count, so the homepage and
+// Single source of truth for the public contribution figures, so the homepage and
 // /workforce-intelligence can never diverge.
-export const CONTRIBUTION_COUNT = "2,300+"
+export const VERIFIED_LEADERS = "900+"
+export const CONTRIBUTIONS = "1,500+"
+export const DATA_POINTS = "50,000+"
 
-// Contribution pyramid: organizations → contributions → individual data points.
-export const CONTRIBUTION_PYRAMID = "800+ organizations · 1,500+ contributions · 50,000+ individual data points"
+// Contribution pyramid: verified leaders → contributions → individual data points.
+export const CONTRIBUTION_PYRAMID = `${VERIFIED_LEADERS} verified leaders · ${CONTRIBUTIONS} contributions · ${DATA_POINTS} individual data points`
