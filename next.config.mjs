@@ -13,6 +13,11 @@ const nextConfig = {
         destination: '/workforce-intelligence',
         permanent: true,
       },
+      {
+        source: '/mobility-maturity-scorecard',
+        destination: '/login?mode=signup&next=/premium-dashboard',
+        permanent: true,
+      },
     ]
   },
 }

@@ -1,300 +1,103 @@
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
-import { Users, Sparkles, ArrowDown, ArrowRight, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { PlanFaq } from "@/components/plan-faq"
 import { createClient } from "@/lib/supabase/server"
-import { MmiCard } from "./mmi-card"
-import { PeerSegmentFilters } from "./peer-segment-filters"
-import { PremiumUpgradeButton } from "./premium-cta"
-import { LockedThemeGrid, TOTAL_BENCHMARK_QUESTIONS } from "./locked-theme-grid"
-import { LockedYoyGrid } from "./locked-yoy-grid"
-import type { PublicFlagshipStat } from "@/lib/flagship-stats"
-import { CONTRIBUTION_PYRAMID } from "@/lib/site-stats"
+import { freeScoreHref } from "@/lib/free-signup"
+import { Reveal } from "./reveal"
+import { TryTheMechanic, type MechanicOption } from "./try-the-mechanic"
+import { HeroSection, HowScoreWorks, LadderSection, ProofSection, WhatsInside } from "./landing-sections"
 
 export const metadata = {
   title: "Global Workforce Intelligence",
   description:
-    "Benchmark your Global Mobility strategy, AI adoption and future-of-work readiness against peers by region, industry and company size. Powered by GME.",
+    "Score your Global Mobility program 0 to 100 against 800+ verified mobility leaders. Free, in about 2 minutes.",
 }
 
-interface StrategicMobilityIndex {
-  index_score: number
-  defined_strategy: number
-  aligned: number
-  future: number
-  tech_ai_maturity: number
+const PROGRAM_STATE_QUESTION = "Which statement best reflects your organization currently?"
+
+interface MmiRow {
+  index_score: number | null
+  defined_strategy: number | null
+  aligned: number | null
+  future: number | null
+  tech_ai_maturity: number | null
   base_n: number | null
-  confidence: string | null
 }
+
+interface BreakdownRow {
+  question_label: string
+  answer_option: string
+  overall_pct: number | null
+}
+
+const toNum = (v: unknown): number | null =>
+  v === null || v === undefined || Number.isNaN(Number(v)) ? null : Math.round(Number(v))
 
 export default async function WorkforceIntelligencePage() {
   const supabase = await createClient()
 
-  // Fetch the live Mobility Maturity Index via RPC. This single read drives the
-  // gauge (index_score) and the "What makes up this score" panel — the same
-  // response already returns the four leg values, so no extra call.
-  const { data: smiData, error } = await supabase.rpc("get_premium_mmi")
-  const smiRow = (Array.isArray(smiData) ? smiData[0] : smiData) as StrategicMobilityIndex | null
+  const [{ data: mmiData, error: mmiError }, { data: breakdownData, error: breakdownError }, { data: authData }] =
+    await Promise.all([
+      supabase.rpc("get_premium_mmi"),
+      supabase.rpc("get_premium_breakdown", {}),
+      supabase.auth.getUser(),
+    ])
 
-  // Never render a fabricated 0%: a failed or empty score call shows "—" instead.
-  const toPct = (v: unknown): number | null =>
-    v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v)
-  const smiAvailable = !error && toPct(smiRow?.index_score) !== null
-  const smiScore = smiAvailable ? Math.round(Number(smiRow?.index_score)) : null
-  const scoreComponents = [
-    { label: "Defined strategy", pct: smiAvailable ? toPct(smiRow?.defined_strategy) : null },
-    { label: "Aligned to business", pct: smiAvailable ? toPct(smiRow?.aligned) : null },
-    { label: "Future readiness", pct: smiAvailable ? toPct(smiRow?.future) : null },
-    { label: "Technology & AI maturity", pct: smiAvailable ? toPct(smiRow?.tech_ai_maturity) : null },
+  const mmi = (Array.isArray(mmiData) ? mmiData[0] : mmiData) as MmiRow | null
+  const score = mmiError ? null : toNum(mmi?.index_score)
+  const live = score !== null
+  const baseN = live ? toNum(mmi?.base_n) : null
+  const components = [
+    { label: "Defined strategy", pct: live ? toNum(mmi?.defined_strategy) : null },
+    { label: "Aligned to business", pct: live ? toNum(mmi?.aligned) : null },
+    { label: "Future readiness", pct: live ? toNum(mmi?.future) : null },
+    { label: "Technology & AI", pct: live ? toNum(mmi?.tech_ai_maturity) : null },
   ]
 
-  // Free score starter lives in-app on /premium-dashboard (which also bounces
-  // vendors to their own dashboard). Signed-out visitors sign up first.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  const freeScoreHref = user ? "/premium-dashboard" : "/login?mode=signup&next=/premium-dashboard"
+  const mechanicOptions: MechanicOption[] =
+    !breakdownError && Array.isArray(breakdownData)
+      ? (breakdownData as BreakdownRow[])
+          .filter((r) => r.question_label?.trim().toLowerCase() === PROGRAM_STATE_QUESTION.toLowerCase())
+          .filter((r) => r.overall_pct !== null && r.answer_option)
+          .map((r) => ({ label: r.answer_option, pct: Math.round(Number(r.overall_pct) * 100) }))
+      : []
 
-  // Public, market-only flagship stats — one hero figure per theme (no answer
-  // distributions). Degrades silently: if the RPC is not live yet, or returns
-  // nothing, the theme cards render as label-only locked teasers (no error UI).
-  const flagshipStats: Record<string, PublicFlagshipStat> = {}
-  const { data: flagshipData } = await supabase.rpc("get_public_flagship_stats")
-  if (Array.isArray(flagshipData)) {
-    for (const row of flagshipData as PublicFlagshipStat[]) {
-      if (row?.theme_key) flagshipStats[row.theme_key] = row
-    }
-  }
+  const ctaHref = freeScoreHref(Boolean(authData?.user))
 
   return (
-    <div className="min-h-screen bg-brand-navy flex flex-col relative">
-      {/* Premium Dark Gradient Mesh Background - Same as homepage hero */}
-      <div className="fixed inset-0 bg-brand-navy -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgb(var(--brand-teal-deep-rgb)_/_0.4),transparent)] -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_60%,rgb(var(--brand-teal-deep-rgb)_/_0.15),transparent)] -z-10" />
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_30%_at_10%_80%,rgb(var(--brand-teal-deep-rgb)_/_0.1),transparent)] -z-10" />
-
+    <div className="min-h-screen bg-brand-navy flex flex-col">
       <GlobalNav />
 
-      <main className="flex-1 max-w-[1400px] mx-auto px-6 py-12 w-full">
-        {/* 1. HERO with a hook stat */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
-            <Sparkles className="h-3.5 w-3.5" />
-            {CONTRIBUTION_PYRAMID}
-          </div>
+      <main className="flex-1 mx-auto w-full max-w-6xl px-4 md:px-6 py-16 md:py-24 flex flex-col gap-24 md:gap-32">
+        <Reveal>
+          <HeroSection score={score} baseN={baseN} ctaHref={ctaHref} />
+        </Reveal>
 
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight text-balance">
-            See how you compare.
-          </h1>
-
-          <p className="text-lg text-slate-300 max-w-3xl mx-auto mb-6 text-pretty">
-            Get your personal Mobility Maturity score free in 3 minutes, or unlock the full benchmark below.
-          </p>
-
-          <div className="flex flex-col items-center gap-3">
-            <a
-              href={freeScoreHref}
-              className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-            >
-              Get your free Mobility Maturity score
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-            <a
-              href="#access-full-research"
-              className="group inline-flex items-center gap-1.5 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200"
-            >
-              Access full data
-              <ArrowDown className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
-            </a>
-          </div>
-        </div>
-
-        {/* Error state — MMI only. The public flagship read degrades silently. */}
-        {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-center mb-10">
-            <p className="text-red-400 text-sm">Unable to load intelligence data. Please try again later.</p>
-          </div>
+        {mechanicOptions.length > 0 && (
+          <Reveal className="mx-auto w-full max-w-3xl">
+            <TryTheMechanic question={PROGRAM_STATE_QUESTION} options={mechanicOptions} ctaHref={ctaHref} />
+          </Reveal>
         )}
 
-        {/* 2. MOBILITY MATURITY INDEX card — leads the page, integrated peer-segment filter bar.
-            The gauge shows the unfiltered market average (smiScore), or "—" if unavailable. */}
-        <MmiCard
-          allRegionsValue={smiScore}
-          freeScoreHref={freeScoreHref}
-          scoreComponents={scoreComponents}
-          baseN={smiRow?.base_n ?? 0}
-        />
+        <Reveal>
+          <HowScoreWorks components={components} ctaHref={ctaHref} />
+        </Reveal>
 
-        {/* 3. INSIDE THE FULL DASHBOARD — heading, features and survey CTA. */}
-        <section className="mb-12">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Inside the full dashboard</h2>
-            <ul className="mt-3 space-y-2">
-              {[
-                "Slice every figure by industry, region and company size",
-                "Full distributions behind all eleven themes",
-                "Year-on-year movement across two annual waves",
-              ].map((feature) => (
-                <li key={feature} className="flex items-center gap-2.5 text-sm text-slate-400">
-                  <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span className="text-pretty">{feature}</span>
-                </li>
-              ))}
-            </ul>
-            <a
-              href="/survey"
-              className="group mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-            >
-              Complete the survey to earn 30-Day Premium Access
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-          </div>
-        </section>
+        <Reveal>
+          <WhatsInside />
+        </Reveal>
 
-        {/* 4. TRACKED YEAR ON YEAR — locked teaser. Static labels only, no RPC. */}
-        <section className="mb-12">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Tracked year on year</h2>
-            <p className="text-sm text-slate-400 mt-1 max-w-3xl text-pretty">
-              The benchmark runs in annual waves. Premium members see how every trendable metric moved from 2025 to
-              2026.
-            </p>
-          </div>
-          <LockedYoyGrid />
-        </section>
+        <Reveal>
+          <ProofSection />
+        </Reveal>
 
-        {/* 4b. YOUR GAPS, EXPLAINED. Static screenshot only (public/images/insights-brief-preview.png);
-            no live Insights data is fetched or rendered here. Swap the file to update the visual. */}
-        <section className="mb-12" aria-labelledby="insights-teaser-heading">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-teal">Your gaps, explained</p>
-          <h2 id="insights-teaser-heading" className="mt-2 text-xl font-semibold text-foreground text-balance max-w-3xl">
-            A benchmark tells you where you stand. CBIQ Insights tells you why it matters.
-          </h2>
-          <p className="mt-2 text-sm text-slate-400 max-w-3xl text-pretty">
-            Every Premium dashboard includes a plain-language readout of your program against the market: where you
-            lead, where you lag, and what the organizations ahead of you are doing differently. On technology. On
-            policy. On employee experience. On vendor strategy.
-          </p>
+        <Reveal>
+          <LadderSection />
+        </Reveal>
 
-          <figure className="mt-6 overflow-hidden rounded-2xl border border-primary/20 bg-brand-navy-2 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-            <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5" aria-hidden="true">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
-              </div>
-              <div className="flex-1 truncate rounded-md bg-white/5 px-3 py-1 text-center text-xs text-slate-500">
-                cbiq.ai/premium-dashboard
-              </div>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element -- plain img keeps the asset swappable at any size */}
-            <img
-              src="/images/insights-brief-preview.png"
-              alt="Example CBIQ Insights brief: a written readout of a program's business travel governance gap against Technology and IT peers, with a gap card below."
-              className="block h-auto w-full"
-              loading="lazy"
-            />
-          </figure>
-
-          <a
-            href="/survey"
-            className="group mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-7 h-12 font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_32px_-6px_rgb(var(--brand-teal-rgb)_/_0.7)]"
-          >
-            Complete the survey to earn 30-Day Premium Access
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </a>
-        </section>
-
-        {/* 5. Locked dashboard preview. DATA-SAFETY: the theme grid shows ONE public
-            hero figure per theme (via get_public_flagship_stats). No answer
-            distributions are fetched or shown. */}
-        <section className="mb-12">
-          {/* Peer-segment filters — locked, disabled preview of the Premium controls */}
-          <div className="mb-10">
-            <PeerSegmentFilters />
-          </div>
-
-          {/* Theme overview — locked cards, one live hero figure each */}
-          <div className="mb-10">
-            <div className="mb-5">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary mb-2">
-                  The live benchmark
-                </p>
-                <h3 className="text-2xl font-bold text-foreground text-balance">What the benchmark covers</h3>
-                <p className="text-sm text-slate-400 mt-1 text-pretty">
-                  Eleven areas. {TOTAL_BENCHMARK_QUESTIONS} benchmark questions. Every figure states its base.
-                </p>
-              </div>
-            </div>
-            <LockedThemeGrid stats={flagshipStats} />
-            <p className="mt-4 text-xs text-slate-400 text-pretty">
-              Base sizes vary by question. Results from bases under 100 organizations should be read as directional.
-              All figures are aggregated and anonymized; no organization is ever identifiable.
-            </p>
-          </div>
-
-          {/* Summary line (the conversion-path cards sit directly below this section) */}
-          <div className="rounded-2xl border border-primary/20 bg-brand-navy-2/80 p-6 text-center">
-            <p className="text-sm text-slate-300">
-              11 themes · {TOTAL_BENCHMARK_QUESTIONS} benchmark questions · every figure states its base
-            </p>
-          </div>
-        </section>
-
-        {/* 6. TWO CONVERSION PATHS (existing CTAs preserved) */}
-        <div id="access-full-research" className="scroll-mt-24 grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {/* Free card */}
-          <div className="flex flex-col rounded-2xl border border-primary/20 bg-brand-navy-2 p-8 shadow-[0_0_40px_-12px_rgb(var(--brand-teal-rgb)_/_0.25)]">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Complete the survey</h3>
-            </div>
-            <p className="text-sm text-slate-300 mb-6">
-              Complete the survey to earn 30-Day Premium Access, free.
-            </p>
-            <div className="mt-auto">
-              <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 font-semibold h-12">
-                <a href="/survey">Contribute to the Survey. Free Access</a>
-              </Button>
-            </div>
-          </div>
-
-          {/* Premium card (featured) */}
-          <div className="relative flex flex-col rounded-2xl border-2 border-primary/50 bg-brand-navy-2 p-8 shadow-[0_0_60px_-10px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="inline-flex items-center text-xs font-medium bg-primary text-primary-foreground px-3 py-1 rounded-full whitespace-nowrap">
-                Most Popular
-              </span>
-            </div>
-            <div className="flex items-center gap-2 mb-3 pt-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Premium</h3>
-            </div>
-            <p className="text-sm text-slate-300 mb-6">
-              £995 / $1,295. Continuous access, members-only reports and branded PDF export.
-            </p>
-            <PremiumUpgradeButton />
-          </div>
-          {/* Low-key path to compare all tiers (text link, not a third button) */}
-          <div className="md:col-span-2 text-center">
-            <Link href="/pricing" className="text-sm text-slate-400 hover:text-primary underline underline-offset-4">
-              View all membership options
-            </Link>
-          </div>
-        </div>
-
-        {/* 7. TRUST STRIP */}
-        <div className="text-center space-y-2 pt-2">
-          <p className="text-xs text-slate-500">
-            {CONTRIBUTION_PYRAMID} · aggregated &amp; anonymized ·{" "}
-            <Link href="/methodology" className="text-primary hover:underline">
-              View methodology
-            </Link>
-          </p>
-        </div>
+        <Reveal>
+          <PlanFaq className="max-w-3xl mx-auto w-full" />
+        </Reveal>
       </main>
 
       <GlobalFooter />

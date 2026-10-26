@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { FREE_SIGNUP_PATH } from "@/lib/free-signup"
 import { useAuth } from "@/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
 import { isVendorEmail } from "@/lib/vendor-domains"
@@ -826,8 +827,8 @@ export default function ReportsPage() {
                 </Button>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   See where your program sits.{" "}
-                  <Link href="/mobility-maturity-scorecard" className="text-primary hover:underline">
-                    Take the Mobility Maturity Scorecard (about 3 minutes)
+                  <Link href={FREE_SIGNUP_PATH} className="text-primary hover:underline">
+                    Get your free score (about 2 minutes)
                   </Link>
                 </p>
               </div>
