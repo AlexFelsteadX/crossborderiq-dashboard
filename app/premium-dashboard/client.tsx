@@ -36,6 +36,7 @@ import { NewPill } from "@/components/dashboard/new-pill"
 import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
 import { LockedPanel, UNLOCK_HREF, UNLOCK_LINE } from "@/components/dashboard/locked-panel"
+import { DashboardTabBar } from "@/components/dashboard/dashboard-tab-bar"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
 import { CommunityPanel, type PulseBoard } from "./community-panel"
@@ -2412,32 +2413,14 @@ export function PremiumDashboardClient({
 
         {/* ============================ DASHBOARD TABS ============================ */}
         {showTabs && (
-          <div
-            role="tablist"
-            aria-label="Dashboard view"
-            className="mb-8 flex w-full rounded-xl border border-primary/30 bg-brand-navy-2/80 p-1 gap-1"
-          >
-            {visibleTabs.map((t) => {
-              const active = activeTab === t.id
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  id={`dashboard-tab-${t.id}`}
-                  aria-selected={active}
-                  onClick={() => setActiveTab(t.id)}
-                  className={`flex-1 min-w-0 px-2 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-semibold leading-tight transition-colors ${
-                    active
-                      ? "bg-primary text-brand-navy shadow-[0_0_20px_-6px_rgb(var(--brand-teal-rgb)_/_0.6)]"
-                      : "text-slate-300 hover:text-slate-100 hover:bg-primary/10"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
+          <DashboardTabBar
+            tabs={visibleTabs}
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            ariaLabel="Dashboard view"
+            tabIdPrefix="dashboard-tab-"
+            className="mb-8"
+          />
         )}
 
         {/* ============================ YOUR SCORE ============================ */}

@@ -25,6 +25,7 @@ import { ExploreBenchmarkTab } from "./explore-benchmark-tab"
 import { MARKET_RESEARCH_EXPLAINERS, type MarketResearchExplainerId } from "@/lib/market-research-explainers"
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { QuestionInfo } from "@/components/dashboard/question-info"
+import { DashboardTabBar } from "@/components/dashboard/dashboard-tab-bar"
 
 // =============================================================================
 // TYPES
@@ -3385,26 +3386,13 @@ export function VendorPremiumDashboardClient() {
       <GlobalNav />
       
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
-        <div role="tablist" aria-label="Dashboard sections" className="flex gap-1 border-b border-slate-700/60">
-          {DASHBOARD_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`tab-${t.id}`}
-              aria-selected={activeTab === t.id}
-              aria-controls={`panel-${t.id}`}
-              onClick={() => selectTab(t.id)}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 ${
-                activeTab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <DashboardTabBar
+          tabs={DASHBOARD_TABS}
+          activeTab={activeTab}
+          onSelect={selectTab}
+          tabIdPrefix="tab-"
+          panelIdPrefix="panel-"
+        />
 
         {/* Loading State */}
         {loading && activeTab !== "explore" && (
