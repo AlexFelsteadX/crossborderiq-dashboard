@@ -574,7 +574,7 @@ function QuestionCard({
   // answering-base caption. Scoped to Q52 so no other card is affected.
   const isQ52 = (qCode ?? "").toUpperCase() === "Q52"
   const displayCaption = isQ52
-    ? caption.replace("% of respondents", `% of respondents answering · from ${baseN} organizations`)
+    ? caption.replace("% of respondents", `% of respondents answering �� from ${baseN} organizations`)
     : caption
 
   // Agreement-scale detection: every option is a single digit, >=4 distinct
@@ -2355,7 +2355,7 @@ const PROJECT_DEMAND_PILL = "border-violet-400/40 bg-violet-400/10 text-violet-3
 const WHITESPACE_TAG_LABELS: Record<string, string> = {
   Opening: "Few provide this today",
   Emerging: "Growing",
-  Saturated: "Well served",
+  Saturated: "High Outsourcing Adoption",
 }
 const whitespaceTagLabel = (tag: string) => WHITESPACE_TAG_LABELS[tag] ?? tag
 
