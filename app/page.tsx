@@ -18,11 +18,11 @@ import {
 import { createClient } from "@/lib/supabase/server"
 import { freeScoreHref } from "@/lib/free-signup"
 import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
-import { CONTRIBUTION_COUNT } from "@/lib/site-stats"
+import { CONTRIBUTIONS, VERIFIED_LEADERS } from "@/lib/site-stats"
 
 export const metadata = {
   title: { absolute: "CBIQ | Global Workforce & Mobility Intelligence" },
-  description: `CBIQ benchmarks your workforce strategy, AI adoption and mobility program against ${CONTRIBUTION_COUNT} HR, Talent and Global Mobility leader contributions. Powered by Global Mobility Executive (GME).`,
+  description: `CBIQ benchmarks your workforce strategy, AI adoption and mobility program against ${CONTRIBUTIONS} contributions from ${VERIFIED_LEADERS} verified Global Workforce leaders. Powered by Global Mobility Executive (GME).`,
 }
 
 // Format decimal pct values (e.g., 0.35) as whole percentages (e.g., 35%)
@@ -82,6 +82,7 @@ export default async function HomePage() {
   // Paid tiers already have full access, so the home hero hides the "Contribute Data" CTA for them.
   // Free users (and logged-out visitors, who default to "free") still see it.
   const hasFullAccess = ["premium", "vendor"].includes(viewerTier)
+  const scoreCtaLabel = hasFullAccess ? "Open your dashboard" : "Get your free score"
 
   return (
     <div className="min-h-screen bg-brand-navy flex flex-col">
@@ -112,7 +113,7 @@ export default async function HomePage() {
               <div className="text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/10 px-4 py-2 rounded-full border border-primary/20 mb-6">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Informed by {CONTRIBUTION_COUNT} Global Workforce Leaders
+                  Informed by {VERIFIED_LEADERS} Global Workforce Leaders
                 </div>
                 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-50 leading-tight mb-6 tracking-tight text-balance">
@@ -121,24 +122,24 @@ export default async function HomePage() {
                 </h1>
                 
                 <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed text-pretty">
-                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against a benchmark built from {CONTRIBUTION_COUNT} contributions by global HR, Talent and Mobility leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
+                  CBIQ (Cross-Border Workforce Intelligence) helps you benchmark your Global Mobility and workforce strategy against a benchmark built from {CONTRIBUTIONS} contributions from {VERIFIED_LEADERS} verified Global Workforce leaders, from operating model and program maturity to employee experience, AI adoption and International Remote Work.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
                     <Link href={freeScoreHref(Boolean(user))}>
-                      Get your free score
+                      {scoreCtaLabel}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/30 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                     <Link href="/workforce-intelligence">
-                      Explore the free dashboard
+                      See what&apos;s inside
                     </Link>
                   </Button>
                 </div>
                 <p className="text-sm text-slate-400 mt-4 text-center lg:text-left">
-                  See how your mobility program compares — free, 3-minute benchmark.
+                  See how your mobility program compares — free 8-question benchmark, about 2 minutes.
                 </p>
               </div>
 
@@ -208,7 +209,7 @@ export default async function HomePage() {
                   
                   {/* Descriptor */}
                   <p className="text-sm text-slate-300 text-center mb-6 leading-relaxed">
-                    The industry&apos;s first composite benchmark for workforce mobility maturity.
+                    The industry&apos;s composite benchmark for workforce mobility maturity.
                   </p>
                   
                   {/* Scorecard CTA */}
@@ -219,7 +220,7 @@ export default async function HomePage() {
                   </p>
                   <Button className="w-full gap-2 bg-primary hover:bg-primary/90 h-11 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
                     <Link href={freeScoreHref(Boolean(user))}>
-                      Get your free score
+                      {scoreCtaLabel}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -239,13 +240,13 @@ export default async function HomePage() {
                     <div className="w-3 h-3 rounded-full bg-green-500/60" />
                   </div>
                   <div className="flex-1 text-center">
-                    <span className="text-xs text-slate-400">cbiq.ai/intelligence</span>
+                    <span className="text-xs text-slate-400">cbiq.ai/premium-dashboard</span>
                   </div>
                 </div>
                 {/* Hero dashboard — real Premium Dashboard screenshot, linked as a CTA */}
                 <Link
                   href={freeScoreHref(Boolean(user))}
-                  aria-label="Get your free Global Mobility maturity score"
+                  aria-label={hasFullAccess ? "Open your dashboard" : "Get your free Global Mobility maturity score"}
                   className="group relative m-4 block overflow-hidden rounded-lg bg-brand-navy/40 shadow-[0_20px_50px_-20px_rgb(0_0_0_/_0.7)] ring-1 ring-primary/10 transition-shadow hover:shadow-[0_24px_60px_-18px_rgb(var(--brand-teal-rgb)_/_0.35)]"
                 >
                   {/* Live dashboard badge */}
@@ -267,7 +268,7 @@ export default async function HomePage() {
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-brand-navy via-brand-navy/80 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-4">
                     <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 h-10 text-sm font-semibold text-primary-foreground shadow-[0_8px_24px_-6px_rgb(var(--brand-teal-rgb)_/_0.55)] transition-all group-hover:-translate-y-0.5 group-hover:bg-primary/90">
-                      Get your free score
+                      {scoreCtaLabel}
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
                   </div>
@@ -304,8 +305,8 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-primary/25 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 shadow-[0_0_60px_-15px_rgb(var(--brand-teal-deep-rgb)/0.45)] px-6 py-10 md:px-10">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-10">
                 {[
-                  { icon: Users, value: CONTRIBUTION_COUNT, label: "Leader contributions" },
-                  { icon: Globe2, value: "35+", label: "Countries represented" },
+                  { icon: Users, value: CONTRIBUTIONS, label: "Leader contributions" },
+                  { icon: Globe2, value: "60+", label: "Question-level datasets" },
                   { icon: Briefcase, value: "Senior", label: "HR, Mobility & Talent leaders" },
                   { icon: ShieldCheck, value: "Anonymous", label: "Confidential, aggregated insight" },
                 ].map((item, i) => (
@@ -423,6 +424,8 @@ export default async function HomePage() {
         </section>
 
         {/* ============ STRATEGIC MOBILITY INDEX EXPLAINER ============ */}
+        {/* Hidden entirely when v_pillar_score fails or is empty: never a heading over an empty grid. */}
+        {smiBreakdownPillars.length > 0 && (
         <section className="py-24 px-6 bg-[#0c1a2c]">
           <div className="max-w-[1400px] mx-auto">
             <div className="text-center mb-12">
@@ -430,7 +433,7 @@ export default async function HomePage() {
                 What Makes Up the Mobility Maturity Index<span className="text-primary text-sm align-top">™</span>
               </h2>
               <p className="text-slate-400 max-w-2xl mx-auto">
-                Four intelligence pillars combined into a single benchmark score.
+                Benchmark pillar scores
               </p>
             </div>
 
@@ -457,7 +460,7 @@ export default async function HomePage() {
             <div className="text-center mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button className="gap-2 bg-primary hover:bg-primary/90 transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.6)]" asChild>
                 <Link href={freeScoreHref(Boolean(user))}>
-                  Get your score
+                  {hasFullAccess ? "Open your dashboard" : "Get your score"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -470,6 +473,7 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* ============ WHY CROSSBORDERIQ ============ */}
         <section className="py-24 px-6 bg-brand-navy">
@@ -494,7 +498,7 @@ export default async function HomePage() {
                 {
                   icon: BarChart3,
                   title: "Benchmarking",
-                  description: `Compare your workforce mobility maturity against a benchmark built from ${CONTRIBUTION_COUNT} leader contributions across regions, industries and workforce sizes.`,
+                  description: `Compare your workforce mobility maturity against a benchmark built from ${CONTRIBUTIONS} contributions across regions, industries and workforce sizes.`,
                 },
                 {
                   icon: Globe2,
@@ -569,12 +573,12 @@ export default async function HomePage() {
                 },
               ].map((report, i) => {
                 // Gated reports: members download via the same route used on
-                // /reports; non-members are routed to /contribute. Free reports
+                // /reports; non-members are routed to /pricing. Free reports
                 // keep linking through to the Reports page.
                 const href = report.gated
                   ? isMember
                     ? `/api/reports/${report.downloadId}/download`
-                    : "/contribute"
+                    : "/pricing"
                   : "/reports"
                 return (
                 <Link key={i} href={href} className="group">
@@ -633,13 +637,13 @@ export default async function HomePage() {
                   ],
                   note: "Survey once every 12 months; every GME event earns a fresh 30 days.",
                   cta: "Contribute to the Survey",
-                  href: "/contributor-dashboard",
+                  href: "/survey",
                   highlight: false
                 },
                 {
                   title: "Global Workforce Intelligence",
                   price: "£995 / $1,295",
-                  priceNote: "Founding Member",
+                  priceNote: "Become a member",
                   description: "The full Premium dashboard, continuously, plus members-only benefits.",
                   features: [
                     "Everything in 30-Day Premium Access, permanent",
@@ -648,7 +652,7 @@ export default async function HomePage() {
                     "Annual analyst benchmarking briefing",
                   ],
                   note: "Continuous while subscribed.",
-                  cta: "Become a Founding Member",
+                  cta: "Become a member",
                   checkout: true,
                   highlight: true
                 },
@@ -746,7 +750,7 @@ export default async function HomePage() {
               <div className="relative">
                 <div className="inline-flex items-center gap-2 text-xs font-medium text-primary bg-primary/15 px-4 py-2 rounded-full border border-primary/30 mb-6">
                   <Users className="h-3.5 w-3.5" />
-                  Join {CONTRIBUTION_COUNT} Global Workforce Leaders
+                  Join {VERIFIED_LEADERS} Global Workforce Leaders
                 </div>
                 <h2 className="text-3xl md:text-5xl font-bold text-slate-50 mb-4 text-balance">
                   Make Smarter Global Workforce Decisions
@@ -757,20 +761,20 @@ export default async function HomePage() {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 px-8 h-12 text-base transition-shadow hover:shadow-[0_0_28px_-4px_rgb(var(--brand-teal-rgb)_/_0.7)]" asChild>
                     <Link href={freeScoreHref(Boolean(user))}>
-                      Get your free score
+                      {scoreCtaLabel}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button size="lg" variant="outline" className="gap-2 px-8 h-12 text-base border-primary/40 text-slate-100 hover:bg-primary/10 hover:text-slate-50" asChild>
                     <Link href="/workforce-intelligence">
-                      Explore the free dashboard
+                      See what&apos;s inside
                     </Link>
                   </Button>
                   {/* Hide "Contribute Data" for paid tiers (premium/vendor) — they already have full access.
                       Free users and logged-out visitors keep it. */}
                   {!hasFullAccess && (
                     <Button size="lg" variant="ghost" className="gap-2 px-8 h-12 text-base text-slate-300 hover:bg-primary/10 hover:text-slate-50" asChild>
-                      <Link href="/contribute">
+                      <Link href="/survey">
                         Contribute Data
                       </Link>
                     </Button>
