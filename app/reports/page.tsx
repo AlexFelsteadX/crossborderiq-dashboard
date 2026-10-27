@@ -118,6 +118,24 @@ type EventBriefing = {
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
   {
+    title: "GME Leaders Exchange San Francisco",
+    description:
+      "What 22 technology-sector mobility leaders told us before anyone spoke: the first room where AI adoption has broken away from platform ownership, and what their employees ask of mobility.",
+    cover: "/reports/covers/san-francisco-leaders-exchange-2026-cover.png",
+    file: "/reports/GME_Leaders_Exchange_San_Francisco_2026_-Market_Insights_report.pdf",
+    date: "San Francisco · October 22, 2026",
+    tag: "Event briefing",
+  },
+  {
+    title: "GME Leaders Exchange Houston",
+    description:
+      "The energy corridor\u2019s mobility leaders, benchmarked against the market: how programs built around rotations and oilfield deployment are run, pressured, and tooled.",
+    cover: "/reports/covers/houston-leaders-exchange-2026-cover.png",
+    file: "/reports/GME_Leaders_Exchange_Houston_2026-_Market_Insights_report.pdf",
+    date: "Houston · October 20, 2026",
+    tag: "Event briefing",
+  },
+  {
     title: "Reimagining the Future of Global Workforce Management",
     subtitle: "Where Global Mobility meets Business Travel",
     description:
