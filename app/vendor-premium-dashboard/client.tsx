@@ -26,6 +26,7 @@ import { MARKET_RESEARCH_EXPLAINERS, type MarketResearchExplainerId } from "@/li
 import { InfoExplainer } from "@/components/dashboard/info-explainer"
 import { QuestionInfo } from "@/components/dashboard/question-info"
 import { DashboardTabBar } from "@/components/dashboard/dashboard-tab-bar"
+import { AskCbiq } from "@/components/dashboard/ask-cbiq"
 
 // =============================================================================
 // TYPES
@@ -3458,13 +3459,19 @@ export function VendorPremiumDashboardClient() {
       <GlobalNav />
       
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">
-        <DashboardTabBar
-          tabs={DASHBOARD_TABS}
-          activeTab={activeTab}
-          onSelect={selectTab}
-          tabIdPrefix="tab-"
-          panelIdPrefix="panel-"
-        />
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <DashboardTabBar
+            tabs={DASHBOARD_TABS}
+            activeTab={activeTab}
+            onSelect={selectTab}
+            tabIdPrefix="tab-"
+            panelIdPrefix="panel-"
+            className="flex-1"
+          />
+          <div className="pb-1.5">
+            <AskCbiq />
+          </div>
+        </div>
 
         {/* Loading State */}
         {loading && activeTab !== "explore" && (
