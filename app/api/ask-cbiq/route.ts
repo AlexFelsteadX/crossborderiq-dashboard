@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
+import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -375,6 +376,26 @@ export async function POST(request: Request) {
   let tokensOut = 0
   let answer = ""
 
+  // The insert must wait for the whole tool loop, not the response lifecycle:
+  // after() keeps the function alive past stream close, and awaiting loopDone
+  // guarantees the totals below are final before they are read.
+  let markLoopDone!: () => void
+  const loopDone = new Promise<void>((resolve) => {
+    markLoopDone = resolve
+  })
+  after(async () => {
+    await loopDone
+    await logExchange({
+      user_id: user.id,
+      user_email: userEmail,
+      question,
+      answer: answer.trim(),
+      tools_called: toolsCalled,
+      tokens_in: tokensIn,
+      tokens_out: tokensOut,
+    })
+  })
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const emit = (text: string) => {
@@ -430,16 +451,12 @@ export async function POST(request: Request) {
         console.error("[ask-cbiq] model error:", err)
         emit(answer.length > 0 ? "\n\nSorry, something went wrong finishing that answer." : "Sorry, something went wrong. Please try again.")
       } finally {
-        controller.close()
-        await logExchange({
-          user_id: user.id,
-          user_email: userEmail,
-          question,
-          answer: answer.trim(),
-          tools_called: toolsCalled,
-          tokens_in: tokensIn,
-          tokens_out: tokensOut,
-        })
+        markLoopDone()
+        try {
+          controller.close()
+        } catch {
+          // Stream already closed or cancelled by the client.
+        }
       }
     },
   })
