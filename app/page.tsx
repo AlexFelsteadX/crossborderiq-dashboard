@@ -408,9 +408,9 @@ export default async function HomePage() {
             </div>
 
             <div className="w-full max-w-[560px] mx-auto">
-              <div className="aspect-square rounded-xl border border-primary/20 bg-brand-navy-2 overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+              <div className="aspect-[1920/1080] rounded-xl border border-primary/20 bg-brand-navy overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
                 <LazyDemoVideo
-                  className="w-full h-full object-cover"
+                  className="block w-full h-full object-contain bg-transparent"
                   src="/cbiq-demo-2026.mp4"
                   poster="/cbiq-demo-2026-poster.jpg"
                 />
