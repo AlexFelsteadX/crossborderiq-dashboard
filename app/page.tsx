@@ -401,14 +401,14 @@ export default async function HomePage() {
           <div className="relative max-w-[1400px] mx-auto">
             <div className="text-center mb-14">
               <span className="text-xs font-semibold text-primary uppercase tracking-widest">See it in action</span>
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-50 mt-3 mb-4">The Intelligence Platform</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-50 mt-3 mb-4">Your program, benchmarked live</h2>
               <p className="text-slate-400 max-w-2xl mx-auto">
-                Explore benchmarks, regional breakdowns and demand signals through an interactive dashboard.
+                Instant program score, peer comparison, year over year trends, and answers to your questions, drawn live from 900+ verified Global Mobility leaders.
               </p>
             </div>
 
-            <div className="w-full max-w-[560px] mx-auto">
-              <div className="aspect-[1920/1080] rounded-xl border border-primary/20 bg-brand-navy overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
+            <div className="w-full max-w-[960px] mx-auto">
+              <div className="aspect-[1920/1080] rounded-2xl border border-primary/25 bg-brand-navy overflow-hidden shadow-[0_0_80px_-24px_rgb(var(--brand-teal-rgb)_/_0.5)]">
                 <LazyDemoVideo
                   className="block w-full h-full object-contain bg-transparent"
                   src="/cbiq-demo-2026.mp4"
