@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "re
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import Link from "next/link"
-import { ArrowUp, Lock, MessageSquareText, RotateCcw } from "lucide-react"
+import { ArrowUp, FileSearch, Lock, MessageSquareText, RotateCcw, X } from "lucide-react"
 import { UNLOCK_HREF, UNLOCK_LINE } from "@/components/dashboard/locked-panel"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
@@ -33,7 +33,19 @@ interface AskCbiqProps {
   forbiddenMessage?: string | null
   /** Free-tier preview: drawer opens, but chips are disabled and no request is ever sent. */
   locked?: boolean
+  /** Corporate only: footer link and inline chips for requesting a custom analysis. */
+  customAnalysis?: boolean
 }
+
+const CANT_HELP_PATTERN =
+  /outside the dataset|outside the benchmark|not part of this dashboard|sample is too small|not collected|request it as a custom analysis/i
+const CUSTOM_REQUEST_SLA_LINE = "Our team will review and come back to you within two working days."
+const CUSTOM_REQUEST_SENT_LINE = "Request sent. Our team will come back to you within two working days."
+const MAX_CUSTOM_REQUEST_CHARS = 2000
+const MAX_CUSTOM_CONTEXT_CHARS = 4000
+
+type CustomRequestDraft = { text: string; context: string | null }
+type CustomRequestStatus = "idle" | "sending" | "sent" | "error"
 
 type ChatMessage = {
   id: string
@@ -100,14 +112,65 @@ export function AskCbiq({
   starterQuestions = VENDOR_STARTER_QUESTIONS,
   forbiddenMessage = MEMBERS_ONLY_MESSAGE,
   locked = false,
+  customAnalysis = false,
 }: AskCbiqProps = {}) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [streaming, setStreaming] = useState(false)
   const [remaining, setRemaining] = useState<number | null>(null)
+  const [requestDraft, setRequestDraft] = useState<CustomRequestDraft | null>(null)
+  const [requestStatus, setRequestStatus] = useState<CustomRequestStatus>("idle")
+  const [requestError, setRequestError] = useState<string | null>(null)
   const threadEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const showCustomAnalysis = customAnalysis && !locked
+
+  const openCustomRequest = (text: string, context: string | null) => {
+    setRequestDraft({ text: text.slice(0, MAX_CUSTOM_REQUEST_CHARS), context })
+    setRequestStatus("idle")
+    setRequestError(null)
+  }
+
+  const openFromFooter = () => {
+    const lastQuestion = [...messages].reverse().find((m) => m.role === "user")
+    openCustomRequest(lastQuestion?.content ?? "", null)
+  }
+
+  const openFromAnswer = (assistantId: string) => {
+    const index = messages.findIndex((m) => m.id === assistantId)
+    const question = messages[index - 1]
+    const answer = messages[index]
+    if (index < 1 || question?.role !== "user" || !answer) return
+    const context = `Question: ${question.content}\n\nAnswer: ${answer.content}`.slice(0, MAX_CUSTOM_CONTEXT_CHARS)
+    openCustomRequest(question.content, context)
+  }
+
+  const submitCustomRequest = async () => {
+    if (!requestDraft || !requestDraft.text.trim() || requestStatus === "sending") return
+    setRequestStatus("sending")
+    setRequestError(null)
+    try {
+      const res = await fetch("/api/custom-data-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_text: requestDraft.text.trim(),
+          ...(requestDraft.context ? { chat_context: requestDraft.context } : {}),
+        }),
+      })
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (!res.ok || !body?.ok) {
+        setRequestError(body?.error ?? "Something went wrong sending your request. Please try again.")
+        setRequestStatus("error")
+        return
+      }
+      setRequestStatus("sent")
+    } catch {
+      setRequestError(NETWORK_ERROR_MESSAGE)
+      setRequestStatus("error")
+    }
+  }
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: "end" })
@@ -284,6 +347,16 @@ export function AskCbiq({
                             {m.content}
                           </ReactMarkdown>
                         )}
+                        {showCustomAnalysis && m.status === "done" && CANT_HELP_PATTERN.test(m.content) && (
+                          <button
+                            type="button"
+                            onClick={() => openFromAnswer(m.id)}
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:border-primary/60 hover:bg-primary/20"
+                          >
+                            <FileSearch className="h-3.5 w-3.5" aria-hidden="true" />
+                            Request this as a custom analysis
+                          </button>
+                        )}
                       </div>
                     </li>
                   ),
@@ -311,6 +384,73 @@ export function AskCbiq({
               </div>
             </div>
           ) : (
+          <>
+          {showCustomAnalysis && requestDraft && (
+            <div className="border-t border-slate-700/60 px-4 pt-4">
+              {requestStatus === "sent" ? (
+                <div className="flex items-start justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+                  <p className="text-sm text-slate-200" role="status">
+                    {CUSTOM_REQUEST_SENT_LINE}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setRequestDraft(null)}
+                    aria-label="Close"
+                    className="shrink-0 text-slate-400 hover:text-slate-200"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className="rounded-xl border border-primary/30 bg-brand-navy-3/60 p-3"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void submitCustomRequest()
+                  }}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <label htmlFor="ask-cbiq-custom-request" className="text-sm font-medium text-slate-100">
+                      Request custom analysis
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setRequestDraft(null)}
+                      aria-label="Cancel custom analysis request"
+                      className="text-slate-400 hover:text-slate-200"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <textarea
+                    id="ask-cbiq-custom-request"
+                    value={requestDraft.text}
+                    onChange={(e) => setRequestDraft({ ...requestDraft, text: e.target.value })}
+                    rows={3}
+                    maxLength={MAX_CUSTOM_REQUEST_CHARS}
+                    disabled={requestStatus === "sending"}
+                    placeholder="Describe the analysis you need…"
+                    className="w-full resize-none rounded-lg border border-slate-700/60 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-primary/50 focus:outline-none disabled:opacity-60"
+                  />
+                  {requestError && (
+                    <p className="mt-2 text-xs text-red-300" role="alert">
+                      {requestError}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs leading-relaxed text-slate-400 text-pretty">{CUSTOM_REQUEST_SLA_LINE}</p>
+                    <button
+                      type="submit"
+                      disabled={!requestDraft.text.trim() || requestStatus === "sending"}
+                      className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-brand-navy-3 transition-opacity hover:opacity-90 disabled:opacity-40"
+                    >
+                      {requestStatus === "sending" ? "Sending…" : "Send"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
           <form
             className="border-t border-slate-700/60 p-4"
             onSubmit={(e) => {
@@ -342,12 +482,29 @@ export function AskCbiq({
                 <ArrowUp className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            {remaining !== null && (
-              <p className="mt-2 text-right text-xs text-slate-500">
-                {remaining} of {DAILY_LIMIT} left today
-              </p>
+            {(showCustomAnalysis || remaining !== null) && (
+              <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+                {showCustomAnalysis ? (
+                  <button
+                    type="button"
+                    onClick={openFromFooter}
+                    className="text-left text-slate-400 transition-colors hover:text-primary"
+                  >
+                    Need something deeper?{" "}
+                    <span className="underline underline-offset-2">Request custom analysis.</span>
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {remaining !== null && (
+                  <span className="shrink-0">
+                    {remaining} of {DAILY_LIMIT} left today
+                  </span>
+                )}
+              </div>
             )}
           </form>
+          </>
           )}
         </SheetContent>
       </Sheet>
