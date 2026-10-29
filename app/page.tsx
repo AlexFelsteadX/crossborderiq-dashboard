@@ -18,6 +18,7 @@ import {
 import { createClient } from "@/lib/supabase/server"
 import { freeScoreHref } from "@/lib/free-signup"
 import { PremiumCheckoutButton } from "@/components/premium-checkout-button"
+import { LazyDemoVideo } from "@/components/lazy-demo-video"
 import { CONTRIBUTIONS, VERIFIED_LEADERS } from "@/lib/site-stats"
 
 export const metadata = {
@@ -408,16 +409,11 @@ export default async function HomePage() {
 
             <div className="w-full max-w-[560px] mx-auto">
               <div className="aspect-square rounded-xl border border-primary/20 bg-brand-navy-2 overflow-hidden shadow-[0_0_40px_-16px_rgb(var(--brand-teal-rgb)_/_0.4)]">
-                <video
+                <LazyDemoVideo
                   className="w-full h-full object-cover"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                >
-                  <source src="/cbiq-platform-tour.mp4" type="video/mp4" />
-                </video>
+                  src="/cbiq-demo-2026.mp4"
+                  poster="/cbiq-demo-2026-poster.jpg"
+                />
               </div>
             </div>
           </div>
