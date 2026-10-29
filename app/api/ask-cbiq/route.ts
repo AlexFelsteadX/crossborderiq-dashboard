@@ -27,6 +27,22 @@ If a question is outside the benchmark (advice on picking providers, legal or ta
 Style: US English. No em dashes. “Global Mobility” capitalized. Be direct and concise; lead with the number, then one line of context. Offer one natural follow-up cut (by region, industry, or size) when useful.
 If you are unsure which question in the dataset matches the user’s intent, call get_question_catalog first.`
 
+const CORPORATE_SYSTEM_PROMPT = `You are Ask CBIQ, the intelligence assistant on the CrossBorderIQ (CBIQ) dashboard for corporate Global Mobility leaders. You answer questions about the Global Workforce Deployment benchmark and about the user’s own program using ONLY the results of your tools. You never answer data questions from memory or general knowledge.
+
+Rules, in priority order:
+
+You do not know, and can never know, the identity of any organization or respondent in the benchmark other than the user’s own data returned by get_my_summary. Never name, guess, confirm, deny, or speculate about any other organization’s identity, including hypothetically or by elimination. Peer and market figures are always aggregates.
+Every figure you state must come from a tool result and must state its base (for example “43% (base: 819)”; the user’s own figures from get_my_summary need no base). If a tool returns no data, a suppressed result, or a base under 10, say the sample is too small to report; never estimate or fill gaps.
+For questions about the user’s own program, score, components, gaps, or standing, call get_my_summary first and build the answer on it. If has_data is false, explain they can get their score by answering the score starter on the Your Score tab, then answer the market side of their question.
+You have no knowledge of any vendor-facing products, RFP activity, buying intent, sales pipelines, or which organizations are evaluating providers, and you never discuss them. If asked, say that is not part of this dashboard.
+You have no access to community discussions or member questions, and you never reference them.
+If a question is outside the benchmark (advice on choosing specific providers, legal or tax guidance, information about named companies), say it is outside the dataset and steer back to what the data can answer.
+Style: US English. No em dashes. “Global Mobility” capitalized. Be direct and concise; lead with the number, then one line of context. When the user’s own figure differs notably from their peer group, say so plainly and constructively. Offer one natural follow-up cut (by region, industry, or size) when useful.
+If you are unsure which question in the dataset matches the user’s intent, call get_question_catalog first.`
+
+const PREMIUM_REQUIRED_MESSAGE =
+  "Ask CBIQ is included with premium access. Register for a GME event or complete the survey to unlock 30 days."
+
 // Filter values copied from the dashboard filter bars (app/premium-dashboard/client.tsx)
 // so they match what the RPCs expect.
 const INDUSTRY_OPTIONS = [
@@ -149,6 +165,25 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ]
 
+const VENDOR_ONLY_TOOLS = new Set(["get_opportunity_signals", "get_pipeline"])
+
+const CORPORATE_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "get_my_summary",
+    description:
+      "The user’s own program score and components, their peer group comparison (label, base, averages), the market average, and their percentile. Call this for any question about the user’s own program, score, gaps, or how they compare.",
+    input_schema: { type: "object", properties: {} },
+  },
+  ...TOOLS.filter((t) => !VENDOR_ONLY_TOOLS.has(t.name)),
+]
+
+const TIER_CONFIG = {
+  vendor: { system: SYSTEM_PROMPT, tools: TOOLS },
+  premium: { system: CORPORATE_SYSTEM_PROMPT, tools: CORPORATE_TOOLS },
+} as const
+
+type ChatTier = keyof typeof TIER_CONFIG
+
 type SessionClient = Awaited<ReturnType<typeof createClient>>
 type ToolInput = Record<string, unknown>
 
@@ -187,11 +222,17 @@ function countBy(rows: Record<string, unknown>[], key: string): Record<string, n
 async function runTool(
   name: string,
   input: ToolInput,
-  ctx: { supabase: SessionClient; categories: string[] },
+  ctx: { supabase: SessionClient; categories: string[]; allowedTools: Set<string> },
 ): Promise<unknown> {
-  const { supabase, categories } = ctx
+  const { supabase, categories, allowedTools } = ctx
+  if (!allowedTools.has(name)) return { error: `Unknown tool: ${name}` }
 
   switch (name) {
+    case "get_my_summary": {
+      const { data, error } = await supabase.rpc("get_my_summary")
+      return error ? { error: error.message } : (data ?? { has_data: false })
+    }
+
     case "get_breakdown": {
       const { data, error } = await supabase.rpc("get_premium_breakdown_core", {
         p_year: pickYear(input.p_year),
@@ -338,8 +379,11 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return json({ error: "Please sign in to use Ask CBIQ." }, 401)
 
-  const { data: tier } = await supabase.rpc("current_tier")
-  if (tier !== "vendor") return json({ error: "Ask CBIQ is available to vendor members." }, 403)
+  const { data: tierData } = await supabase.rpc("current_tier")
+  if (tierData !== "vendor" && tierData !== "premium") return json({ error: PREMIUM_REQUIRED_MESSAGE }, 403)
+  const tier: ChatTier = tierData
+  const { system, tools } = TIER_CONFIG[tier]
+  const allowedTools = new Set(tools.map((t) => t.name))
 
   const { data: allowanceData, error: allowanceError } = await supabase.rpc("check_chat_allowance")
   if (allowanceError) return json({ error: "Could not check your question allowance. Please try again." }, 500)
@@ -354,7 +398,7 @@ export async function POST(request: Request) {
 
   const userEmail = user.email ?? ""
   let categories: string[] = []
-  if (userEmail) {
+  if (tier === "vendor" && userEmail) {
     const { data: profile } = await supabase
       .from("vendor_profiles")
       .select("service_categories")
@@ -409,8 +453,8 @@ export async function POST(request: Request) {
           const turn = anthropic.messages.stream({
             model: MODEL,
             max_tokens: MAX_TOKENS,
-            system: SYSTEM_PROMPT,
-            tools: TOOLS,
+            system,
+            tools: [...tools],
             tool_choice: budgetLeft > 0 ? { type: "auto" } : { type: "none" },
             messages,
           })
@@ -438,7 +482,7 @@ export async function POST(request: Request) {
             toolsCalled.push({ tool: use.name, args })
             let result: unknown
             try {
-              result = await runTool(use.name, args, { supabase, categories })
+              result = await runTool(use.name, args, { supabase, categories, allowedTools })
             } catch (err) {
               result = { error: err instanceof Error ? err.message : "Tool failed." }
             }
