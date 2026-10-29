@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { ArrowUp, MessageSquareText, RotateCcw } from "lucide-react"
+import Link from "next/link"
+import { ArrowUp, Lock, MessageSquareText, RotateCcw } from "lucide-react"
+import { UNLOCK_HREF, UNLOCK_LINE } from "@/components/dashboard/locked-panel"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 const MAX_HISTORY_TURNS = 10
@@ -11,11 +13,27 @@ const DAILY_LIMIT = 20
 const MEMBERS_ONLY_MESSAGE = "Ask CBIQ is available to vendor members."
 const NETWORK_ERROR_MESSAGE = "Couldn’t reach Ask CBIQ. Check your connection and try again."
 
-const STARTER_QUESTIONS = [
+const LOCKED_INPUT_LINE = "Ask the benchmark anything. Included with 30-day access."
+
+export const VENDOR_STARTER_QUESTIONS = [
   "Where is RFP activity building in Europe?",
   "What share of the market outsources immigration?",
   "How has AI adoption moved since 2025?",
 ]
+
+export const CORPORATE_STARTER_QUESTIONS = [
+  "How does my program compare to my peers?",
+  "What share of the market outsources immigration?",
+  "How has AI adoption moved since 2025?",
+]
+
+interface AskCbiqProps {
+  starterQuestions?: string[]
+  /** Shown for 401/403 responses. Pass null to display the route's error message verbatim. */
+  forbiddenMessage?: string | null
+  /** Free-tier preview: drawer opens, but chips are disabled and no request is ever sent. */
+  locked?: boolean
+}
 
 type ChatMessage = {
   id: string
@@ -78,7 +96,11 @@ function BetaTag() {
   )
 }
 
-export function AskCbiq() {
+export function AskCbiq({
+  starterQuestions = VENDOR_STARTER_QUESTIONS,
+  forbiddenMessage = MEMBERS_ONLY_MESSAGE,
+  locked = false,
+}: AskCbiqProps = {}) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
@@ -102,7 +124,7 @@ export function AskCbiq() {
   const send = useCallback(
     async (rawQuestion: string, priorMessages: ChatMessage[]) => {
       const question = rawQuestion.trim()
-      if (!question || streaming) return
+      if (locked || !question || streaming) return
 
       const userMsg: ChatMessage = { id: newId(), role: "user", content: question, status: "done" }
       const assistantMsg: ChatMessage = { id: newId(), role: "assistant", content: "", status: "streaming" }
@@ -129,12 +151,9 @@ export function AskCbiq() {
 
         if (!res.ok) {
           let message = "Something went wrong. Please try again."
-          if (res.status === 401 || res.status === 403) {
-            message = MEMBERS_ONLY_MESSAGE
-          } else {
-            const body = (await res.json().catch(() => null)) as { error?: string } | null
-            if (body?.error) message = body.error
-          }
+          const body = (await res.json().catch(() => null)) as { error?: string } | null
+          if (body?.error) message = body.error
+          if ((res.status === 401 || res.status === 403) && forbiddenMessage) message = forbiddenMessage
           updateMessage(assistantMsg.id, { content: message, status: "error", retryable: res.status >= 500 })
           return
         }
@@ -157,7 +176,7 @@ export function AskCbiq() {
         setStreaming(false)
       }
     },
-    [streaming, updateMessage],
+    [locked, streaming, forbiddenMessage, updateMessage],
   )
 
   const retry = (assistantId: string) => {
@@ -174,7 +193,7 @@ export function AskCbiq() {
     void send(input, messages)
   }
 
-  const canSend = input.trim().length > 0 && !streaming && remaining !== 0
+  const canSend = !locked && input.trim().length > 0 && !streaming && remaining !== 0
 
   return (
     <>
@@ -208,12 +227,12 @@ export function AskCbiq() {
               <div className="flex h-full flex-col justify-end gap-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Try asking</p>
                 <div className="flex flex-col items-start gap-2">
-                  {STARTER_QUESTIONS.map((q) => (
+                  {starterQuestions.map((q) => (
                     <button
                       key={q}
                       type="button"
                       onClick={() => void send(q, messages)}
-                      disabled={streaming || remaining === 0}
+                      disabled={locked || streaming || remaining === 0}
                       className="rounded-full border border-primary/30 bg-brand-navy-3/60 px-3 py-1.5 text-left text-sm text-slate-200 transition-colors hover:border-primary/60 hover:bg-primary/10 disabled:opacity-50"
                     >
                       {q}
@@ -274,6 +293,24 @@ export function AskCbiq() {
             <div ref={threadEndRef} />
           </div>
 
+          {locked ? (
+            <div className="border-t border-slate-700/60 p-4">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700/60 bg-brand-navy-3/60 px-4 py-3 text-sm text-slate-400">
+                <Lock className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                {LOCKED_INPUT_LINE}
+              </div>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-relaxed text-slate-400 text-pretty">{UNLOCK_LINE}</p>
+                <Link
+                  href={UNLOCK_HREF}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-brand-navy transition-colors hover:bg-primary/90"
+                >
+                  <Lock className="h-4 w-4" aria-hidden="true" />
+                  Unlock full access
+                </Link>
+              </div>
+            </div>
+          ) : (
           <form
             className="border-t border-slate-700/60 p-4"
             onSubmit={(e) => {
@@ -311,6 +348,7 @@ export function AskCbiq() {
               </p>
             )}
           </form>
+          )}
         </SheetContent>
       </Sheet>
     </>

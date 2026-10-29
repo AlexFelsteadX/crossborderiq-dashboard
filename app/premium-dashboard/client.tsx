@@ -37,6 +37,7 @@ import { PremiumInfo } from "@/components/dashboard/premium-info"
 import { QuestionInfo, type QuestionInfoVariant } from "@/components/dashboard/question-info"
 import { LockedPanel, UNLOCK_HREF, UNLOCK_LINE } from "@/components/dashboard/locked-panel"
 import { DashboardTabBar } from "@/components/dashboard/dashboard-tab-bar"
+import { AskCbiq, CORPORATE_STARTER_QUESTIONS } from "@/components/dashboard/ask-cbiq"
 import { GapAnalysisPanel } from "./gap-analysis-panel"
 import { YourScorePanel, type MySummary } from "./your-score-panel"
 import { CommunityPanel, type PulseBoard } from "./community-panel"
@@ -2431,14 +2432,23 @@ export function PremiumDashboardClient({
 
         {/* ============================ DASHBOARD TABS ============================ */}
         {showTabs && (
-          <DashboardTabBar
-            tabs={visibleTabs}
-            activeTab={activeTab}
-            onSelect={selectTab}
-            ariaLabel="Dashboard view"
-            tabIdPrefix="dashboard-tab-"
-            className="mb-8"
-          />
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+            <DashboardTabBar
+              tabs={visibleTabs}
+              activeTab={activeTab}
+              onSelect={selectTab}
+              ariaLabel="Dashboard view"
+              tabIdPrefix="dashboard-tab-"
+              className="flex-1"
+            />
+            <div className="pb-1.5">
+              <AskCbiq
+                starterQuestions={CORPORATE_STARTER_QUESTIONS}
+                forbiddenMessage={null}
+                locked={isFree}
+              />
+            </div>
+          </div>
         )}
 
         {/* ============================ YOUR SCORE ============================ */}
