@@ -2446,6 +2446,7 @@ export function PremiumDashboardClient({
                 starterQuestions={CORPORATE_STARTER_QUESTIONS}
                 forbiddenMessage={null}
                 locked={isFree}
+                customAnalysis
               />
             </div>
           </div>
