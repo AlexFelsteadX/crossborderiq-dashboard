@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 import { pickUtmParams, recordReportView, serviceSupabase } from "@/lib/report-views"
+import { getReportAccess } from "../access"
 import { REPORT, SIGNED_URL_TTL_SECONDS } from "../report"
 
 export const dynamic = "force-dynamic"
@@ -12,21 +12,19 @@ export async function GET(request: Request) {
   const utm = pickUtmParams(url.searchParams)
   const isDownload = url.searchParams.get("download") === "1"
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const access = await getReportAccess()
 
-  if (!user) {
-    const landing = `/reports/${REPORT.slug}${utm.size ? `?${utm}` : ""}`
-    return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(landing)}`, url.origin), {
-      headers: NO_STORE,
-    })
+  if (access.state !== "member") {
+    return new NextResponse("This report is for CBIQ members.", { status: 403, headers: NO_STORE })
   }
 
   const { data, error } = await serviceSupabase()
     .storage.from(REPORT.storageBucket)
-    .createSignedUrl(REPORT.storagePath, SIGNED_URL_TTL_SECONDS, isDownload ? { download: REPORT.downloadFilename } : undefined)
+    .createSignedUrl(
+      REPORT.storagePath,
+      SIGNED_URL_TTL_SECONDS,
+      isDownload ? { download: REPORT.downloadFilename } : undefined,
+    )
 
   if (error || !data?.signedUrl) {
     console.error("Report signed URL failed:", error?.message)
@@ -38,7 +36,12 @@ export async function GET(request: Request) {
 
   if (!isDownload) {
     after(() =>
-      recordReportView({ reportSlug: REPORT.slug, userId: user.id, userEmail: user.email ?? null, utm }),
+      recordReportView({
+        reportSlug: REPORT.slug,
+        userId: access.user.id,
+        userEmail: access.user.email,
+        utm,
+      }),
     )
   }
 

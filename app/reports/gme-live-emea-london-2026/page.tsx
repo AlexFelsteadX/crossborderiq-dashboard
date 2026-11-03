@@ -5,9 +5,9 @@ import { ArrowRight, BookOpen, Download, Lock, MessageSquare } from "lucide-reac
 import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/server"
 import { FREE_SIGNUP_PATH } from "@/lib/free-signup"
 import { pickUtmParams, recordReportView } from "@/lib/report-views"
+import { getReportAccess } from "./access"
 import { REPORT } from "./report"
 
 export const dynamic = "force-dynamic"
@@ -44,10 +44,8 @@ export default async function GmeLiveEmeaLondonReportPage({
   const utm = pickUtmParams(await searchParams)
   const utmQuery = utm.size ? `?${utm}` : ""
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const access = await getReportAccess()
+  const user = access.state === "signed_out" ? null : access.user
 
   after(() =>
     recordReportView({
@@ -119,7 +117,7 @@ export default async function GmeLiveEmeaLondonReportPage({
           </p>
         </section>
 
-        {user ? (
+        {access.state === "member" ? (
           <section aria-label="Report reader" className="mt-12 flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">The full report</h2>
@@ -152,6 +150,29 @@ export default async function GmeLiveEmeaLondonReportPage({
                   Ask CBIQ about this room
                 </Link>
               </Button>
+            </div>
+          </section>
+        ) : access.state === "not_member" ? (
+          <section className="mt-12 rounded-2xl border border-primary/20 bg-gradient-to-b from-brand-navy-2 to-brand-navy-3 p-6 md:p-10">
+            <h2 className="text-2xl font-semibold">This report is for CBIQ members</h2>
+            <p className="mt-3 max-w-2xl text-slate-300 text-pretty">
+              The full report is available to Premium and Vendor members. Upgrade your membership to read it, download
+              the PDF and see every figure filtered to your industry, region and size.
+            </p>
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <Button asChild className="gap-2 bg-primary hover:bg-primary/90 w-fit">
+                <Link href="/pricing">
+                  <Lock className="h-4 w-4" aria-hidden="true" />
+                  View membership options
+                </Link>
+              </Button>
+              <Link
+                href="/premium-dashboard"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                See your own score
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             </div>
           </section>
         ) : (

@@ -122,7 +122,7 @@ const EVENT_BRIEFINGS: EventBriefing[] = [
     title: "The Room and the Market: GME Live EMEA London",
     description:
       "What 79 leaders in the room told us, against 900+ verified Global Mobility leaders worldwide",
-    cover: "/reports/covers/gme-live-emea-london-2026-cover.png",
+    cover: publicReportUrl(encodeURIComponent("GME Live EMEA - Market Insights Report Cover.png")),
     file: "",
     href: "/reports/gme-live-emea-london-2026",
     date: "Event report · November 3, 2026",
