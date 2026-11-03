@@ -125,9 +125,8 @@ const EVENT_BRIEFINGS: EventBriefing[] = [
     cover: publicReportUrl(encodeURIComponent("GME Live EMEA - Market Insights Report Cover.png")),
     file: "",
     href: "/reports/gme-live-emea-london-2026",
-    date: "Event report · November 3, 2026",
-    tag: "Event report",
-    omitBriefingPrefix: true,
+    date: "London · November 3, 2026",
+    tag: "Event briefing",
   },
   {
     title: "GME Leaders Exchange San Francisco",
