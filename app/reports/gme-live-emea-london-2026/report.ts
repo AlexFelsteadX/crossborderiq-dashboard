@@ -1,4 +1,4 @@
-const COVER_FILE = "GME Live EMEA - Market Insights Report Cover.png"
+const COVER_FILE = "gme-live-emea-london-2026-cover.png"
 
 export const REPORT = {
   slug: "gme-live-emea-london-2026",
