@@ -112,7 +112,7 @@ export default async function GmeLiveEmeaLondonReportPage({
             ))}
           </ul>
           <p className="mt-3 text-xs text-slate-500">
-            Room base 78 to 79 depending on question. Market base 784 to 856. Aggregate only; no organization is
+            Room base 96. Market base 784 to 856. Aggregate only; no organization is
             identified.
           </p>
         </section>
