@@ -35,6 +35,8 @@ interface AskCbiqProps {
   locked?: boolean
   /** Corporate only: footer link and inline chips for requesting a custom analysis. */
   customAnalysis?: boolean
+  /** Opens the drawer on mount with this question typed in (not sent). */
+  initialQuestion?: string
 }
 
 const CANT_HELP_PATTERN =
@@ -113,10 +115,11 @@ export function AskCbiq({
   forbiddenMessage = MEMBERS_ONLY_MESSAGE,
   locked = false,
   customAnalysis = false,
+  initialQuestion,
 }: AskCbiqProps = {}) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(Boolean(initialQuestion))
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState("")
+  const [input, setInput] = useState(locked ? "" : (initialQuestion ?? ""))
   const [streaming, setStreaming] = useState(false)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [requestDraft, setRequestDraft] = useState<CustomRequestDraft | null>(null)

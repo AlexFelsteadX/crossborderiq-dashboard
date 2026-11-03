@@ -2447,6 +2447,7 @@ export function PremiumDashboardClient({
                 forbiddenMessage={null}
                 locked={isFree}
                 customAnalysis
+                initialQuestion={searchParams.get("ask")?.slice(0, 500) || undefined}
               />
             </div>
           </div>

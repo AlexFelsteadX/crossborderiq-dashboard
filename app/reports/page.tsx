@@ -115,8 +115,20 @@ type EventBriefing = {
   omitBriefingPrefix?: boolean
   subtitle?: string
   readLabel?: string
+  href?: string
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
+  {
+    title: "The Room and the Market: GME Live EMEA London",
+    description:
+      "What 79 leaders in the room told us, against 900+ verified Global Mobility leaders worldwide",
+    cover: publicReportUrl(encodeURIComponent("GME Live EMEA - Market Insights Report Cover.png")),
+    file: "",
+    href: "/reports/gme-live-emea-london-2026",
+    date: "Event report · November 3, 2026",
+    tag: "Event report",
+    omitBriefingPrefix: true,
+  },
   {
     title: "GME Leaders Exchange San Francisco",
     description:
@@ -456,7 +468,14 @@ export default function ReportsPage() {
                   )}
                   <p className="text-sm text-slate-400 flex-1 mb-5 text-pretty">{briefing.description}</p>
 
-                  {isSignedIn ? (
+                  {briefing.href ? (
+                    <Button asChild size="sm" className="gap-2 bg-primary hover:bg-primary/90 w-fit">
+                      <Link href={briefing.href}>
+                        View report
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : isSignedIn ? (
                     <div className="flex items-center gap-4">
                       <Button
                         asChild
