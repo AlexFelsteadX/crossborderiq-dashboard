@@ -16,9 +16,9 @@ const NETWORK_ERROR_MESSAGE = "Couldn’t reach Ask CBIQ. Check your connection 
 const LOCKED_INPUT_LINE = "Ask the benchmark anything. Included with 30-day access."
 
 export const VENDOR_STARTER_QUESTIONS = [
-  "Where is RFP activity building in Europe?",
-  "What share of the market outsources immigration?",
-  "How has AI adoption moved since 2025?",
+  "Which organizations in Europe are considering an RFP?",
+  "What are the biggest pressures on programs that outsource relocation?",
+  "How does demand for my services differ by company size?",
 ]
 
 export const CORPORATE_STARTER_QUESTIONS = [
