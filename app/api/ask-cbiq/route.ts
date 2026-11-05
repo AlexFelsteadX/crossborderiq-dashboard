@@ -25,7 +25,10 @@ Describe vendor-relevant demand freely (what organizations outsource, invest in,
 You have no access to community discussions, member questions, or any member-generated content, and you never reference them.
 If a question is outside the benchmark (advice on picking providers, legal or tax guidance, information about specific companies), say it is outside the dataset and steer back to what the data can answer.
 Style: US English. No em dashes. “Global Mobility” capitalized. Be direct and concise; lead with the number, then one line of context. Offer one natural follow-up cut (by region, industry, or size) when useful.
-If you are unsure which question in the dataset matches the user’s intent, call get_question_catalog first.`
+If you are unsure which question in the dataset matches the user’s intent, call get_question_catalog first.
+When a user asks for organization names or identities, after stating that identities are not part of the dataset, add exactly: “If a row in the pipeline looks relevant, use Request workshop on that row and the GME team will approach the organization on your behalf; the name is shared only if they accept.”
+When a user asks for opportunities, organizations or rows, call get_pipeline and present the rows as a numbered list, one row per line, in the same order and with the same fields the dashboard shows (segment, HQ country, stage, employee band, long-term moves band, reporting line, spend band, outsourced services, contributed). Do not summarize rows into percentages unless asked. If a filter the user named is not available, say which one and apply the rest.
+When a result is floored or the base is under 10, say so, then offer the next wider cut and ask whether to run it (for example, all sizes in Europe, or two size bands merged). Never say a question about needs, challenges or priorities is outside the dataset; those map to the pressure, expectation, investment and goals questions.`
 
 const CORPORATE_SYSTEM_PROMPT = `You are Ask CBIQ, the intelligence assistant on the CrossBorderIQ (CBIQ) dashboard for corporate Global Mobility leaders. You answer questions about the Global Workforce Deployment benchmark and about the user’s own program using ONLY the results of your tools. You never answer data questions from memory or general knowledge.
 
@@ -68,7 +71,40 @@ const SIZE_OPTIONS = [
 ]
 const ASSIGNEE_OPTIONS = ["1–50", "51–100", "101–500", "501–1,000", "More than 1,000"]
 const TRAVELLER_OPTIONS = ["1–100", "101–500", "501–1,000", "1,001–5,000", "5,001–10,000", "More than 10,000"]
-const PIPELINE_STAGES = ["RFP active", "Considering"]
+const PIPELINE_STAGE_FILTERS = ["active", "considering", "all"]
+// get_rfp_pipeline already maps the survey's "Yes" answer to "RFP active".
+const PIPELINE_STAGE_VALUES: Record<string, string> = { active: "RFP active", considering: "Considering" }
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  uk: "united kingdom",
+  "great britain": "united kingdom",
+  us: "united states",
+  usa: "united states",
+  "united states of america": "united states",
+  "the netherlands": "netherlands",
+  deutschland: "germany",
+}
+
+// Mirror SERVICE_LABEL_MAP and STACK_LABEL_MAP in app/vendor-premium-dashboard/client.tsx
+// so rows carry the same chip labels the dashboard shows.
+const SERVICE_CHIP_LABELS: Record<string, string> = {
+  "RMC Support": "Relocation Management",
+  "Relocation Management Support": "Relocation Management",
+  "Managed services - leveraging vendors to coordinate the end to end assignment process":
+    "Managed services (end to end)",
+}
+const STACK_CHIP_LABELS: Record<string, string> = {
+  "Yes — a dedicated Global Mobility / assignment management platform": "Dedicated platform",
+  "Partially — some tasks are supported by technology": "Partially tech-supported",
+  "No — we manage the program with spreadsheets and general office tools": "Spreadsheets and office tools",
+  "We are currently evaluating or implementing a solution": "Evaluating / implementing a solution",
+  "Yes — but primarily spreadsheets and general office tools": "Spreadsheets and office tools",
+  "No — our program is managed manually": "Manual / spreadsheets",
+}
+
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+}
 
 // Mirrors normalizeServiceCategories in app/vendor-premium-dashboard/client.tsx.
 const LEGACY_SERVICE_VALUES: Record<string, string> = {
@@ -132,7 +168,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "get_opportunity_signals",
     description:
-      "Demand signals for the vendor's own saved service categories: share buying the services today, in or considering a buying cycle, naming the category a top investment focus, and reviewing policy. Returns market and segment scopes with bases.",
+      "Use this only for aggregate demand for the vendor’s own saved service categories (percentages and opportunity scores). Do not use it when the user asks for organizations, rows, or opportunity detail; use get_pipeline for those. Returns the share buying the services today, in or considering a buying cycle, naming the category a top investment focus, and reviewing policy, for market and segment scopes with bases.",
     input_schema: {
       type: "object",
       properties: {
@@ -147,14 +183,30 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "get_pipeline",
     description:
-      "Anonymous organizations currently in an RFP or considering one, with buying context. Rows are anonymous; identities are never available.",
+      "Use this for any question about opportunities, organizations, companies, accounts, prospects, or rows in the RFP Pipeline, including ‘who is considering’, ‘which organizations in [country/region/industry]’, ‘list the opportunities’, ‘detail on each opportunity’, and ‘as shown on the dashboard’. Returns anonymous row-level detail with all filters optional. Rows come newest first, as on the dashboard, with stage_counts for the same filters. Identities are never available.",
     input_schema: {
       type: "object",
       properties: {
-        stage: { type: "string", enum: PIPELINE_STAGES },
-        hq_country: { type: "string", description: "HQ country, exact name." },
-        region_group: { type: "string", description: "Region group, exact name." },
-        industry_group: { type: "string", description: "Industry group, exact name." },
+        stage: {
+          type: "string",
+          enum: PIPELINE_STAGE_FILTERS,
+          description: "active = recently through or planning an RFP; considering = considering one. Defaults to all.",
+        },
+        country: { type: "string", description: "HQ country, for example Germany, United Kingdom, United States." },
+        region_group: { type: "string", enum: REGION_OPTIONS, description: "HQ region." },
+        industry_group: { type: "string", enum: INDUSTRY_OPTIONS, description: "Industry group." },
+        outsources: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Outsourced-service chip labels, for example Relocation Management, Immigration, Tax, Managed services (end to end). A row matches if it carries any of them.",
+        },
+        min_lt_moves_band: {
+          type: "string",
+          enum: ASSIGNEE_OPTIONS,
+          description: "Only rows at or above this long-term moves band.",
+        },
+        limit: { type: "integer", minimum: 1, maximum: PIPELINE_ROW_CAP, description: "Rows to return. Default 30, max 30." },
       },
     },
   },
@@ -178,8 +230,16 @@ const CORPORATE_TOOLS: Anthropic.Tool[] = [
   ...TOOLS.filter((t) => !VENDOR_ONLY_TOOLS.has(t.name)),
 ]
 
+const VENDOR_BREAKDOWN_ROUTING =
+  " Questions about needs, challenges, pain points, pressures, priorities, what keeps leaders up at night, or what they are asked to deliver map to the keys operational_pressure, leadership_expectations_rising, employee_expectations_rising, investment_focus and program_goals_2026."
+
+// The corporate branch keeps the base get_breakdown description; only the vendor copy gets the routing hint.
+const VENDOR_TOOLS: Anthropic.Tool[] = TOOLS.map((t) =>
+  t.name === "get_breakdown" ? { ...t, description: `${t.description}${VENDOR_BREAKDOWN_ROUTING}` } : t,
+)
+
 const TIER_CONFIG = {
-  vendor: { system: SYSTEM_PROMPT, tools: TOOLS },
+  vendor: { system: SYSTEM_PROMPT, tools: VENDOR_TOOLS },
   premium: { system: CORPORATE_SYSTEM_PROMPT, tools: CORPORATE_TOOLS },
 } as const
 
@@ -211,12 +271,107 @@ function segmentFilters(input: ToolInput) {
   }
 }
 
-function countBy(rows: Record<string, unknown>[], key: string): Record<string, number> {
-  const out: Record<string, number> = {}
-  for (const r of rows) {
-    const k = typeof r[key] === "string" && (r[key] as string).length > 0 ? (r[key] as string) : "Not stated"
-    out[k] = (out[k] ?? 0) + 1
+type PipelineRow = Record<string, unknown>
+
+const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "")
+const str = (v: unknown): string | null => (typeof v === "string" && v.trim().length > 0 ? v.trim() : null)
+const strList = (v: unknown): string[] =>
+  Array.isArray(v) ? v.map((x) => (x == null ? "" : String(x).trim())).filter((x) => x.length > 0) : []
+
+function canonicalCountry(value: string): string {
+  const key = value.trim().toLowerCase().replace(/\./g, "").replace(/\s+/g, " ")
+  return COUNTRY_ALIASES[key] ?? key
+}
+
+// Same matching as pipelineRowMatches on the vendor dashboard.
+function regionBucket(s: string): string {
+  if (/americ/i.test(s)) return "americas"
+  if (/europ|\buk\b|ireland/i.test(s)) return "europe"
+  if (/middle east|mena|gulf/i.test(s)) return "middle-east"
+  if (/asia|apac|austral|pacific/i.test(s)) return "apac"
+  return squash(s)
+}
+
+function industryMatches(rowValue: string | null, want: string): boolean {
+  if (!rowValue) return false
+  const a = squash(rowValue)
+  const b = squash(want)
+  return a === b || a.startsWith(b) || b.startsWith(a)
+}
+
+function ltBandRank(value: string | null): number {
+  if (!value) return -1
+  return ASSIGNEE_OPTIONS.findIndex((o) => squash(o) === squash(value))
+}
+
+const serviceChips = (row: PipelineRow) =>
+  Array.from(new Set(strList(row.outsources).map((s) => SERVICE_CHIP_LABELS[s] ?? s)))
+
+// Mirrors parseContributionDate in app/vendor-premium-dashboard/client.tsx.
+function contributionTime(value: string | null): number | null {
+  if (!value) return null
+  const datePart = value.split("·")[0].trim()
+  if (!datePart) return null
+  const monthYear = datePart.match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/)
+  if (monthYear) {
+    const month = MONTH_INDEX[monthYear[1].slice(0, 3).toLowerCase()]
+    if (month !== undefined) return Date.UTC(Number(monthYear[2]), month, 1)
   }
+  const relative = datePart.match(/^(\d+)\+?\s+(day|week|month|year)s?\s+ago$/i)
+  if (relative) {
+    const n = Number(relative[1])
+    const d = new Date()
+    const unit = relative[2].toLowerCase()
+    if (unit === "day") d.setDate(d.getDate() - n)
+    else if (unit === "week") d.setDate(d.getDate() - n * 7)
+    else if (unit === "month") d.setMonth(d.getMonth() - n)
+    else d.setFullYear(d.getFullYear() - n)
+    return d.getTime()
+  }
+  const iso = Date.parse(datePart)
+  return Number.isNaN(iso) ? null : iso
+}
+
+// Dashboard default order: newest first, undated rows last, ties keep RPC order.
+function sortNewestFirst(rows: PipelineRow[]): PipelineRow[] {
+  return rows
+    .map((row, index) => ({ row, index, t: contributionTime(str(row.contributed)) }))
+    .sort((a, b) => {
+      if (a.t === null || b.t === null) return a.t === b.t ? a.index - b.index : a.t === null ? 1 : -1
+      return a.t !== b.t ? b.t - a.t : a.index - b.index
+    })
+    .map((x) => x.row)
+}
+
+// Only the fields the dashboard row renders; ref and any other identifier are never passed on.
+function pipelineRowView(row: PipelineRow): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  const put = (key: string, value: unknown) => {
+    if (value == null || value === false) return
+    if (Array.isArray(value) && value.length === 0) return
+    if (typeof value === "string" && value.trim().length === 0) return
+    out[key] = value
+  }
+  const subSector = str(row.sub_sector)
+  const industry = str(row.industry_group)
+  put("segment", subSector ? `${subSector} organization` : industry ? `${industry} organization` : "Organization")
+  put("industry", subSector ? industry : null)
+  put("hq_country", str(row.hq_country) ?? str(row.region_group))
+  put("stage", str(row.stage))
+  put("new", row.is_new === true)
+  put("employee_band", str(row.size_band))
+  put("lt_moves_band", str(row.lt_moves_band))
+  put("short_term_moves_band", str(row.moves_band))
+  put("trips_band", str(row.trips_band))
+  put("reporting_line", str(row.reporting_line))
+  put("spend_band", str(row.spend_band))
+  put("outsourced_services", serviceChips(row))
+  put("tech_stack", Array.from(new Set(strList(row.tech_stack).map((s) => STACK_CHIP_LABELS[s] ?? s))))
+  put("pressures", strList(row.pressures))
+  put("investing_in", strList(row.investing_in))
+  put("program_state", str(row.program_state))
+  put("ai_stage", str(row.ai_stage))
+  put("contributed", [str(row.contributed), str(row.contributed_at)].filter(Boolean).join(" · "))
   return out
 }
 
@@ -256,7 +411,12 @@ async function runTool(
       }
 
       const matched = rows.filter((r) => {
-        if (codes && codes.size > 0 && codes.has(String(r.q_code ?? "").toUpperCase())) return true
+        if (
+          codes &&
+          codes.size > 0 &&
+          (codes.has(String(r.q_code ?? "").toUpperCase()) || codes.has(String(r.question_key ?? "").toUpperCase()))
+        )
+          return true
         if (topic && String(r.question_label ?? "").toLowerCase().includes(topic)) return true
         return false
       })
@@ -302,27 +462,48 @@ async function runTool(
     case "get_pipeline": {
       const { data, error } = await supabase.rpc("get_rfp_pipeline")
       if (error) return { error: error.message }
-      const all = Array.isArray(data) ? (data as Record<string, unknown>[]) : []
-      const stage = pickOption(input.stage, PIPELINE_STAGES)
-      const hqCountry = pickText(input.hq_country)?.toLowerCase() ?? null
-      const regionGroup = pickText(input.region_group)?.toLowerCase() ?? null
-      const industryGroup = pickText(input.industry_group)?.toLowerCase() ?? null
-      const eq = (v: unknown, want: string | null) => !want || String(v ?? "").toLowerCase() === want
+      const all = Array.isArray(data) ? (data as PipelineRow[]) : []
 
-      const filtered = all.filter(
-        (r) =>
-          eq(r.stage, stage?.toLowerCase() ?? null) &&
-          eq(r.hq_country, hqCountry) &&
-          eq(r.region_group, regionGroup) &&
-          eq(r.industry_group, industryGroup),
-      )
+      const stageFilter = pickOption(input.stage, PIPELINE_STAGE_FILTERS) ?? "all"
+      const stageValue = PIPELINE_STAGE_VALUES[stageFilter] ?? null
+      const country = pickText(input.country)
+      const wantCountry = country ? canonicalCountry(country) : null
+      const region = pickText(input.region_group)
+      const industry = pickText(input.industry_group)
+      const outsources = Array.isArray(input.outsources)
+        ? input.outsources.map((o) => pickText(o)).filter((o): o is string => !!o).map(squash)
+        : []
+      const minLt = pickOption(input.min_lt_moves_band, ASSIGNEE_OPTIONS)
+      const minLtRank = minLt ? ltBandRank(minLt) : -1
+      const rawLimit = typeof input.limit === "number" ? input.limit : Number(input.limit)
+      const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, PIPELINE_ROW_CAP) : PIPELINE_ROW_CAP
+
+      const segmentMatched = all.filter((r) => {
+        if (wantCountry) {
+          const rowCountry = str(r.hq_country)
+          if (!rowCountry || canonicalCountry(rowCountry) !== wantCountry) return false
+        }
+        if (region) {
+          const rowRegion = str(r.region_group)
+          if (!rowRegion || regionBucket(rowRegion) !== regionBucket(region)) return false
+        }
+        if (industry && !industryMatches(str(r.industry_group), industry)) return false
+        if (outsources.length > 0) {
+          const chips = [...serviceChips(r), ...strList(r.outsources)].map(squash)
+          if (!outsources.some((want) => chips.some((chip) => chip === want || chip.includes(want)))) return false
+        }
+        if (minLt && ltBandRank(str(r.lt_moves_band)) < minLtRank) return false
+        return true
+      })
+
+      const matching = stageValue ? segmentMatched.filter((r) => r.stage === stageValue) : segmentMatched
       return {
-        total_matching: filtered.length,
-        counts_by_stage: countBy(filtered, "stage"),
-        counts_by_country: countBy(filtered, "hq_country"),
-        counts_by_industry: countBy(filtered, "industry_group"),
-        rows_truncated: filtered.length > PIPELINE_ROW_CAP,
-        rows: filtered.slice(0, PIPELINE_ROW_CAP),
+        total_matching: matching.length,
+        stage_counts: {
+          active: segmentMatched.filter((r) => r.stage === PIPELINE_STAGE_VALUES.active).length,
+          considering: segmentMatched.filter((r) => r.stage === PIPELINE_STAGE_VALUES.considering).length,
+        },
+        rows: sortNewestFirst(matching).slice(0, limit).map(pipelineRowView),
       }
     }
 
