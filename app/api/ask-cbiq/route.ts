@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { floorBreakdownRow, floorTrendRow } from "@/lib/ask-cbiq-floor"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -28,7 +29,8 @@ Style: US English. No em dashes. “Global Mobility” capitalized. Be direct an
 If you are unsure which question in the dataset matches the user’s intent, call get_question_catalog first.
 When a user asks for organization names or identities, after stating that identities are not part of the dataset, add exactly: “If a row in the pipeline looks relevant, use Request workshop on that row and the GME team will approach the organization on your behalf; the name is shared only if they accept.”
 When a user asks for opportunities, organizations or rows, call get_pipeline and present the rows as a numbered list, one row per line, in the same order and with the same fields the dashboard shows (segment, HQ country, stage, employee band, long-term moves band, reporting line, spend band, outsourced services, contributed). Do not summarize rows into percentages unless asked. If a filter the user named is not available, say which one and apply the rest.
-When a result is floored or the base is under 10, say so, then offer the next wider cut and ask whether to run it (for example, all sizes in Europe, or two size bands merged). Never say a question about needs, challenges or priorities is outside the dataset; those map to the pressure, expectation, investment and goals questions.`
+When a result is floored or the base is under 10, say so, then offer the next wider cut and ask whether to run it (for example, all sizes in Europe, or two size bands merged). Never say a question about needs, challenges or priorities is outside the dataset; those map to the pressure, expectation, investment and goals questions.
+For ‘needs’, ‘challenges’, ‘pain points’ or ‘priorities’, call get_breakdown on operational_pressure first, then leadership_expectations_rising; use rfp_challenges only when the user asks about RFPs or procurement specifically.`
 
 const CORPORATE_SYSTEM_PROMPT = `You are Ask CBIQ, the intelligence assistant on the CrossBorderIQ (CBIQ) dashboard for corporate Global Mobility leaders. You answer questions about the Global Workforce Deployment benchmark and about the user’s own program using ONLY the results of your tools. You never answer data questions from memory or general knowledge.
 
@@ -423,7 +425,7 @@ async function runTool(
       return {
         total_matching_rows: matched.length,
         truncated: matched.length > BREAKDOWN_ROW_CAP,
-        rows: matched.slice(0, BREAKDOWN_ROW_CAP),
+        rows: matched.slice(0, BREAKDOWN_ROW_CAP).map(floorBreakdownRow),
       }
     }
 
@@ -434,7 +436,8 @@ async function runTool(
         p_region: f.p_region,
         p_size: f.p_size,
       })
-      return error ? { error: error.message } : (data ?? [])
+      if (error) return { error: error.message }
+      return Array.isArray(data) ? (data as Record<string, unknown>[]).map(floorTrendRow) : []
     }
 
     case "get_market_index": {
