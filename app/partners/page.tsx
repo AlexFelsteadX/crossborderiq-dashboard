@@ -4,7 +4,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { FadeRise } from "@/components/partners/fade-rise"
 import { PartnerCard } from "@/components/partners/partner-card"
-import { partners, stats } from "@/lib/partners"
+import { partners } from "@/lib/partners"
 
 const SUBHEADING = "The organizations that fund CBIQ’s independent research program."
 
@@ -54,10 +54,10 @@ export default function PartnersPage() {
               </h2>
               <div className="flex flex-col gap-5 text-[17px] leading-relaxed text-foreground/85 md:text-lg">
                 <p>
-                  CBIQ is built on data contributed by Global Mobility, HR and workforce leaders at no cost to them.
-                  Strategic Intelligence Partners fund the research program that turns those contributions into
-                  published benchmarks, event reports and the CBIQ Monthly Brief, and make it possible to keep the
-                  platform free for the corporate leaders who contribute.
+                  CBIQ is built on data contributed by Global Mobility, HR and workforce leaders. Strategic
+                  Intelligence Partners fund the research program that turns those contributions into published
+                  benchmarks, event reports and the CBIQ Monthly Brief, and make it possible for contributing leaders
+                  to access the platform in return for their data rather than a fee.
                 </p>
                 <p>
                   Partners do not see who contributes. Every organization&apos;s data is anonymous, published only in
@@ -65,21 +65,6 @@ export default function PartnersPage() {
                   does not buy access to any contributor.
                 </p>
               </div>
-            </section>
-          </FadeRise>
-
-          <FadeRise>
-            <section aria-label="CBIQ research program in numbers">
-              <dl className="flex flex-col divide-y divide-border border-y border-border md:flex-row md:divide-x md:divide-y-0">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="flex flex-1 flex-col-reverse gap-1 py-6 md:px-8 md:py-8 md:first:pl-0">
-                    <dt className="text-sm text-muted-foreground">{stat.label}</dt>
-                    <dd className="text-4xl font-bold tabular-nums tracking-tight text-foreground md:text-5xl">
-                      {stat.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
             </section>
           </FadeRise>
 
