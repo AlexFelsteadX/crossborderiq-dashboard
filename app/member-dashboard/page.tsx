@@ -747,7 +747,7 @@ export default function MemberDashboardPage() {
         </div>
       </main>
 
-      <GlobalFooter />
+      <GlobalFooter hidePartnersLink />
     </div>
   )
 }

@@ -1,6 +1,8 @@
 import Link from "next/link"
 
-export function GlobalFooter() {
+// Corporate dashboards pass hidePartnersLink: partner names and links must not
+// appear anywhere inside the authenticated corporate experience.
+export function GlobalFooter({ hidePartnersLink = false }: { hidePartnersLink?: boolean } = {}) {
   return (
     <footer className="border-t border-border bg-card/30 mt-auto">
       <div className="max-w-[1600px] mx-auto px-6 py-8">
@@ -25,6 +27,9 @@ export function GlobalFooter() {
               <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
               <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
               <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
+              {!hidePartnersLink && (
+                <li><Link href="/partners" className="hover:text-foreground transition-colors">Partners</Link></li>
+              )}
               <li><Link href="/faqs" className="hover:text-foreground transition-colors">FAQs</Link></li>
               <li><a href="mailto:crossborderiq@gemevents.co?subject=CBIQ%20enquiry" className="hover:text-foreground transition-colors">crossborderiq@gemevents.co</a></li>
             </ul>

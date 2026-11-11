@@ -55,7 +55,7 @@ export function TierLockedScreen({
         </Card>
       </main>
       
-      <GlobalFooter />
+      <GlobalFooter hidePartnersLink />
     </div>
   )
 }
