@@ -265,6 +265,14 @@ export default async function VendorIntelligencePage() {
                 Prefer self-serve? See membership checkout
               </Link>
             </p>
+            <p className="mt-3 text-center text-sm">
+              <Link
+                href="/partners"
+                className="text-muted-foreground underline underline-offset-4 hover:text-brand-teal"
+              >
+                See our current Strategic Intelligence Partners
+              </Link>
+            </p>
           </section>
         </Reveal>
 

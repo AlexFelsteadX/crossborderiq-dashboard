@@ -2722,7 +2722,7 @@ export function PremiumDashboardClient({
         )}
       </main>
 
-      <GlobalFooter />
+      <GlobalFooter hidePartnersLink />
     </div>
   )
 }

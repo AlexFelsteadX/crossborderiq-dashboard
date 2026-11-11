@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/workforce-intelligence",
     "/vendor-intelligence",
     "/reports",
+    "/partners",
     "/pricing",
     "/faqs",
     "/contribute",

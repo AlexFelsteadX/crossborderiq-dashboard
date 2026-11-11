@@ -423,7 +423,7 @@ export function ContributorDashboardClient({
         </div>
       </main>
 
-      <GlobalFooter />
+      <GlobalFooter hidePartnersLink />
     </div>
   )
 }
