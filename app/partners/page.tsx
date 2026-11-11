@@ -54,10 +54,10 @@ export default function PartnersPage() {
               </h2>
               <div className="flex flex-col gap-5 text-[17px] leading-relaxed text-foreground/85 md:text-lg">
                 <p>
-                  CBIQ is built on data contributed by Global Mobility, HR and workforce leaders at no cost to them.
-                  Strategic Intelligence Partners fund the research program that turns those contributions into
-                  published benchmarks, event reports and the CBIQ Monthly Brief, and make it possible to keep the
-                  platform free for the corporate leaders who contribute.
+                  CBIQ is built on data contributed by Global Mobility, HR and workforce leaders. Strategic
+                  Intelligence Partners fund the research program that turns those contributions into published
+                  benchmarks, event reports and the CBIQ Monthly Brief, and make it possible for contributing leaders
+                  to access the platform in return for their data rather than a fee.
                 </p>
                 <p>
                   Partners do not see who contributes. Every organization&apos;s data is anonymous, published only in

@@ -20,7 +20,7 @@ export const partners: Partner[] = [
     description: "Global relocation management services for corporate mobility programs.",
     website: "https://www.sterlinglexicon.com",
     logoWhite: "/partners/sterling-lexicon-white.png",
-    since: "December 2026",
+    since: "November 2026",
     tier: "Strategic Intelligence Partner",
   },
 ]
