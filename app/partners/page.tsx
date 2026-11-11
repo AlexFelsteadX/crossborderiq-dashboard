@@ -4,7 +4,7 @@ import { GlobalNav } from "@/components/global-nav"
 import { GlobalFooter } from "@/components/global-footer"
 import { FadeRise } from "@/components/partners/fade-rise"
 import { PartnerCard } from "@/components/partners/partner-card"
-import { partners, stats } from "@/lib/partners"
+import { partners } from "@/lib/partners"
 
 const SUBHEADING = "The organizations that fund CBIQ’s independent research program."
 
@@ -65,21 +65,6 @@ export default function PartnersPage() {
                   does not buy access to any contributor.
                 </p>
               </div>
-            </section>
-          </FadeRise>
-
-          <FadeRise>
-            <section aria-label="CBIQ research program in numbers">
-              <dl className="flex flex-col divide-y divide-border border-y border-border md:flex-row md:divide-x md:divide-y-0">
-                {stats.map((stat) => (
-                  <div key={stat.label} className="flex flex-1 flex-col-reverse gap-1 py-6 md:px-8 md:py-8 md:first:pl-0">
-                    <dt className="text-sm text-muted-foreground">{stat.label}</dt>
-                    <dd className="text-4xl font-bold tabular-nums tracking-tight text-foreground md:text-5xl">
-                      {stat.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
             </section>
           </FadeRise>
 

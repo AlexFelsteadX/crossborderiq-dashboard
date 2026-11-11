@@ -8,11 +8,6 @@ export type Partner = {
   tier: string
 }
 
-export type PartnerStat = {
-  value: string
-  label: string
-}
-
 export const partners: Partner[] = [
   {
     name: "Sterling Lexicon",
@@ -23,10 +18,4 @@ export const partners: Partner[] = [
     since: "November 2026",
     tier: "Strategic Intelligence Partner",
   },
-]
-
-export const stats: PartnerStat[] = [
-  { value: "400+", label: "contributing organizations" },
-  { value: "1,100+", label: "program responses" },
-  { value: "2 waves", label: "of multi-year benchmark data" },
 ]
