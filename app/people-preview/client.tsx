@@ -13,12 +13,10 @@ import {
   type FilterKey,
   type FilterState,
   type PeopleTopic,
-  type PipelineRow,
 } from "@/lib/people-vendor-sample"
 import { FilterBar } from "@/components/people-preview/filter-bar"
 import { SummaryTiles } from "@/components/people-preview/summary-tiles"
-import { PipelineTable } from "@/components/people-preview/pipeline-table"
-import { ProfileDrawer } from "@/components/people-preview/profile-drawer"
+import { PipelineCards } from "@/components/people-preview/pipeline-cards"
 import { TopicPanels } from "@/components/people-preview/topic-panels"
 import { MarketPanels } from "@/components/people-preview/market-panels"
 import { LocalSignals } from "@/components/people-preview/local-signals"
@@ -72,10 +70,8 @@ function TopicSelect({ value, onChange }: { value: PeopleTopic; onChange: (topic
 export function PeoplePreviewClient() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [topic, setTopic] = useState<PeopleTopic>(DEFAULT_TOPIC)
-  const [page, setPage] = useState(1)
-  const [openRow, setOpenRow] = useState<PipelineRow | null>(null)
-
   const rows = useMemo(() => applyFilters(PIPELINE_ROWS, filters), [filters])
+  const filterKey = JSON.stringify(filters)
   const filtered = rows.length !== PIPELINE_ROWS.length
   const scopeLabel = filtered ? "filtered organizations" : "all organizations"
 
@@ -84,12 +80,10 @@ export function PeoplePreviewClient() {
       const current = prev[key]
       return { ...prev, [key]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value] }
     })
-    setPage(1)
   }
 
   function clearFilters() {
     setFilters(EMPTY_FILTERS)
-    setPage(1)
   }
 
   return (
@@ -126,13 +120,8 @@ export function PeoplePreviewClient() {
 
         <SummaryTiles rows={rows} scopeLabel={scopeLabel} />
 
-        <section aria-labelledby="pipeline-heading" className="flex flex-col gap-4">
-          <SectionHeading
-            id="pipeline-heading"
-            title="Review Pipeline"
-            description="One anonymous row per organization. Select a row to see its full profile."
-          />
-          <PipelineTable rows={rows} page={page} onPageChange={setPage} onOpen={setOpenRow} />
+        <section aria-labelledby="pipeline-heading" className="flex min-w-0 flex-col gap-4">
+          <PipelineCards key={filterKey} rows={rows} topic={topic} headingId="pipeline-heading" />
         </section>
 
         <section aria-labelledby="topic-heading" className="flex flex-col gap-4">
@@ -165,8 +154,6 @@ export function PeoplePreviewClient() {
       </main>
 
       <GlobalFooter />
-
-      <ProfileDrawer row={openRow} topic={topic} onClose={() => setOpenRow(null)} />
     </div>
   )
 }
