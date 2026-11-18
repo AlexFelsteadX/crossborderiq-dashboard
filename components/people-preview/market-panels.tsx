@@ -1,18 +1,17 @@
-import { AI_ADOPTION, MARKET_PANELS, isReportable } from "@/lib/people-vendor-sample"
+import { aiAdoption, isReportable, marketPanels, type PipelineRow } from "@/lib/people-vendor-sample"
 import { BaseNote, PanelCard, RankedBars, ThinDataState } from "./panel"
 
 const STAGE_COLORS = ["bg-[var(--brand-teal)]", "bg-primary/70", "bg-sky-400/60", "bg-slate-600"]
 
-const RANKED = [
-  { title: "Highest priorities, next 12 to 24 months", panel: MARKET_PANELS.priorities },
-  { title: "Greatest pressures right now", panel: MARKET_PANELS.pressures },
-  { title: "Outcomes that would make the biggest difference", panel: MARKET_PANELS.outcomes },
-  { title: "Technology in use by area", panel: MARKET_PANELS.technology },
-  { title: "Activities supported by external providers", panel: MARKET_PANELS.providers },
-]
-
-function AiAdoptionCard() {
-  const { stages, areas, base } = AI_ADOPTION
+function AiAdoptionCard({ rows }: { rows: PipelineRow[] }) {
+  const { stages, areas, base } = aiAdoption(rows)
+  if (!isReportable(base)) {
+    return (
+      <PanelCard title="AI adoption">
+        <ThinDataState />
+      </PanelCard>
+    )
+  }
   return (
     <PanelCard title="AI adoption" base={base}>
       <div className="flex flex-col gap-5">
@@ -48,15 +47,23 @@ function AiAdoptionCard() {
   )
 }
 
-export function MarketPanels() {
+export function MarketPanels({ rows }: { rows: PipelineRow[] }) {
+  const panels = marketPanels(rows)
+  const ranked = [
+    { title: "Highest priorities, next 12 to 24 months", panel: panels.priorities },
+    { title: "Greatest pressures right now", panel: panels.pressures },
+    { title: "Outcomes that would make the biggest difference", panel: panels.outcomes },
+    { title: "Technology in use by area", panel: panels.technology },
+    { title: "Activities supported by external providers", panel: panels.providers },
+  ]
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {RANKED.map(({ title, panel }) => (
+      {ranked.map(({ title, panel }) => (
         <PanelCard key={title} title={title} base={isReportable(panel.base) ? panel.base : undefined}>
           {isReportable(panel.base) ? <RankedBars bars={panel.bars} label={title} /> : <ThinDataState />}
         </PanelCard>
       ))}
-      <AiAdoptionCard />
+      <AiAdoptionCard rows={rows} />
     </div>
   )
 }

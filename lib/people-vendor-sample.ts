@@ -24,8 +24,16 @@ export const DEFAULT_TOPIC: PeopleTopic = "Learning, Skills & Leadership Develop
 /** The 13 topics plus Global Mobility make up the 14 HR areas leaders rank. */
 export const HR_AREAS = [...PEOPLE_TOPICS, "Global Mobility"] as const
 
-export const REGIONS = ["All", "UK & Ireland", "Continental Europe", "Middle East", "North America", "APAC"] as const
-export type Region = (typeof REGIONS)[number]
+export const HQ_REGIONS = [
+  "UK & Ireland",
+  "Continental Europe",
+  "Middle East",
+  "Africa",
+  "North America",
+  "Latin America",
+  "Asia-Pacific",
+] as const
+export type HqRegion = (typeof HQ_REGIONS)[number]
 
 export const STAGES = ["Review underway", "Review planned", "Considering"] as const
 export type Stage = (typeof STAGES)[number]
@@ -49,6 +57,7 @@ export const OUTLOOKS = [
 export type Outlook = (typeof OUTLOOKS)[number]
 
 export const SIZE_BANDS = [
+  "Fewer than 250",
   "250 – 999",
   "1,000 – 4,999",
   "5,000 – 9,999",
@@ -66,24 +75,28 @@ export const AI_STAGES = [
 ] as const
 export type AiStage = (typeof AI_STAGES)[number]
 
-const COUNTRY_REGION: Record<string, Exclude<Region, "All">> = {
+const COUNTRY_REGION: Record<string, HqRegion> = {
   "United Kingdom": "UK & Ireland",
   Ireland: "UK & Ireland",
   Germany: "Continental Europe",
   France: "Continental Europe",
   Netherlands: "Continental Europe",
-  Spain: "Continental Europe",
   Switzerland: "Continental Europe",
-  Sweden: "Continental Europe",
   "United Arab Emirates": "Middle East",
   "Saudi Arabia": "Middle East",
   Qatar: "Middle East",
+  Nigeria: "Africa",
+  "South Africa": "Africa",
+  Kenya: "Africa",
   "United States": "North America",
   Canada: "North America",
-  Singapore: "APAC",
-  Australia: "APAC",
-  Japan: "APAC",
-  India: "APAC",
+  Mexico: "Latin America",
+  Brazil: "Latin America",
+  Colombia: "Latin America",
+  Singapore: "Asia-Pacific",
+  Australia: "Asia-Pacific",
+  Japan: "Asia-Pacific",
+  India: "Asia-Pacific",
 }
 
 const PRESSURES = [
@@ -251,7 +264,7 @@ export interface PipelineRow {
   outlook: Outlook
   industry: string
   hqCountry: string
-  region: Exclude<Region, "All">
+  region: HqRegion
   sizeBand: SizeBand
   contributed: string
   scope: (typeof SCOPES)[number]
@@ -270,42 +283,42 @@ export interface PipelineRow {
 type SeedRow = [number, number, number, string, string, number, string, number[]]
 
 const SEED_ROWS: SeedRow[] = [
-  [0, 0, 0, "Financial services", "United Kingdom", 2, "October 2026", [2, 1, 9]],
-  [0, 0, 1, "Technology", "United States", 3, "September 2026", [0, 2, 10, 9]],
-  [0, 1, 0, "Pharmaceuticals & life sciences", "Switzerland", 4, "October 2026", [7, 8, 9]],
-  [0, 0, 1, "Manufacturing", "Germany", 3, "August 2026", [2, 3, 12]],
-  [0, 1, 1, "Professional services", "United Kingdom", 1, "October 2026", [0, 4, 3]],
-  [0, 1, 0, "Energy & utilities", "United Arab Emirates", 2, "September 2026", [0, 2, 11, 1, 5]],
-  [0, 0, 2, "Retail & consumer goods", "Netherlands", 4, "July 2026", [7, 5]],
-  [0, 1, 1, "Telecommunications", "Saudi Arabia", 3, "October 2026", [2, 0, 9]],
-  [0, 2, 1, "Logistics & transport", "Singapore", 2, "September 2026", [7, 10, 8]],
-  [1, 1, 1, "Financial services", "Ireland", 1, "October 2026", [2, 6, 3]],
-  [1, 1, 0, "Technology", "Canada", 1, "August 2026", [0, 1, 2]],
-  [1, 2, 1, "Manufacturing", "France", 5, "September 2026", [7, 8, 12]],
-  [1, 1, 2, "Pharmaceuticals & life sciences", "United States", 5, "October 2026", [2, 1, 10, 11]],
-  [1, 2, 1, "Professional services", "Australia", 1, "July 2026", [0, 4]],
-  [1, 2, 1, "Public sector", "United Kingdom", 3, "September 2026", [7, 8, 6]],
-  [1, 1, 0, "Energy & utilities", "Qatar", 2, "October 2026", [2, 0, 11]],
-  [1, 2, 2, "Retail & consumer goods", "Spain", 3, "August 2026", [7, 5, 3]],
-  [1, 3, 1, "Telecommunications", "Germany", 2, "October 2026", [2, 9, 10]],
-  [1, 2, 1, "Technology", "India", 4, "September 2026", [0, 2, 1, 10, 9]],
-  [1, 1, 1, "Financial services", "Singapore", 1, "October 2026", [7, 9]],
-  [1, 2, 2, "Logistics & transport", "Sweden", 0, "June 2026", [6, 3, 4]],
-  [2, 2, 1, "Manufacturing", "Japan", 4, "September 2026", [2, 1]],
-  [2, 3, 2, "Professional services", "United States", 2, "August 2026", [0, 3, 11]],
-  [2, 4, 4, "Public sector", "Ireland", 1, "October 2026", [8, 12, 7]],
-  [2, 3, 1, "Pharmaceuticals & life sciences", "Germany", 3, "July 2026", [2, 10]],
-  [2, 2, 2, "Retail & consumer goods", "United Kingdom", 5, "September 2026", [0, 4, 6]],
-  [2, 3, 3, "Energy & utilities", "Saudi Arabia", 2, "October 2026", [7, 8]],
-  [2, 4, 4, "Telecommunications", "France", 1, "August 2026", [2, 3, 6]],
-  [2, 3, 2, "Financial services", "United Arab Emirates", 0, "September 2026", [0, 5]],
-  [2, 2, 1, "Technology", "Netherlands", 1, "October 2026", [2, 9, 1]],
-  [2, 4, 2, "Logistics & transport", "United States", 3, "June 2026", [7, 5, 10]],
-  [2, 3, 2, "Manufacturing", "Australia", 1, "September 2026", [0, 1]],
-  [2, 4, 4, "Public sector", "Canada", 2, "October 2026", [2, 11, 3]],
-  [2, 3, 1, "Professional services", "Switzerland", 0, "August 2026", [7, 8]],
-  [2, 4, 3, "Pharmaceuticals & life sciences", "Japan", 3, "July 2026", [3, 6, 4]],
-  [2, 3, 2, "Retail & consumer goods", "India", 2, "October 2026", [2, 0]],
+  [0, 0, 0, "Financial services", "United Kingdom", 3, "October 2026", [2, 1, 9]],
+  [0, 0, 1, "Technology", "United States", 4, "September 2026", [0, 2, 10, 9]],
+  [0, 1, 0, "Pharmaceuticals & life sciences", "Switzerland", 5, "October 2026", [7, 8, 9]],
+  [0, 0, 1, "Manufacturing", "Germany", 4, "August 2026", [2, 3, 12]],
+  [0, 1, 1, "Professional services", "United Kingdom", 2, "October 2026", [0, 4, 3]],
+  [0, 1, 0, "Energy & utilities", "United Arab Emirates", 3, "September 2026", [0, 2, 11, 1, 5]],
+  [0, 0, 2, "Retail & consumer goods", "Netherlands", 5, "July 2026", [7, 5]],
+  [0, 1, 1, "Telecommunications", "Saudi Arabia", 4, "October 2026", [2, 0, 9]],
+  [0, 2, 1, "Logistics & transport", "Singapore", 3, "September 2026", [7, 10, 8]],
+  [1, 1, 1, "Financial services", "Ireland", 2, "October 2026", [2, 6, 3]],
+  [1, 1, 0, "Technology", "Canada", 2, "August 2026", [0, 1, 2]],
+  [1, 2, 1, "Manufacturing", "France", 6, "September 2026", [7, 8, 12]],
+  [1, 1, 2, "Pharmaceuticals & life sciences", "United States", 6, "October 2026", [2, 1, 10, 11]],
+  [1, 2, 1, "Professional services", "Australia", 0, "July 2026", [0, 4]],
+  [1, 2, 1, "Public sector", "United Kingdom", 4, "September 2026", [7, 8, 6]],
+  [1, 1, 0, "Energy & utilities", "Qatar", 3, "October 2026", [2, 0, 11]],
+  [1, 2, 2, "Retail & consumer goods", "Nigeria", 4, "August 2026", [7, 5, 3]],
+  [1, 3, 1, "Telecommunications", "Germany", 3, "October 2026", [2, 9, 10]],
+  [1, 2, 1, "Technology", "India", 5, "September 2026", [0, 2, 1, 10, 9]],
+  [1, 1, 1, "Financial services", "Mexico", 2, "October 2026", [7, 9]],
+  [1, 2, 2, "Logistics & transport", "South Africa", 1, "June 2026", [6, 3, 4]],
+  [2, 2, 1, "Manufacturing", "Japan", 5, "September 2026", [2, 1]],
+  [2, 3, 2, "Professional services", "United States", 3, "August 2026", [0, 3, 11]],
+  [2, 4, 4, "Public sector", "Ireland", 0, "October 2026", [8, 12, 7]],
+  [2, 3, 1, "Pharmaceuticals & life sciences", "Germany", 4, "July 2026", [2, 10]],
+  [2, 2, 2, "Retail & consumer goods", "United Kingdom", 6, "September 2026", [0, 4, 6]],
+  [2, 3, 3, "Energy & utilities", "Saudi Arabia", 3, "October 2026", [7, 8]],
+  [2, 4, 4, "Telecommunications", "Kenya", 2, "August 2026", [2, 3, 6]],
+  [2, 3, 2, "Financial services", "United Arab Emirates", 1, "September 2026", [0, 5]],
+  [2, 2, 1, "Technology", "Netherlands", 2, "October 2026", [2, 9, 1]],
+  [2, 4, 2, "Logistics & transport", "United States", 4, "June 2026", [7, 5, 10]],
+  [2, 3, 2, "Manufacturing", "Brazil", 0, "September 2026", [0, 1]],
+  [2, 4, 4, "Public sector", "Canada", 3, "October 2026", [2, 11, 3]],
+  [2, 3, 1, "Professional services", "Switzerland", 1, "August 2026", [7, 8]],
+  [2, 4, 3, "Pharmaceuticals & life sciences", "Colombia", 4, "July 2026", [3, 6, 4]],
+  [2, 3, 2, "Retail & consumer goods", "India", 3, "October 2026", [2, 0]],
 ]
 
 /** Repeats each option by its weight so deterministic picks favor heavier options. */
@@ -381,9 +394,9 @@ export const PIPELINE_ROWS: PipelineRow[] = SEED_ROWS.map(
       region: COUNTRY_REGION[hqCountry],
       sizeBand: SIZE_BANDS[size],
       contributed,
-      scope: SCOPES[i % 3 === 2 ? 2 : size >= 3 ? 0 : 1],
+      scope: SCOPES[i % 3 === 2 ? 2 : size >= 4 ? 0 : 1],
       remit: Array.from(new Set([...areas, ...pick(HR_AREAS, i * 2 + 5, 2, 5)])),
-      priorities: pick(AREA_POOL, i * 7 + 3, 3, 5),
+      priorities: pick(AREA_POOL, i * 7 + 3, 3 + (i % 3), 5),
       pressures: pick(PRESSURE_POOL, i * 5 + 1, 3, 4),
       outcomes: pick(OUTCOME_POOL, i * 3 + 2, 3, 5),
       technology: pick(TECH_POOL, i * 4, 3 + (i % 2), 6),
@@ -440,10 +453,10 @@ export interface TopicPanelData {
   capabilities: Bar[]
 }
 
-function topicPanel(topic: PeopleTopic): TopicPanelData | null {
+export function topicPanel(rows: PipelineRow[], topic: PeopleTopic): TopicPanelData | null {
   const q = TOPIC_QUESTIONS[topic]
   if (!q) return null
-  const answers = PIPELINE_ROWS.map((r) => r.specialist[topic]).filter((a): a is SpecialistAnswers => !!a)
+  const answers = rows.map((r) => r.specialist[topic]).filter((a): a is SpecialistAnswers => !!a)
   const base = answers.length
   const noInvestment = tally(
     answers.map((a) => a.capabilities),
@@ -462,87 +475,164 @@ function topicPanel(topic: PeopleTopic): TopicPanelData | null {
   }
 }
 
-export const TOPIC_PANELS: Partial<Record<PeopleTopic, TopicPanelData>> = Object.fromEntries(
-  PEOPLE_TOPICS.map((t) => [t, topicPanel(t)]).filter(([, d]) => d !== null),
-)
-
-export const MARKET_PANELS = {
-  priorities: rankedPanel(PIPELINE_ROWS, (r) => r.priorities, HR_AREAS),
-  pressures: rankedPanel(PIPELINE_ROWS, (r) => r.pressures, PRESSURES),
-  outcomes: rankedPanel(PIPELINE_ROWS, (r) => r.outcomes, OUTCOMES),
-  technology: rankedPanel(PIPELINE_ROWS, (r) => r.technology, TECHNOLOGY),
-  providers: rankedPanel(PIPELINE_ROWS, (r) => r.providers, PROVIDER_ACTIVITIES),
+export function marketPanels(rows: PipelineRow[]) {
+  return {
+    priorities: rankedPanel(rows, (r) => r.priorities, HR_AREAS),
+    pressures: rankedPanel(rows, (r) => r.pressures, PRESSURES),
+    outcomes: rankedPanel(rows, (r) => r.outcomes, OUTCOMES),
+    technology: rankedPanel(rows, (r) => r.technology, TECHNOLOGY),
+    providers: rankedPanel(rows, (r) => r.providers, PROVIDER_ACTIVITIES),
+  }
 }
 
-const aiUsers = PIPELINE_ROWS.filter((r) => r.aiStage === AI_STAGES[0] || r.aiStage === AI_STAGES[1])
-
-export const AI_ADOPTION = {
-  base: PIPELINE_ROWS.length,
-  stages: tally(
-    PIPELINE_ROWS.map((r) => [r.aiStage]),
-    PIPELINE_ROWS.length,
-    AI_STAGES,
-  ),
-  areas: rankedPanel(aiUsers, (r) => r.aiAreas, AI_AREAS),
+export function aiAdoption(rows: PipelineRow[]) {
+  const users = rows.filter((r) => r.aiStage === AI_STAGES[0] || r.aiStage === AI_STAGES[1])
+  return {
+    base: rows.length,
+    stages: tally(
+      rows.map((r) => [r.aiStage]),
+      rows.length,
+      AI_STAGES,
+    ),
+    areas: rankedPanel(users, (r) => r.aiAreas, AI_AREAS),
+  }
 }
 
-export interface LocalSignalTab {
+// ---------------------------------------------------------------------------
+// Local market signals
+// ---------------------------------------------------------------------------
+
+interface LocalQuestion {
   id: string
   label: string
   question: string
-  data: RankedPanel | null
+  /** Answer options, the last one exclusive ("no changes"). Null when no responses have been collected. */
+  options: readonly string[] | null
+  operatesIn: (r: PipelineRow, i: number) => boolean
 }
 
-function fixedPanel(base: number, rows: [string, number][]): RankedPanel {
-  return { base, bars: rows.map(([label, count]) => ({ label, count, pct: Math.round((count / base) * 100) })) }
-}
-
-export const LOCAL_SIGNALS: LocalSignalTab[] = [
+const LOCAL_QUESTIONS: LocalQuestion[] = [
   {
     id: "uae",
     label: "UAE (Emiratisation)",
     question: "Planned changes in response to Emiratisation targets",
-    data: fixedPanel(14, [
-      ["Expand graduate and national talent programs", 9],
-      ["Raise Emirati hiring targets", 8],
-      ["Invest in upskilling for national employees", 7],
-      ["Partner with local training providers", 5],
-      ["Revisit workforce plans for quota changes", 4],
-      ["No changes planned", 2],
-    ]),
+    options: [
+      "Expand graduate and national talent programs",
+      "Raise Emirati hiring targets",
+      "Invest in upskilling for national employees",
+      "Partner with local training providers",
+      "Revisit workforce plans for quota changes",
+      "No changes planned",
+    ],
+    operatesIn: (r, i) =>
+      r.hqCountry === "United Arab Emirates" ||
+      (r.region === "Middle East" && r.scope !== "Single country") ||
+      (r.scope === "Global" && i % 3 !== 1),
   },
   {
     id: "ksa",
     label: "Saudi Arabia (Saudisation)",
     question: "Planned changes in response to Saudisation (Nitaqat) requirements",
-    data: null,
+    options: null,
+    operatesIn: () => false,
   },
   {
     id: "sg",
     label: "Singapore (COMPASS)",
     question: "Planned changes in response to the COMPASS framework",
-    data: null,
+    options: null,
+    operatesIn: () => false,
   },
   {
     id: "de",
     label: "Germany (works councils)",
     question: "Planned changes to how works councils are engaged",
-    data: null,
+    options: null,
+    operatesIn: () => false,
   },
   {
     id: "eu",
     label: "EU (pay transparency)",
     question: "Planned changes ahead of the EU Pay Transparency Directive",
-    data: fixedPanel(21, [
-      ["Audit pay gaps by gender and role", 15],
-      ["Publish salary ranges in job postings", 13],
-      ["Review job architecture and leveling", 11],
-      ["Update reward communication for managers", 9],
-      ["Invest in pay equity software", 7],
-      ["No changes planned yet", 2],
-    ]),
+    options: [
+      "Audit pay gaps by gender and role",
+      "Publish salary ranges in job postings",
+      "Review job architecture and leveling",
+      "Update reward communication for managers",
+      "Invest in pay equity software",
+      "No changes planned yet",
+    ],
+    operatesIn: (r, i) =>
+      r.region === "Continental Europe" ||
+      (r.scope === "Global" && i % 2 === 0) ||
+      (r.region === "UK & Ireland" && r.scope === "Regional"),
   },
 ]
+
+const ROW_INDEX = new Map(PIPELINE_ROWS.map((r) => [r.id, Number(r.id.slice(2)) - 1]))
+
+const LOCAL_ANSWERS: Record<string, Map<string, string[]>> = Object.fromEntries(
+  LOCAL_QUESTIONS.map((q) => {
+    const answers = new Map<string, string[]>()
+    if (q.options) {
+      const pool = weighted(q.options.slice(0, -1), [5, 4, 4, 3, 2])
+      for (const r of PIPELINE_ROWS) {
+        const i = ROW_INDEX.get(r.id)!
+        if (!q.operatesIn(r, i)) continue
+        answers.set(r.id, i % 7 === 5 ? [q.options[q.options.length - 1]] : pick(pool, i * 3 + 1, 2 + (i % 3), 4))
+      }
+    }
+    return [q.id, answers]
+  }),
+)
+
+export interface LocalSignalTab {
+  id: string
+  label: string
+  question: string
+  operatesLabel: string
+  data: RankedPanel | null
+}
+
+export function localSignals(rows: PipelineRow[]): LocalSignalTab[] {
+  return LOCAL_QUESTIONS.map((q) => {
+    const answered = rows.map((r) => LOCAL_ANSWERS[q.id].get(r.id)).filter((a): a is string[] => !!a)
+    const base = answered.length
+    return {
+      id: q.id,
+      label: q.label,
+      question: q.question,
+      operatesLabel: q.label.split(" (")[0],
+      data: q.options ? { base, bars: ranked(tally(answered, base, q.options)) } : null,
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Filters
+// ---------------------------------------------------------------------------
+
+export const FILTERS = [
+  { key: "region", label: "HQ region", options: HQ_REGIONS, values: (r: PipelineRow) => [r.region] },
+  { key: "size", label: "Employees", options: SIZE_BANDS, values: (r: PipelineRow) => [r.sizeBand] },
+  { key: "priorities", label: "Highest priorities", options: HR_AREAS, values: (r: PipelineRow) => r.priorities },
+  { key: "ai", label: "AI maturity", options: AI_STAGES, values: (r: PipelineRow) => [r.aiStage] },
+] as const
+
+export type FilterKey = (typeof FILTERS)[number]["key"]
+export type FilterState = Record<FilterKey, string[]>
+
+export const EMPTY_FILTERS: FilterState = { region: [], size: [], priorities: [], ai: [] }
+
+/** OR within a filter, AND across filters. */
+export function applyFilters(rows: PipelineRow[], state: FilterState): PipelineRow[] {
+  return rows.filter((r) =>
+    FILTERS.every(({ key, values }) => {
+      const selected = state[key]
+      return selected.length === 0 || values(r).some((v) => selected.includes(v))
+    }),
+  )
+}
 
 export function isReportable(base: number): boolean {
   return base >= REPORTING_FLOOR
