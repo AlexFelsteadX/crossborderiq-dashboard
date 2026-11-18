@@ -100,7 +100,6 @@ export function PeoplePreviewClient() {
             <h1 className="text-3xl font-semibold tracking-tight text-slate-50 text-balance sm:text-4xl">
               People Intelligence: Vendor View
             </h1>
-            <p className="mt-2 text-base text-slate-400">Anonymous demand signals from HR and People leaders.</p>
           </div>
           <div
             role="note"
