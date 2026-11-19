@@ -119,6 +119,16 @@ type EventBriefing = {
 }
 const EVENT_BRIEFINGS: EventBriefing[] = [
   {
+    title: "GME Leaders Exchange Madrid: The Room and the Market",
+    description:
+      "How the 17 Global Mobility leaders in the Madrid room compare with the wider market in 2026.",
+    cover: "/reports/covers/madrid-2026-room-and-market-cover.png",
+    file: "/reports/madrid-2026-room-and-market.pdf",
+    href: "/reports/madrid-2026",
+    date: "November 2026",
+    tag: "Event briefing",
+  },
+  {
     title: "The Room and the Market: GME Live EMEA London",
     description:
       "What 96 leaders in the room told us, against 900+ verified Global Mobility leaders worldwide",
