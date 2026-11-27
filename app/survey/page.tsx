@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Mail, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
-
-// Organic Global Workforce Deployment survey (no rep code).
-const SURVEY_FORM_ID = "GtsLFriE"
+import { GWD_SURVEY_FORM_ID } from "@/lib/survey-config"
 
 export default function SurveyPage() {
   const supabase = createClient()
@@ -163,7 +161,7 @@ export default function SurveyPage() {
           {step === "intro" ? (
             <>
               <PopupButton
-                id={SURVEY_FORM_ID}
+                id={GWD_SURVEY_FORM_ID}
                 size={100}
                 onSubmit={() => setStep("claim")}
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

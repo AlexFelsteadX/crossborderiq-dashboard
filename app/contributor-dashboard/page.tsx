@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { TierLockedScreen } from "@/components/tier-locked-screen"
 import { createClient } from "@/lib/supabase/server"
+import { GWD_SURVEY_FORM_ID } from "@/lib/survey-config"
 
 export default async function ContributorDashboardPage() {
   const supabase = await createClient()
@@ -28,7 +29,7 @@ export default async function ContributorDashboardPage() {
 
   // Free (or any other) tier — show the survey-entry landing.
   // Preserve the Typeform link construction exactly as before.
-  const typeformUrl = `https://form.typeform.com/to/GtsLFriE?email=${encodeURIComponent(user.email ?? "")}&uid=${encodeURIComponent(user.id)}`
+  const typeformUrl = `https://form.typeform.com/to/${GWD_SURVEY_FORM_ID}?email=${encodeURIComponent(user.email ?? "")}&uid=${encodeURIComponent(user.id)}`
 
   return (
     <TierLockedScreen

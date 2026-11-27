@@ -1,13 +1,14 @@
 import type { Metadata } from "next"
+import { GWD_SURVEY_FORM_ID } from "@/lib/survey-config"
 import { BenchmarkClaimClient } from "./benchmark-claim-client"
 
 // All reps share the launch survey; per-rep attribution rides on the URL code, not the form.
 const FORM_MAP: Record<string, string> = {
-  CD: "GtsLFriE", // Charlie
-  CK: "GtsLFriE", // Catherine
-  AP: "GtsLFriE", // Artem
+  CD: GWD_SURVEY_FORM_ID, // Charlie
+  CK: GWD_SURVEY_FORM_ID, // Catherine
+  AP: GWD_SURVEY_FORM_ID, // Artem
 }
-const FALLBACK_FORM_ID = "GtsLFriE"
+const FALLBACK_FORM_ID = GWD_SURVEY_FORM_ID
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
